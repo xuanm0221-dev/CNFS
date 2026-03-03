@@ -353,6 +353,8 @@ export default function InventoryDashboard() {
   const [prevYearRetailData, setPrevYearRetailData] = useState<RetailSalesResponse | null>(null);
   const [prevYearShipmentData, setPrevYearShipmentData] = useState<ShipmentSalesResponse | null>(null);
   const [prevYearPurchaseData, setPrevYearPurchaseData] = useState<PurchaseResponse | null>(null);
+  const [prevYearLoading, setPrevYearLoading] = useState<boolean>(false);
+  const [prevYearError, setPrevYearError] = useState<boolean>(false);
 
   // 由ы뀒??留ㅼ텧 ???곗씠??
   const [retailData, setRetailData] = useState<RetailSalesResponse | null>(null);
@@ -786,6 +788,8 @@ export default function InventoryDashboard() {
       setPrevYearRetailData(null);
       setPrevYearShipmentData(null);
       setPrevYearPurchaseData(null);
+      setPrevYearLoading(false);
+      setPrevYearError(false);
       return;
     }
     // 탭 전환 시 즉시 전년 데이터 초기화 → YOY가 '- → 정상'으로 표시 (잘못된 숫자 방지)
@@ -793,6 +797,8 @@ export default function InventoryDashboard() {
     setPrevYearRetailData(null);
     setPrevYearShipmentData(null);
     setPrevYearPurchaseData(null);
+    setPrevYearLoading(true);
+    setPrevYearError(false);
     let cancelled = false;
 
     const run = async () => {
@@ -840,7 +846,19 @@ export default function InventoryDashboard() {
             pRes.json() as Promise<PurchaseResponse>,
           ]);
           if (cancelled) return;
-          if (!mRes.ok || (mJson as { error?: string }).error) return;
+          if (!mRes.ok || !rRes.ok || !sRes.ok || !pRes.ok) {
+            setPrevYearError(true);
+            return;
+          }
+          if (
+            (mJson as { error?: string }).error ||
+            (rJson as { error?: string }).error ||
+            (sJson as { error?: string }).error ||
+            (pJson as { error?: string }).error
+          ) {
+            setPrevYearError(true);
+            return;
+          }
           setPrevYearMonthlyData(mJson);
           setPrevYearRetailData(rJson);
           setPrevYearShipmentData(sJson);
@@ -852,6 +870,11 @@ export default function InventoryDashboard() {
           setPrevYearRetailData(null);
           setPrevYearShipmentData(null);
           setPrevYearPurchaseData(null);
+          setPrevYearError(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setPrevYearLoading(false);
         }
       }
     };
@@ -948,8 +971,6 @@ export default function InventoryDashboard() {
   const hqTableData = shouldUseTopTableOnly
     ? (topTableData?.hq ?? null)
     : (topTableData?.hq ?? data?.hq ?? null);
-  const statusLoading = loading || monthlyLoading || retailLoading || shipmentLoading || purchaseLoading || recalcLoading;
-  const statusError = !!error || !!monthlyError || !!retailError || !!shipmentError || !!purchaseError;
 
   useEffect(() => {
     if (typeof window === 'undefined' || year !== 2026 || !dealerTableData) return;
@@ -992,6 +1013,9 @@ export default function InventoryDashboard() {
       year - 1,
     );
   }, [year, prevYearMonthlyData, prevYearRetailData, prevYearShipmentData, prevYearPurchaseData]);
+  const yoyPending = year === 2026 && !prevYearError && (prevYearLoading || !prevYearTableData);
+  const statusLoading = loading || monthlyLoading || retailLoading || shipmentLoading || purchaseLoading || recalcLoading || yoyPending;
+  const statusError = !!error || !!monthlyError || !!retailError || !!shipmentError || !!purchaseError || prevYearError;
 
   // 2026 ACC ???ш퀬二쇱닔 ?몄쭛 ???곹깭 諛섏쁺 (??? ?먮뒗 湲곕낯媛?釉붾줉怨??곕룞)
   const handleWoiChange = useCallback((tableType: 'dealer' | 'hq', rowKey: string, newWoi: number) => {
@@ -1192,6 +1216,7 @@ export default function InventoryDashboard() {
                 sellInLabel="Sell-in"
                 sellOutLabel="Sell-out"
                 tableType="dealer"
+                prevYearData={prevYearTableData?.dealer ?? null}
                 onWoiChange={year === 2026 && brand !== '전체' ? handleWoiChange : undefined}
                 use2025Legend={year === 2026 && brand === '전체'}
                 prevYearTotalOpening={(() => {
@@ -1221,6 +1246,7 @@ export default function InventoryDashboard() {
                 sellInLabel="상품매입"
                 sellOutLabel="대리상출고"
                 tableType="hq"
+                prevYearData={prevYearTableData?.hq ?? null}
                 onWoiChange={year === 2026 && brand !== '전체' ? handleWoiChange : undefined}
                 use2025Legend={year === 2026 && brand === '전체'}
                 onHqSellInChange={undefined}

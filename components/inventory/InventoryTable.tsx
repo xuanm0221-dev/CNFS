@@ -28,6 +28,7 @@ interface Props {
   prevYearTotalSellOut?: number;
   /** 전년 재고자산합계 hqSalesTotal (본사판매 YOY 계산용, 본사 전용) */
   prevYearTotalHqSales?: number;
+  prevYearData?: InventoryTableData | null;
   /** 테이블 우측에 나란히 렌더할 콘텐츠 (범례 위, 테이블 하단 정렬) */
   sideContent?: React.ReactNode;
   /** 2026 전체탭: 2025 스타일 범례 표시 (Sell-through·재고주수 기본 공식) */
@@ -153,6 +154,7 @@ export default function InventoryTable({
   prevYearTotalSellIn,
   prevYearTotalSellOut,
   prevYearTotalHqSales,
+  prevYearData,
   sideContent,
   use2025Legend = false,
 }: Props) {
@@ -194,6 +196,15 @@ export default function InventoryTable({
     prevYearTotalHqSales != null && prevYearTotalHqSales > 0 && totalRow && totalRow.hqSalesTotal != null
       ? totalRow.hqSalesTotal / prevYearTotalHqSales
       : null;
+  const clothingSubtotalKey = data.rows.find((r) => r.isSubtotal && !ACC_KEYS.includes(r.key as AccKey))?.key ?? null;
+  const prevYearByKey = new Map((prevYearData?.rows ?? []).map((r) => [r.key, r]));
+  const getDisplayDelta = (row: InventoryRow): number => {
+    const isClothingComparable = SEASON_KEYS.includes(row.key as SeasonKey) || (!!clothingSubtotalKey && row.key === clothingSubtotalKey);
+    if (!isClothingComparable) return row.delta;
+    const prevRow = prevYearByKey.get(row.key);
+    if (!prevRow) return row.delta;
+    return row.closing - prevRow.closing;
+  };
 
   type EditField = 'sellIn' | 'sellOut' | 'woi';
   const [editingCell, setEditingCell] = useState<{ rowKey: string; field: EditField } | null>(null);
@@ -392,8 +403,8 @@ export default function InventoryTable({
                     : formatKValue((row as InventoryRow).closing)}
                 </td>
                 {/* 증감 */}
-                <td className={`${cellCls(row)} ${!isYoyRow(row) && (row as InventoryRow).delta < 0 ? 'text-blue-600' : !isYoyRow(row) && (row as InventoryRow).delta > 0 ? 'text-red-500' : ''}`}>
-                  {isYoyRow(row) ? '-' : ((row as InventoryRow).delta > 0 ? '+' : '') + formatKValue((row as InventoryRow).delta)}
+                <td className={`${cellCls(row)} ${!isYoyRow(row) && getDisplayDelta(row as InventoryRow) < 0 ? 'text-blue-600' : !isYoyRow(row) && getDisplayDelta(row as InventoryRow) > 0 ? 'text-red-500' : ''}`}>
+                  {isYoyRow(row) ? '-' : (getDisplayDelta(row as InventoryRow) > 0 ? '+' : '') + formatKValue(getDisplayDelta(row as InventoryRow))}
                 </td>
                 {/* Sell-through */}
                 <td className={`${cellCls(row)} ${
