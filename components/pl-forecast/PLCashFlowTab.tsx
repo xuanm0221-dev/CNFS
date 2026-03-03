@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatNumber } from '@/lib/utils';
 import CFExplanationPanel from '@/components/CFExplanationPanel';
 
@@ -19,6 +19,21 @@ type StaticWorkingCapitalRow = {
   isGroup: boolean;
   actual2025: number | null;
 };
+
+type InventoryHqClosingMap = {
+  MLB: number;
+  'MLB KIDS': number;
+  DISCOVERY: number;
+};
+
+type TagCostRatioMap = {
+  MLB: number | null;
+  'MLB KIDS': number | null;
+  DISCOVERY: number | null;
+};
+
+const INVENTORY_HQ_CLOSING_KEY = 'inventory_hq_closing_totals';
+const PL_TAG_COST_RATIO_KEY = 'pl_tag_cost_ratio_annual';
 
 const STATIC_CF_ROWS: StaticCFRow[] = [
   { key: 'operating', label: '영업활동', level: 0, isGroup: true, actual2025: -447126572 },
@@ -75,24 +90,96 @@ const STATIC_CREDIT_RECOVERY = {
   headers: ['2월', '3월', '4월'],
 };
 
+const TAG_COST_RATIO_BRANDS = ['MLB', 'MLB KIDS', 'DISCOVERY'] as const;
+
 export default function PLCashFlowTab() {
+  const [inventoryHqClosing, setInventoryHqClosing] = useState<InventoryHqClosingMap>({
+    MLB: 0,
+    'MLB KIDS': 0,
+    DISCOVERY: 0,
+  });
+  const [tagCostRatio, setTagCostRatio] = useState<TagCostRatioMap>({
+    MLB: null,
+    'MLB KIDS': null,
+    DISCOVERY: null,
+  });
   const [collapsed, setCollapsed] = useState<Set<string>>(
-    new Set(['operating', 'operating_receipts', 'operating_payments', 'operating_expenses', 'capex'])
+    new Set(['operating', 'operating_receipts', 'operating_payments', 'operating_expenses', 'capex']),
   );
   const [allCollapsed, setAllCollapsed] = useState(true);
   const [wcCollapsed, setWcCollapsed] = useState<Set<string>>(new Set(['wc_ar', 'wc_inventory', 'wc_ap']));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const readStored = (payload?: unknown) => {
+      const source = payload ?? window.localStorage.getItem(INVENTORY_HQ_CLOSING_KEY);
+      if (!source) return;
+      try {
+        const parsed = typeof source === 'string' ? JSON.parse(source) : source;
+        if (!parsed || typeof parsed !== 'object' || !('values' in parsed)) return;
+        const values = (parsed as { values?: Record<string, unknown> }).values;
+        if (!values) return;
+        setInventoryHqClosing({
+          MLB: Number(values.MLB) || 0,
+          'MLB KIDS': Number(values['MLB KIDS']) || 0,
+          DISCOVERY: Number(values.DISCOVERY) || 0,
+        });
+      } catch {
+        // ignore malformed payloads
+      }
+    };
+
+    readStored();
+    const handleUpdate = (event: Event) => {
+      readStored((event as CustomEvent).detail);
+    };
+
+    window.addEventListener('inventory-hq-closing-updated', handleUpdate as EventListener);
+    return () => {
+      window.removeEventListener('inventory-hq-closing-updated', handleUpdate as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const readStored = (payload?: unknown) => {
+      const source = payload ?? window.localStorage.getItem(PL_TAG_COST_RATIO_KEY);
+      if (!source) return;
+      try {
+        const parsed = typeof source === 'string' ? JSON.parse(source) : source;
+        if (!parsed || typeof parsed !== 'object' || !('values' in parsed)) return;
+        const values = (parsed as { values?: Record<string, unknown> }).values;
+        if (!values) return;
+        setTagCostRatio({
+          MLB: values.MLB == null ? null : Number(values.MLB),
+          'MLB KIDS': values['MLB KIDS'] == null ? null : Number(values['MLB KIDS']),
+          DISCOVERY: values.DISCOVERY == null ? null : Number(values.DISCOVERY),
+        });
+      } catch {
+        // ignore malformed payloads
+      }
+    };
+
+    readStored();
+    const handleUpdate = (event: Event) => {
+      readStored((event as CustomEvent).detail);
+    };
+
+    window.addEventListener('pl-tag-cost-ratio-updated', handleUpdate as EventListener);
+    return () => {
+      window.removeEventListener('pl-tag-cost-ratio-updated', handleUpdate as EventListener);
+    };
+  }, []);
 
   const visibleRows = useMemo(() => {
     const result: StaticCFRow[] = [];
     let skipLevel = -1;
 
     for (const row of STATIC_CF_ROWS) {
-      if (row.level <= skipLevel) {
-        skipLevel = -1;
-      }
-      if (skipLevel >= 0 && row.level > skipLevel) {
-        continue;
-      }
+      if (row.level <= skipLevel) skipLevel = -1;
+      if (skipLevel >= 0 && row.level > skipLevel) continue;
       if (row.isGroup && collapsed.has(row.key)) {
         skipLevel = row.level === 0 ? 0 : row.level;
         result.push(row);
@@ -109,12 +196,8 @@ export default function PLCashFlowTab() {
     let skipLevel = -1;
 
     for (const row of STATIC_WORKING_CAPITAL_ROWS) {
-      if (row.level <= skipLevel) {
-        skipLevel = -1;
-      }
-      if (skipLevel >= 0 && row.level > skipLevel) {
-        continue;
-      }
+      if (row.level <= skipLevel) skipLevel = -1;
+      if (skipLevel >= 0 && row.level > skipLevel) continue;
       if (row.isGroup && wcCollapsed.has(row.key)) {
         skipLevel = row.level;
         result.push(row);
@@ -162,6 +245,78 @@ export default function PLCashFlowTab() {
     return formatNumber(value, false, false);
   };
 
+  const formatKValue = (value: number | null | undefined) => {
+    if (value == null || value === 0) return '';
+    const absValue = Math.abs(Math.round(value));
+    const formatted = new Intl.NumberFormat('ko-KR').format(absValue);
+    return value < 0 ? `(${formatted})` : formatted;
+  };
+
+  const formatPercent4 = (value: number | null | undefined) => {
+    if (value == null) return '';
+    return `${(value * 100).toFixed(4)}%`;
+  };
+
+  const toDisplayK = (value: number | null | undefined) => {
+    if (value == null) return null;
+    return Math.round(value / 1000);
+  };
+
+  const cf2026 = (_rowKey: string): number | null => null;
+
+  const cfYoy = (row: StaticCFRow): number | null => {
+    const current = cf2026(row.key);
+    const actualK = toDisplayK(row.actual2025);
+    if (current == null || actualK == null) return null;
+    return current - actualK;
+  };
+
+  const cashBorrowing2026 = (_rowKey: 'cash' | 'borrowing'): number | null => null;
+
+  const cashBorrowingYoy = (rowKey: 'cash' | 'borrowing', actual2025: number): number | null => {
+    const current = cashBorrowing2026(rowKey);
+    const actualK = toDisplayK(actual2025);
+    if (current == null || actualK == null) return null;
+    return current - actualK;
+  };
+
+  const workingCapital2026 = (rowKey: string): number | null => {
+    const arDirect = 0;
+    const arDealer = 0;
+    const inventoryMlbTag = inventoryHqClosing.MLB || 0;
+    const inventoryKidsTag = inventoryHqClosing['MLB KIDS'] || 0;
+    const inventoryDiscoveryTag = inventoryHqClosing.DISCOVERY || 0;
+    const inventoryMlb = inventoryMlbTag === 0 || tagCostRatio.MLB == null ? 0 : (inventoryMlbTag / 1.13) * tagCostRatio.MLB;
+    const inventoryKids =
+      inventoryKidsTag === 0 || tagCostRatio['MLB KIDS'] == null ? 0 : (inventoryKidsTag / 1.13) * tagCostRatio['MLB KIDS'];
+    const inventoryDiscovery =
+      inventoryDiscoveryTag === 0 || tagCostRatio.DISCOVERY == null ? 0 : (inventoryDiscoveryTag / 1.13) * tagCostRatio.DISCOVERY;
+    const apHq = 0;
+    const apGoods = 0;
+
+    if (rowKey === 'wc_total') {
+      return arDirect + arDealer + inventoryMlb + inventoryKids + inventoryDiscovery + apHq + apGoods;
+    }
+    if (rowKey === 'wc_ar') return arDirect + arDealer;
+    if (rowKey === 'wc_inventory') return inventoryMlb + inventoryKids + inventoryDiscovery;
+    if (rowKey === 'wc_inventory_mlb') return inventoryMlb;
+    if (rowKey === 'wc_inventory_kids') return inventoryKids;
+    if (rowKey === 'wc_inventory_discovery') return inventoryDiscovery;
+    if (rowKey === 'wc_ap') return apHq + apGoods;
+    if (rowKey === 'wc_ar_direct') return arDirect;
+    if (rowKey === 'wc_ar_dealer') return arDealer;
+    if (rowKey === 'wc_ap_hq') return apHq;
+    if (rowKey === 'wc_ap_goods') return apGoods;
+    return null;
+  };
+
+  const workingCapitalYoy = (row: StaticWorkingCapitalRow): number | null => {
+    const current = workingCapital2026(row.key);
+    const actualK = toDisplayK(row.actual2025);
+    if (current == null || actualK == null) return null;
+    return current - actualK;
+  };
+
   return (
     <div>
       <div className="bg-gray-100 border-b border-gray-300">
@@ -182,6 +337,7 @@ export default function PLCashFlowTab() {
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-lg font-bold text-gray-900">현금흐름표</h2>
           </div>
+
           <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-20 bg-navy text-white">
@@ -191,6 +347,7 @@ export default function PLCashFlowTab() {
                   </th>
                   <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2025년(합계)</th>
                   <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2026년(합계)</th>
+                  <th className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">YoY</th>
                 </tr>
               </thead>
               <tbody>
@@ -235,7 +392,8 @@ export default function PLCashFlowTab() {
                         )}
                       </td>
                       <td className="border border-gray-300 py-2 px-4 text-right">{formatActual(row.actual2025)}</td>
-                      <td className="border border-gray-300 py-2 px-4 text-right"></td>
+                      <td className="border border-gray-300 py-2 px-4 text-right">{formatKValue(cf2026(row.key))}</td>
+                      <td className="border border-gray-300 py-2 px-4 text-right">{formatKValue(cfYoy(row))}</td>
                     </tr>
                   );
                 })}
@@ -259,14 +417,14 @@ export default function PLCashFlowTab() {
                   <tr>
                     <td className="border border-gray-300 py-2 px-4 font-medium sticky left-0 z-10 bg-gray-100 text-gray-800">현금잔액</td>
                     <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatActual(STATIC_CASH_BORROWING.cashOpening)}</td>
-                    <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50"></td>
-                    <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50"></td>
+                    <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatKValue(cashBorrowing2026('cash'))}</td>
+                    <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatKValue(cashBorrowingYoy('cash', STATIC_CASH_BORROWING.cashOpening))}</td>
                   </tr>
                   <tr>
                     <td className="border border-gray-300 py-2 px-4 font-medium sticky left-0 z-10 bg-gray-100 text-gray-800">차입금잔액</td>
                     <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatActual(STATIC_CASH_BORROWING.borrowingOpening)}</td>
-                    <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50"></td>
-                    <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50"></td>
+                    <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatKValue(cashBorrowing2026('borrowing'))}</td>
+                    <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatKValue(cashBorrowingYoy('borrowing', STATIC_CASH_BORROWING.borrowingOpening))}</td>
                   </tr>
                 </tbody>
               </table>
@@ -315,11 +473,52 @@ export default function PLCashFlowTab() {
                           )}
                         </td>
                         <td className={`border border-gray-300 py-2 px-4 text-right ${cellBg}`}>{formatActual(row.actual2025)}</td>
-                        <td className={`border border-gray-300 py-2 px-4 text-right ${cellBg}`}></td>
-                        <td className={`border border-gray-300 py-2 px-4 text-right ${cellBg}`}></td>
+                        <td className={`border border-gray-300 py-2 px-4 text-right ${cellBg}`}>{formatKValue(workingCapital2026(row.key))}</td>
+                        <td className={`border border-gray-300 py-2 px-4 text-right ${cellBg}`}>{formatKValue(workingCapitalYoy(row))}</td>
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 overflow-x-auto border border-gray-300 rounded-lg shadow-sm">
+              <table className="w-full border-collapse text-sm">
+                <thead className="bg-slate-700 text-white">
+                  <tr>
+                    <th className="border border-gray-300 py-2.5 px-4 text-center min-w-[120px]">구분</th>
+                    {TAG_COST_RATIO_BRANDS.map((brand) => (
+                      <th
+                        key={`tag-cost-ratio-header-${brand}`}
+                        className="border border-gray-300 py-2.5 px-4 text-center min-w-[120px]"
+                      >
+                        {brand}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="bg-slate-50">
+                    <td className="border border-gray-300 py-2 px-4 text-center font-medium text-slate-800">Tag재고</td>
+                    {TAG_COST_RATIO_BRANDS.map((brand) => (
+                      <td
+                        key={`tag-inventory-value-${brand}`}
+                        className="border border-gray-300 py-2 px-4 text-right text-slate-700"
+                      >
+                        {formatKValue(inventoryHqClosing[brand])}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="bg-white">
+                    <td className="border border-gray-300 py-2 px-4 text-center font-medium text-slate-800">Tag대비원가율</td>
+                    {TAG_COST_RATIO_BRANDS.map((brand) => (
+                      <td
+                        key={`tag-cost-ratio-value-${brand}`}
+                        className="border border-gray-300 py-2 px-4 text-right text-slate-700"
+                      >
+                        {formatPercent4(tagCostRatio[brand])}
+                      </td>
+                    ))}
+                  </tr>
                 </tbody>
               </table>
             </div>

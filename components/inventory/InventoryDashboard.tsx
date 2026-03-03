@@ -28,11 +28,13 @@ import InventoryMonthlyTable, { TableData } from './InventoryMonthlyTable';
 type LeafBrand = Exclude<Brand, '전체'>;
 type TopTablePair = { dealer: InventoryTableData; hq: InventoryTableData };
 const ANNUAL_SHIPMENT_PLAN_KEY = 'inv_annual_shipment_plan_2026_v1';
+const INVENTORY_HQ_CLOSING_KEY = 'inventory_hq_closing_totals';
 const ANNUAL_PLAN_BRANDS = ['MLB', 'MLB KIDS', 'DISCOVERY'] as const;
 const ANNUAL_PLAN_SEASONS = ['currF', 'currS', 'year1', 'year2', 'next', 'past'] as const;
 type AnnualPlanBrand = typeof ANNUAL_PLAN_BRANDS[number];
 type AnnualPlanSeason = typeof ANNUAL_PLAN_SEASONS[number];
 type AnnualShipmentPlan = Record<AnnualPlanBrand, Record<AnnualPlanSeason, number>>;
+type HqClosingByBrand = Record<AnnualPlanBrand, number>;
 
 const ANNUAL_PLAN_SEASON_LABELS: Record<AnnualPlanSeason, string> = {
   currF: '당년F',
@@ -325,6 +327,35 @@ export default function InventoryDashboard() {
     };
     localStorage.setItem('inventory_dealer_acc_sellin', JSON.stringify(payload));
     window.dispatchEvent(new CustomEvent('inventory-dealer-acc-sellin-updated', { detail: payload }));
+  }, []);
+
+  const publishHqClosingByBrand = useCallback((partialMap: Partial<HqClosingByBrand>) => {
+    if (typeof window === 'undefined') return;
+    const currentRaw = localStorage.getItem(INVENTORY_HQ_CLOSING_KEY);
+    let currentValues: HqClosingByBrand = {
+      MLB: 0,
+      'MLB KIDS': 0,
+      DISCOVERY: 0,
+    };
+    try {
+      const parsed = currentRaw ? JSON.parse(currentRaw) : null;
+      if (parsed?.values) {
+        currentValues = {
+          MLB: Number(parsed.values.MLB) || 0,
+          'MLB KIDS': Number(parsed.values['MLB KIDS']) || 0,
+          DISCOVERY: Number(parsed.values.DISCOVERY) || 0,
+        };
+      }
+    } catch {
+      // ignore parse errors and overwrite with fresh values below
+    }
+    const nextValues = { ...currentValues, ...partialMap };
+    const payload = {
+      values: nextValues,
+      updatedAt: Date.now(),
+    };
+    localStorage.setItem(INVENTORY_HQ_CLOSING_KEY, JSON.stringify(payload));
+    window.dispatchEvent(new CustomEvent('inventory-hq-closing-updated', { detail: payload }));
   }, []);
 
   useEffect(() => {
@@ -972,6 +1003,43 @@ export default function InventoryDashboard() {
     ? (topTableData?.hq ?? null)
     : (topTableData?.hq ?? data?.hq ?? null);
 
+  const buildBrand2026TopTable = useCallback((planBrand: AnnualPlanBrand): TopTablePair | null => {
+    if (year !== 2026) return null;
+    const mData = monthlyDataByBrand[planBrand] ?? (brand === planBrand ? monthlyData : null);
+    const rData = retailDataByBrand[planBrand] ?? (brand === planBrand ? retailData : null);
+    const sData = shipmentDataByBrand[planBrand] ?? (brand === planBrand ? shipmentData : null);
+    const pData = purchaseDataByBrand[planBrand] ?? (brand === planBrand ? purchaseData : null);
+    if (!mData || !rData || !sData) return null;
+    const built = buildTableDataFromMonthly(
+      mData,
+      rData,
+      sData,
+      pData ?? undefined,
+      year,
+    );
+    const withWoi = applyAccTargetWoiOverlay(
+      built.dealer,
+      built.hq,
+      rData,
+      accTargetWoiDealer,
+      accTargetWoiHq,
+      accHqHoldingWoi,
+      year,
+    );
+    const otbDealerSellIn = otbToDealerSellInPlan(otbData, planBrand);
+    const mergedSellOutPlan = {
+      ...hqSellOutPlan,
+      ...otbDealerSellIn,
+    };
+    return applyHqSellInSellOutPlanOverlay(
+      withWoi.dealer,
+      withWoi.hq,
+      annualPlanToHqSellInPlan(annualShipmentPlan2026, planBrand),
+      mergedSellOutPlan,
+      year,
+    );
+  }, [year, brand, monthlyDataByBrand, monthlyData, retailDataByBrand, retailData, shipmentDataByBrand, shipmentData, purchaseDataByBrand, purchaseData, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, otbData, hqSellOutPlan, annualShipmentPlan2026]);
+
   useEffect(() => {
     if (typeof window === 'undefined' || year !== 2026 || !dealerTableData) return;
     if (brand !== 'MLB' && brand !== 'MLB KIDS' && brand !== 'DISCOVERY') return;
@@ -1003,6 +1071,30 @@ export default function InventoryDashboard() {
   }, [year, brand, dealerTableData, publishDealerAccSellIn]);
 
   // 2026 YOY: 전년(2025) 테이블 구성 → 재고자산합계 sellIn/sellOut/hqSales 추출
+  useEffect(() => {
+    if (typeof window === 'undefined' || year !== 2026) return;
+
+    if (brand !== 'MLB' && brand !== 'MLB KIDS' && brand !== 'DISCOVERY') {
+      const nextValues: Partial<HqClosingByBrand> = {};
+      for (const planBrand of ANNUAL_PLAN_BRANDS) {
+        const table = buildBrand2026TopTable(planBrand);
+        const totalRow = table?.hq.rows.find((row) => row.isTotal);
+        if (totalRow && Number.isFinite(totalRow.closing)) {
+          nextValues[planBrand] = totalRow.closing;
+        }
+      }
+      if (Object.keys(nextValues).length > 0) {
+        publishHqClosingByBrand(nextValues);
+      }
+      return;
+    }
+
+    if (!hqTableData) return;
+    const totalRow = hqTableData.rows.find((row) => row.isTotal);
+    if (!totalRow || !Number.isFinite(totalRow.closing)) return;
+    publishHqClosingByBrand({ [brand]: totalRow.closing });
+  }, [year, brand, hqTableData, buildBrand2026TopTable, publishHqClosingByBrand]);
+
   const prevYearTableData = useMemo(() => {
     if (year !== 2026 || !prevYearMonthlyData || !prevYearRetailData || !prevYearShipmentData) return null;
     return buildTableDataFromMonthly(

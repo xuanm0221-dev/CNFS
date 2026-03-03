@@ -42,6 +42,7 @@ const FORECAST_TO_SALES_BRAND: Record<ForecastLeafBrand, SalesBrand> = {
   discovery: 'DISCOVERY',
 };
 const INVENTORY_GROWTH_PARAMS_KEY = 'inventory_growth_params';
+const PL_TAG_COST_RATIO_KEY = 'pl_tag_cost_ratio_annual';
 const ACCOUNT_LABEL_OVERRIDES: Record<string, string> = {
   Tag매출_대리상: '대리상',
   Tag매출_의류: '의류',
@@ -1119,6 +1120,35 @@ export default function PLForecastTab() {
       DISCOVERY: sumSeries(salesChannelByBrand.DISCOVERY.dealer, salesChannelByBrand.DISCOVERY.direct),
     } as Record<SalesBrand, (number | null)[]>;
   }, [salesChannelByBrand]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const values = {
+      MLB: (() => {
+        const annualTag = sumOrNull(tagSalesMonthlyByBrand.MLB);
+        const annualCogs = sumOrNull(calculatedByBrand.mlb.monthly['매출원가'] ?? new Array(12).fill(null));
+        if (annualTag === null || annualTag === 0 || annualCogs === null) return null;
+        return (annualCogs * 1.13) / annualTag;
+      })(),
+      'MLB KIDS': (() => {
+        const annualTag = sumOrNull(tagSalesMonthlyByBrand['MLB KIDS']);
+        const annualCogs = sumOrNull(calculatedByBrand.kids.monthly['매출원가'] ?? new Array(12).fill(null));
+        if (annualTag === null || annualTag === 0 || annualCogs === null) return null;
+        return (annualCogs * 1.13) / annualTag;
+      })(),
+      DISCOVERY: (() => {
+        const annualTag = sumOrNull(tagSalesMonthlyByBrand.DISCOVERY);
+        const annualCogs = sumOrNull(calculatedByBrand.discovery.monthly['매출원가'] ?? new Array(12).fill(null));
+        if (annualTag === null || annualTag === 0 || annualCogs === null) return null;
+        return (annualCogs * 1.13) / annualTag;
+      })(),
+    };
+
+    const payload = { values };
+    window.localStorage.setItem(PL_TAG_COST_RATIO_KEY, JSON.stringify(payload));
+    window.dispatchEvent(new CustomEvent('pl-tag-cost-ratio-updated', { detail: payload }));
+  }, [calculatedByBrand, tagSalesMonthlyByBrand]);
 
   const corporateTagSalesMonthly = useMemo(() => {
     return sumSeries(sumSeries(tagSalesMonthlyByBrand.MLB, tagSalesMonthlyByBrand['MLB KIDS']), tagSalesMonthlyByBrand.DISCOVERY);
