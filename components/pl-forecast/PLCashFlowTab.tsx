@@ -26,6 +26,12 @@ type InventoryHqClosingMap = {
   DISCOVERY: number;
 };
 
+type InventoryMonthlyTotalMap = {
+  MLB: (number | null)[];
+  'MLB KIDS': (number | null)[];
+  DISCOVERY: (number | null)[];
+};
+
 type TagCostRatioMap = {
   MLB: number | null;
   'MLB KIDS': number | null;
@@ -33,6 +39,7 @@ type TagCostRatioMap = {
 };
 
 const INVENTORY_HQ_CLOSING_KEY = 'inventory_hq_closing_totals';
+const INVENTORY_MONTHLY_TOTAL_KEY = 'inventory_monthly_total_closing';
 const PL_TAG_COST_RATIO_KEY = 'pl_tag_cost_ratio_annual';
 
 const STATIC_CF_ROWS: StaticCFRow[] = [
@@ -76,7 +83,7 @@ const STATIC_WORKING_CAPITAL_ROWS: StaticWorkingCapitalRow[] = [
   { key: 'wc_ar_dealer', label: '대리상AR', level: 2, isGroup: false, actual2025: 672991268 },
   { key: 'wc_inventory', label: '재고자산', level: 1, isGroup: true, actual2025: 1497796000 },
   { key: 'wc_inventory_mlb', label: 'MLB', level: 2, isGroup: false, actual2025: 1260042373 },
-  { key: 'wc_inventory_kids', label: 'KIDS', level: 2, isGroup: false, actual2025: 66326475 },
+  { key: 'wc_inventory_kids', label: 'MLB KIDS', level: 2, isGroup: false, actual2025: 66326475 },
   { key: 'wc_inventory_discovery', label: 'DISCOVERY', level: 2, isGroup: false, actual2025: 171427142 },
   { key: 'wc_ap', label: '매입채무', level: 1, isGroup: true, actual2025: -753922000 },
   { key: 'wc_ap_hq', label: '본사 AP', level: 2, isGroup: false, actual2025: -732511214 },
@@ -91,6 +98,7 @@ const STATIC_CREDIT_RECOVERY = {
 };
 
 const TAG_COST_RATIO_BRANDS = ['MLB', 'MLB KIDS', 'DISCOVERY'] as const;
+const PL_CF_MONTH_LABELS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'] as const;
 
 export default function PLCashFlowTab() {
   const [inventoryHqClosing, setInventoryHqClosing] = useState<InventoryHqClosingMap>({
@@ -98,6 +106,13 @@ export default function PLCashFlowTab() {
     'MLB KIDS': 0,
     DISCOVERY: 0,
   });
+  const [inventoryHqLoaded, setInventoryHqLoaded] = useState(false);
+  const [inventoryMonthlyTotals, setInventoryMonthlyTotals] = useState<InventoryMonthlyTotalMap>({
+    MLB: new Array(12).fill(null),
+    'MLB KIDS': new Array(12).fill(null),
+    DISCOVERY: new Array(12).fill(null),
+  });
+  const [inventoryMonthlyLoaded, setInventoryMonthlyLoaded] = useState(false);
   const [tagCostRatioLoaded, setTagCostRatioLoaded] = useState(false);
   const [tagCostRatio, setTagCostRatio] = useState<TagCostRatioMap>({
     MLB: null,
@@ -108,6 +123,7 @@ export default function PLCashFlowTab() {
     new Set(['operating', 'operating_receipts', 'operating_payments', 'operating_expenses', 'capex']),
   );
   const [allCollapsed, setAllCollapsed] = useState(true);
+  const [monthsCollapsed, setMonthsCollapsed] = useState(true);
   const [wcCollapsed, setWcCollapsed] = useState<Set<string>>(new Set(['wc_ar', 'wc_inventory', 'wc_ap']));
   const [wcSupportCollapsed, setWcSupportCollapsed] = useState(true);
 
@@ -127,6 +143,7 @@ export default function PLCashFlowTab() {
           'MLB KIDS': Number(values['MLB KIDS']) || 0,
           DISCOVERY: Number(values.DISCOVERY) || 0,
         });
+        setInventoryHqLoaded(true);
       } catch {
         // ignore malformed payloads
       }
@@ -140,6 +157,39 @@ export default function PLCashFlowTab() {
     window.addEventListener('inventory-hq-closing-updated', handleUpdate as EventListener);
     return () => {
       window.removeEventListener('inventory-hq-closing-updated', handleUpdate as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const readStored = (payload?: unknown) => {
+      const source = payload ?? window.localStorage.getItem(INVENTORY_MONTHLY_TOTAL_KEY);
+      if (!source) return;
+      try {
+        const parsed = typeof source === 'string' ? JSON.parse(source) : source;
+        if (!parsed || typeof parsed !== 'object' || !('values' in parsed)) return;
+        const values = (parsed as { values?: Record<string, unknown> }).values;
+        if (!values) return;
+        setInventoryMonthlyTotals({
+          MLB: Array.isArray(values.MLB) ? (values.MLB as (number | null)[]) : new Array(12).fill(null),
+          'MLB KIDS': Array.isArray(values['MLB KIDS']) ? (values['MLB KIDS'] as (number | null)[]) : new Array(12).fill(null),
+          DISCOVERY: Array.isArray(values.DISCOVERY) ? (values.DISCOVERY as (number | null)[]) : new Array(12).fill(null),
+        });
+        setInventoryMonthlyLoaded(true);
+      } catch {
+        // ignore malformed payloads
+      }
+    };
+
+    readStored();
+    const handleUpdate = (event: Event) => {
+      readStored((event as CustomEvent).detail);
+    };
+
+    window.addEventListener('inventory-monthly-total-updated', handleUpdate as EventListener);
+    return () => {
+      window.removeEventListener('inventory-monthly-total-updated', handleUpdate as EventListener);
     };
   }, []);
 
@@ -319,9 +369,37 @@ export default function PLCashFlowTab() {
     if (current == null || actualK == null) return null;
     return current - actualK;
   };
+  const workingCapitalMonthly = (rowKey: string, monthIndex: number): number | null => {
+    const mlbTag = toDisplayK(inventoryMonthlyTotals.MLB[monthIndex] ?? null);
+    const kidsTag = toDisplayK(inventoryMonthlyTotals['MLB KIDS'][monthIndex] ?? null);
+    const discoveryTag = toDisplayK(inventoryMonthlyTotals.DISCOVERY[monthIndex] ?? null);
+    const mlb =
+      mlbTag == null || mlbTag === 0 || tagCostRatio.MLB == null
+        ? null
+        : (mlbTag / 1.13) * tagCostRatio.MLB;
+    const kids =
+      kidsTag == null || kidsTag === 0 || tagCostRatio['MLB KIDS'] == null
+        ? null
+        : (kidsTag / 1.13) * tagCostRatio['MLB KIDS'];
+    const discovery =
+      discoveryTag == null || discoveryTag === 0 || tagCostRatio.DISCOVERY == null
+        ? null
+        : (discoveryTag / 1.13) * tagCostRatio.DISCOVERY;
+    const total = [mlb, kids, discovery].reduce<number | null>((sum, value) => {
+      if (value == null) return sum;
+      return (sum ?? 0) + value;
+    }, null);
 
-  const loadStatusLabel = tagCostRatioLoaded ? '로딩완료' : '로딩중';
-  const loadStatusClassName = tagCostRatioLoaded
+    if (rowKey === 'wc_inventory') return total;
+    if (rowKey === 'wc_inventory_mlb') return mlb;
+    if (rowKey === 'wc_inventory_kids') return kids;
+    if (rowKey === 'wc_inventory_discovery') return discovery;
+    return null;
+  };
+
+  const cfInputsLoaded = tagCostRatioLoaded && inventoryHqLoaded && inventoryMonthlyLoaded;
+  const loadStatusLabel = cfInputsLoaded ? '로딩완료' : '로딩중';
+  const loadStatusClassName = cfInputsLoaded
     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
     : 'bg-amber-50 text-amber-700 border border-amber-200';
 
@@ -337,12 +415,19 @@ export default function PLCashFlowTab() {
           >
             {allCollapsed ? '전체 펼치기' : '전체 접기'}
           </button>
+          <button
+            type="button"
+            onClick={() => setMonthsCollapsed((prev) => !prev)}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
+          >
+            {monthsCollapsed ? '월별 펼치기' : '월별 접기'}
+          </button>
           <span className={`px-3 py-1 text-xs font-medium rounded-full ${loadStatusClassName}`}>{loadStatusLabel}</span>
         </div>
       </div>
 
-      <div className="flex flex-1 min-h-0">
-        <div className="w-1/3 min-w-0 overflow-auto p-6">
+        <div className="flex flex-1 min-h-0">
+          <div className={`${monthsCollapsed ? 'w-1/3' : 'flex-1'} min-w-0 overflow-auto p-6`}>
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-lg font-bold text-gray-900">현금흐름표</h2>
           </div>
@@ -355,6 +440,11 @@ export default function PLCashFlowTab() {
                     계정과목
                   </th>
                   <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2025년(합계)</th>
+                  {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
+                    <th key={`cf-header-${month}`} className="border border-gray-300 py-3 px-4 text-center min-w-[84px]">
+                      {month}
+                    </th>
+                  ))}
                   <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2026년(합계)</th>
                   <th className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">YoY</th>
                 </tr>
@@ -401,6 +491,11 @@ export default function PLCashFlowTab() {
                         )}
                       </td>
                       <td className="border border-gray-300 py-2 px-4 text-right">{formatActual(row.actual2025)}</td>
+                      {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
+                        <td key={`cf-cell-${row.key}-${month}`} className="border border-gray-300 py-2 px-4 text-right text-gray-300">
+                          -
+                        </td>
+                      ))}
                       <td className="border border-gray-300 py-2 px-4 text-right">{formatKValue(cf2026(row.key))}</td>
                       <td className="border border-gray-300 py-2 px-4 text-right">{formatKValue(cfYoy(row))}</td>
                     </tr>
@@ -418,6 +513,11 @@ export default function PLCashFlowTab() {
                   <tr>
                     <th className="border border-gray-300 py-2.5 px-4 text-left sticky left-0 z-10 bg-navy min-w-[200px]">구분</th>
                     <th className="border border-gray-300 py-2.5 px-4 text-center min-w-[120px]">기초잔액</th>
+                    {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
+                      <th key={`balance-header-${month}`} className="border border-gray-300 py-2.5 px-4 text-center min-w-[84px]">
+                        {month}
+                      </th>
+                    ))}
                     <th className="border border-gray-300 py-2.5 px-4 text-center min-w-[120px]">기말잔액</th>
                     <th className="border border-gray-300 py-2.5 px-4 text-center min-w-[100px]">YoY</th>
                   </tr>
@@ -426,12 +526,22 @@ export default function PLCashFlowTab() {
                   <tr>
                     <td className="border border-gray-300 py-2 px-4 font-medium sticky left-0 z-10 bg-gray-100 text-gray-800">현금잔액</td>
                     <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatActual(STATIC_CASH_BORROWING.cashOpening)}</td>
+                    {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
+                      <td key={`cash-cell-${month}`} className="border border-gray-300 py-2 px-4 text-right bg-gray-50 text-gray-300">
+                        -
+                      </td>
+                    ))}
                     <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatKValue(cashBorrowing2026('cash'))}</td>
                     <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatKValue(cashBorrowingYoy('cash', STATIC_CASH_BORROWING.cashOpening))}</td>
                   </tr>
                   <tr>
                     <td className="border border-gray-300 py-2 px-4 font-medium sticky left-0 z-10 bg-gray-100 text-gray-800">차입금잔액</td>
                     <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatActual(STATIC_CASH_BORROWING.borrowingOpening)}</td>
+                    {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
+                      <td key={`borrowing-cell-${month}`} className="border border-gray-300 py-2 px-4 text-right bg-gray-50 text-gray-300">
+                        -
+                      </td>
+                    ))}
                     <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatKValue(cashBorrowing2026('borrowing'))}</td>
                     <td className="border border-gray-300 py-2 px-4 text-right bg-gray-50">{formatKValue(cashBorrowingYoy('borrowing', STATIC_CASH_BORROWING.borrowingOpening))}</td>
                   </tr>
@@ -448,6 +558,11 @@ export default function PLCashFlowTab() {
                   <tr>
                     <th className="border border-gray-300 py-3 px-4 text-left sticky left-0 z-20 bg-navy min-w-[200px]">계정과목</th>
                     <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2025년(기말)</th>
+                    {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
+                      <th key={`wc-header-${month}`} className="border border-gray-300 py-3 px-4 text-center min-w-[84px]">
+                        {month}
+                      </th>
+                    ))}
                     <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2026년(기말)</th>
                     <th className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">YoY</th>
                   </tr>
@@ -482,6 +597,14 @@ export default function PLCashFlowTab() {
                           )}
                         </td>
                         <td className={`border border-gray-300 py-2 px-4 text-right ${cellBg}`}>{formatActual(row.actual2025)}</td>
+                        {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month, monthIndex) => {
+                          const monthValue = workingCapitalMonthly(row.key, monthIndex);
+                          return (
+                            <td key={`wc-cell-${row.key}-${month}`} className={`border border-gray-300 py-2 px-4 text-right ${monthValue == null ? 'text-gray-300' : ''} ${cellBg}`}>
+                              {monthValue == null ? '-' : formatKValue(monthValue)}
+                            </td>
+                          );
+                        })}
                         <td className={`border border-gray-300 py-2 px-4 text-right ${cellBg}`}>{formatKValue(workingCapital2026(row.key))}</td>
                         <td className={`border border-gray-300 py-2 px-4 text-right ${cellBg}`}>{formatKValue(workingCapitalYoy(row))}</td>
                       </tr>
@@ -504,40 +627,80 @@ export default function PLCashFlowTab() {
               <table className="w-full border-collapse text-sm">
                 <thead className="bg-slate-700 text-white">
                   <tr>
-                    <th className="border border-gray-300 py-2.5 px-4 text-center min-w-[120px]">구분</th>
-                    {TAG_COST_RATIO_BRANDS.map((brand) => (
+                    <th className="border border-gray-300 py-2.5 px-4 text-left min-w-[180px]">항목</th>
+                    {PL_CF_MONTH_LABELS.map((month) => (
                       <th
-                        key={`tag-cost-ratio-header-${brand}`}
-                        className="border border-gray-300 py-2.5 px-4 text-center min-w-[120px]"
+                        key={`wc-support-header-${month}`}
+                        className="border border-gray-300 py-2.5 px-4 text-center min-w-[84px]"
                       >
-                        {brand}
+                        {month}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="bg-slate-50">
-                    <td className="border border-gray-300 py-2 px-4 text-center font-medium text-slate-800">26년말 Tag재고</td>
-                    {TAG_COST_RATIO_BRANDS.map((brand) => (
+                  <tr className="bg-slate-100 font-semibold">
+                    <td className="border border-gray-300 py-2 px-4 text-slate-800">Tag재고 합계</td>
+                    {PL_CF_MONTH_LABELS.map((month, monthIndex) => {
+                      const total = TAG_COST_RATIO_BRANDS.reduce<number | null>((sum, brand) => {
+                        const value = toDisplayK(inventoryMonthlyTotals[brand][monthIndex] ?? null);
+                        if (value == null) return sum;
+                        return (sum ?? 0) + value;
+                      }, null);
+                      return (
+                        <td
+                          key={`tag-inventory-group-${month}`}
+                          className={`border border-gray-300 py-2 px-4 text-right ${total == null ? 'text-gray-300' : 'text-slate-800'}`}
+                        >
+                          {total == null ? '-' : formatKValue(total)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  {TAG_COST_RATIO_BRANDS.map((brand) => (
+                    <tr key={`tag-inventory-row-${brand}`} className="bg-slate-50">
+                      <td className="border border-gray-300 py-2 px-4 text-slate-800" style={{ paddingLeft: '28px' }}>
+                        {brand}
+                      </td>
+                      {PL_CF_MONTH_LABELS.map((month, monthIndex) => {
+                        const monthValue = toDisplayK(inventoryMonthlyTotals[brand][monthIndex] ?? null);
+                        return (
+                          <td
+                            key={`tag-inventory-value-${brand}-${month}`}
+                            className="border border-gray-300 py-2 px-4 text-right text-slate-700"
+                          >
+                            {monthValue == null ? '-' : formatKValue(monthValue)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  <tr className="bg-white font-semibold">
+                    <td className="border border-gray-300 py-2 px-4 text-slate-800">Tag대비원가율</td>
+                    {PL_CF_MONTH_LABELS.map((month) => (
                       <td
-                        key={`tag-inventory-value-${brand}`}
-                        className="border border-gray-300 py-2 px-4 text-right text-slate-700"
+                        key={`tag-cost-ratio-group-${month}`}
+                        className="border border-gray-300 py-2 px-4 text-center text-gray-300"
                       >
-                        {formatKValue(inventoryHqClosing[brand])}
+                        -
                       </td>
                     ))}
                   </tr>
-                  <tr className="bg-white">
-                    <td className="border border-gray-300 py-2 px-4 text-center font-medium text-slate-800">Tag대비원가율</td>
-                    {TAG_COST_RATIO_BRANDS.map((brand) => (
-                      <td
-                        key={`tag-cost-ratio-value-${brand}`}
-                        className="border border-gray-300 py-2 px-4 text-right text-slate-700"
-                      >
-                        {formatPercent4(tagCostRatio[brand])}
+                  {TAG_COST_RATIO_BRANDS.map((brand) => (
+                    <tr key={`tag-cost-ratio-row-${brand}`} className="bg-white">
+                      <td className="border border-gray-300 py-2 px-4 text-slate-800" style={{ paddingLeft: '28px' }}>
+                        {brand}
                       </td>
-                    ))}
-                  </tr>
+                      {PL_CF_MONTH_LABELS.map((month) => (
+                        <td
+                          key={`tag-cost-ratio-value-${brand}-${month}`}
+                          className="border border-gray-300 py-2 px-4 text-right text-slate-700"
+                        >
+                          {formatPercent4(tagCostRatio[brand])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -573,10 +736,12 @@ export default function PLCashFlowTab() {
           </div>
         </div>
 
-        <div className="flex-1 min-w-0 overflow-auto p-6 border-l border-gray-200">
-          <CFExplanationPanel year={2026} />
+          {monthsCollapsed && (
+            <div className="flex-1 min-w-0 overflow-auto p-6 border-l border-gray-200">
+              <CFExplanationPanel year={2026} />
+            </div>
+          )}
         </div>
-      </div>
     </div>
   );
 }

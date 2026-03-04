@@ -29,12 +29,14 @@ type LeafBrand = Exclude<Brand, '전체'>;
 type TopTablePair = { dealer: InventoryTableData; hq: InventoryTableData };
 const ANNUAL_SHIPMENT_PLAN_KEY = 'inv_annual_shipment_plan_2026_v1';
 const INVENTORY_HQ_CLOSING_KEY = 'inventory_hq_closing_totals';
+const INVENTORY_MONTHLY_TOTAL_KEY = 'inventory_monthly_total_closing';
 const ANNUAL_PLAN_BRANDS = ['MLB', 'MLB KIDS', 'DISCOVERY'] as const;
 const ANNUAL_PLAN_SEASONS = ['currF', 'currS', 'year1', 'year2', 'next', 'past'] as const;
 type AnnualPlanBrand = typeof ANNUAL_PLAN_BRANDS[number];
 type AnnualPlanSeason = typeof ANNUAL_PLAN_SEASONS[number];
 type AnnualShipmentPlan = Record<AnnualPlanBrand, Record<AnnualPlanSeason, number>>;
 type HqClosingByBrand = Record<AnnualPlanBrand, number>;
+type MonthlyInventoryTotalByBrand = Record<AnnualPlanBrand, (number | null)[]>;
 type ShipmentProgressBrand = AnnualPlanBrand;
 
 interface ShipmentProgressRow {
@@ -525,6 +527,34 @@ export default function InventoryDashboard() {
     };
     localStorage.setItem(INVENTORY_HQ_CLOSING_KEY, JSON.stringify(payload));
     window.dispatchEvent(new CustomEvent('inventory-hq-closing-updated', { detail: payload }));
+  }, []);
+  const publishMonthlyInventoryTotalByBrand = useCallback((partialMap: Partial<MonthlyInventoryTotalByBrand>) => {
+    if (typeof window === 'undefined') return;
+    const currentRaw = localStorage.getItem(INVENTORY_MONTHLY_TOTAL_KEY);
+    let currentValues: MonthlyInventoryTotalByBrand = {
+      MLB: new Array(12).fill(null),
+      'MLB KIDS': new Array(12).fill(null),
+      DISCOVERY: new Array(12).fill(null),
+    };
+    try {
+      const parsed = currentRaw ? JSON.parse(currentRaw) : null;
+      if (parsed?.values) {
+        currentValues = {
+          MLB: Array.isArray(parsed.values.MLB) ? parsed.values.MLB : new Array(12).fill(null),
+          'MLB KIDS': Array.isArray(parsed.values['MLB KIDS']) ? parsed.values['MLB KIDS'] : new Array(12).fill(null),
+          DISCOVERY: Array.isArray(parsed.values.DISCOVERY) ? parsed.values.DISCOVERY : new Array(12).fill(null),
+        };
+      }
+    } catch {
+      // ignore parse errors and overwrite with fresh values below
+    }
+    const nextValues = { ...currentValues, ...partialMap };
+    const payload = {
+      values: nextValues,
+      updatedAt: Date.now(),
+    };
+    localStorage.setItem(INVENTORY_MONTHLY_TOTAL_KEY, JSON.stringify(payload));
+    window.dispatchEvent(new CustomEvent('inventory-monthly-total-updated', { detail: payload }));
   }, []);
 
   useEffect(() => {
@@ -1422,7 +1452,6 @@ export default function InventoryDashboard() {
     if (!totalRow || !Number.isFinite(totalRow.closing)) return;
     publishHqClosingByBrand({ [brand]: totalRow.closing });
   }, [year, brand, hqTableData, buildBrand2026TopTable, publishHqClosingByBrand]);
-
   const prevYearTableData = useMemo(() => {
     if (year !== 2026 || !prevYearMonthlyData || !prevYearRetailData || !prevYearShipmentData) return null;
     return buildTableDataFromMonthly(
@@ -1967,6 +1996,21 @@ export default function InventoryDashboard() {
       ],
     };
   }, [year, brand, monthlyData, monthlyPlanFromMonth, effectivePurchaseDisplayData, effectiveShipmentDisplayData, effectiveRetailData, hqTableData]);
+  useEffect(() => {
+    if (typeof window === 'undefined' || year !== 2026) return;
+    if (brand !== 'MLB' && brand !== 'MLB KIDS' && brand !== 'DISCOVERY') return;
+    if (!effectiveDealerMonthlyDisplayData || !effectiveHqMonthlyDisplayData) return;
+
+    const hqTotalRow = effectiveHqMonthlyDisplayData.rows.find((row) => row.isTotal);
+    if (!hqTotalRow) return;
+
+    const monthly = Array.from({ length: 12 }, (_, monthIndex) => {
+      const hqValue = hqTotalRow.monthly[monthIndex];
+      return hqValue ?? null;
+    });
+
+    publishMonthlyInventoryTotalByBrand({ [brand]: monthly });
+  }, [year, brand, effectiveDealerMonthlyDisplayData, effectiveHqMonthlyDisplayData, publishMonthlyInventoryTotalByBrand]);
   const yoyPending = year === 2026 && !prevYearError && (prevYearLoading || !prevYearTableData);
   const statusLoading = loading || monthlyLoading || retailLoading || shipmentLoading || purchaseLoading || recalcLoading || yoyPending;
   const statusError = !!error || !!monthlyError || !!retailError || !!shipmentError || !!purchaseError || prevYearError;
