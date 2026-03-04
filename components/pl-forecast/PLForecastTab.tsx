@@ -66,6 +66,7 @@ interface RetailRow {
 
 interface RetailSalesApiResponse {
   hq?: { rows?: RetailRow[] };
+  retail2025?: { hq?: { rows?: RetailRow[] } };
 }
 
 interface ShipmentProgressRow {
@@ -659,7 +660,7 @@ export default function PLForecastTab() {
               throw new Error(json?.error || `${brand} 리테일 매출 데이터를 불러오지 못했습니다.`);
             }
             const totalRow = json?.hq?.rows?.find((row) => row.isTotal);
-            const monthly = totalRow?.monthly ?? new Array(12).fill(null);
+            const monthly = [...(totalRow?.monthly ?? new Array(12).fill(null))];
             return [brand, monthly] as const;
           }),
         );
@@ -1010,6 +1011,7 @@ export default function PLForecastTab() {
 
     for (const row of salesRows) {
       if (!row.isGroup && row.leafKind) {
+        const latestCsvMonth = brandActualAvailableMonths.length === 0 ? 0 : Math.max(...brandActualAvailableMonths);
         const monthly =
           row.leafKind === 'dealerCurrS'
             ? dealerSeasonMonthlyByBrand[row.brand].당년S
@@ -1018,7 +1020,10 @@ export default function PLForecastTab() {
               : row.leafKind === 'dealerAcc'
                 ? makeMonthlyArray((idx) => dealerAccOtbByBrand[row.brand] * (accRatioByBrand[row.brand][idx] ?? 0))
                 : row.leafKind === 'direct'
-                ? directRetailByBrand[row.brand] ?? new Array(12).fill(null)
+                ? makeMonthlyArray((idx) => {
+                    if (idx + 1 <= latestCsvMonth) return null;
+                    return directRetailByBrand[row.brand]?.[idx] ?? null;
+                  })
                 : new Array(12).fill(null);
         rowMap[row.id] = {
           monthly,
@@ -1056,7 +1061,7 @@ export default function PLForecastTab() {
     }
 
     return rowMap;
-  }, [salesRows, otbByBrand, directRetailByBrand, dealerSeasonMonthlyByBrand, dealerAccOtbByBrand, accRatioByBrand]);
+  }, [salesRows, otbByBrand, directRetailByBrand, dealerSeasonMonthlyByBrand, dealerAccOtbByBrand, accRatioByBrand, brandActualByBrand, brandActualAvailableMonths]);
 
   const salesChannelByBrand = useMemo(() => {
     const buildEmpty = () => new Array(12).fill(null) as (number | null)[];

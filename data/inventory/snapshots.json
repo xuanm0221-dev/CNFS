@@ -2828,7 +2828,7 @@
     "monthly": {
       "year": 2026,
       "brand": "MLB KIDS",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -2837,10 +2837,10 @@
             "isTotal": true,
             "isSubtotal": false,
             "isLeaf": false,
-            "opening": 306468524,
+            "opening": 220210011,
             "monthly": [
-              312197996,
-              null,
+              226094698,
+              236958415,
               null,
               null,
               null,
@@ -2859,10 +2859,10 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 212293778,
+            "opening": 130692992,
             "monthly": [
-              211887443,
-              null,
+              133264076,
+              141650564,
               null,
               null,
               null,
@@ -2903,10 +2903,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 13880284,
+            "opening": 2896593,
             "monthly": [
-              30768427,
-              null,
+              7791072,
+              12821697,
               null,
               null,
               null,
@@ -2925,10 +2925,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 101847479,
+            "opening": 42280731,
             "monthly": [
-              88819302,
-              null,
+              40942707,
+              44193865,
               null,
               null,
               null,
@@ -2947,10 +2947,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 57335920,
+            "opening": 43392477,
             "monthly": [
-              54519781,
-              null,
+              42639075,
+              42001996,
               null,
               null,
               null,
@@ -2991,10 +2991,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 39230095,
+            "opening": 42123191,
             "monthly": [
-              37779933,
-              null,
+              41891222,
+              42633006,
               null,
               null,
               null,
@@ -3013,10 +3013,10 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 94174746,
+            "opening": 89517019,
             "monthly": [
-              100310553,
-              null,
+              92830622,
+              95307851,
               null,
               null,
               null,
@@ -3035,10 +3035,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 59891825,
+            "opening": 55752805,
             "monthly": [
-              63105732,
-              null,
+              56120967,
+              57668046,
               null,
               null,
               null,
@@ -3057,10 +3057,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 20825171,
+            "opening": 12325497,
             "monthly": [
-              21877781,
-              null,
+              12625663,
+              13092483,
               null,
               null,
               null,
@@ -3079,10 +3079,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 10528993,
+            "opening": 19968490,
             "monthly": [
-              12423308,
-              null,
+              22662093,
+              23095935,
               null,
               null,
               null,
@@ -3101,10 +3101,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 2928757,
+            "opening": 1470227,
             "monthly": [
-              2903732,
-              null,
+              1421899,
+              1451387,
               null,
               null,
               null,
@@ -3127,10 +3127,10 @@
             "isTotal": true,
             "isSubtotal": false,
             "isLeaf": false,
-            "opening": 199694309,
+            "opening": 97193481,
             "monthly": [
-              217522744,
-              null,
+              108856809,
+              100298710,
               null,
               null,
               null,
@@ -3149,10 +3149,10 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 136273447,
+            "opening": 65010275,
             "monthly": [
-              146780529,
-              null,
+              73312173,
+              67721810,
               null,
               null,
               null,
@@ -3193,10 +3193,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 16180749,
+            "opening": 11931322,
             "monthly": [
-              42135126,
-              null,
+              29717795,
+              24277520,
               null,
               null,
               null,
@@ -3215,10 +3215,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 58381530,
+            "opening": 19126452,
             "monthly": [
-              47347566,
-              null,
+              14107751,
+              15008566,
               null,
               null,
               null,
@@ -3237,10 +3237,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 32488261,
+            "opening": 14129413,
             "monthly": [
-              29332726,
-              null,
+              11561249,
+              11050126,
               null,
               null,
               null,
@@ -3281,10 +3281,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 29222907,
+            "opening": 19823088,
             "monthly": [
-              27965111,
-              null,
+              17925378,
+              17385598,
               null,
               null,
               null,
@@ -3303,10 +3303,10 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 63420862,
+            "opening": 32183206,
             "monthly": [
-              70742215,
-              null,
+              35544636,
+              32576900,
               null,
               null,
               null,
@@ -3325,10 +3325,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 30132035,
+            "opening": 13986484,
             "monthly": [
-              35750531,
-              null,
+              17600711,
+              15150107,
               null,
               null,
               null,
@@ -3347,10 +3347,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 17818945,
+            "opening": 10441964,
             "monthly": [
-              18078372,
-              null,
+              9868730,
+              11192993,
               null,
               null,
               null,
@@ -3369,10 +3369,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 14194018,
+            "opening": 7220444,
             "monthly": [
-              15676859,
-              null,
+              7557302,
+              5792332,
               null,
               null,
               null,
@@ -3391,10 +3391,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 1275864,
+            "opening": 534314,
             "monthly": [
-              1236453,
-              null,
+              517893,
+              441468,
               null,
               null,
               null,
@@ -3413,7 +3413,7 @@
     "retailActuals": {
       "year": 2026,
       "brand": "MLB KIDS",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -3423,8 +3423,8 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              36962412,
-              null,
+              66341,
+              389181,
               null,
               null,
               null,
@@ -3444,8 +3444,8 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              27336810,
-              null,
+              56362,
+              296785,
               null,
               null,
               null,
@@ -3486,8 +3486,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              4593109,
-              null,
+              4543,
+              11645,
               null,
               null,
               null,
@@ -3507,8 +3507,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              16568572,
-              null,
+              31348,
+              80918,
               null,
               null,
               null,
@@ -3528,8 +3528,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              4123265,
-              null,
+              13486,
+              90027,
               null,
               null,
               null,
@@ -3570,8 +3570,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              2051864,
-              null,
+              6985,
+              114195,
               null,
               null,
               null,
@@ -3591,8 +3591,8 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              9625602,
-              null,
+              9979,
+              92396,
               null,
               null,
               null,
@@ -3612,8 +3612,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              6464428,
-              null,
+              7420,
+              69755,
               null,
               null,
               null,
@@ -3633,8 +3633,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              1616566,
-              null,
+              1476,
+              19649,
               null,
               null,
               null,
@@ -3654,8 +3654,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              1390769,
-              null,
+              599,
+              2597,
               null,
               null,
               null,
@@ -3675,8 +3675,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              153839,
-              null,
+              484,
+              395,
               null,
               null,
               null,
@@ -3700,7 +3700,7 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              19239727,
+              null,
               null,
               null,
               null,
@@ -3721,7 +3721,7 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              14288420,
+              null,
               null,
               null,
               null,
@@ -3763,7 +3763,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              1303460,
+              null,
               null,
               null,
               null,
@@ -3784,7 +3784,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              8053137,
+              null,
               null,
               null,
               null,
@@ -3805,7 +3805,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              3482612,
+              null,
               null,
               null,
               null,
@@ -3847,7 +3847,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              1449211,
+              null,
               null,
               null,
               null,
@@ -3868,7 +3868,7 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              4951307,
+              null,
               null,
               null,
               null,
@@ -3889,7 +3889,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              3042508,
+              null,
               null,
               null,
               null,
@@ -3910,7 +3910,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              1201583,
+              null,
               null,
               null,
               null,
@@ -3931,7 +3931,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              628000,
+              null,
               null,
               null,
               null,
@@ -3952,7 +3952,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              79216,
+              null,
               null,
               null,
               null,
@@ -3968,7 +3968,7 @@
           }
         ]
       },
-      "planFromMonth": 2,
+      "planFromMonth": 3,
       "retail2025": {
         "dealer": {
           "rows": [
@@ -3979,18 +3979,18 @@
               "isSubtotal": false,
               "isLeaf": false,
               "monthly": [
-                60314773,
-                19208618,
-                33335833,
-                26992699,
-                29329111,
-                20930056,
-                21013949,
-                26951894,
-                22032400,
-                33892130,
-                28796569,
-                28401613
+                2204567,
+                1070691,
+                8538507,
+                1250018,
+                110488,
+                152278,
+                494203,
+                359792,
+                355115,
+                874172,
+                338716,
+                135799
               ]
             },
             {
@@ -4000,18 +4000,295 @@
               "isSubtotal": true,
               "isLeaf": false,
               "monthly": [
-                43613100,
-                11939983,
-                20411926,
-                18755195,
-                20329258,
-                13279687,
-                12207069,
-                15873620,
-                14026129,
-                23573314,
-                20258499,
-                20240451
+                1587807,
+                838653,
+                4063913,
+                894680,
+                69955,
+                109075,
+                262311,
+                229687,
+                300218,
+                738977,
+                241037,
+                102421
+              ]
+            },
+            {
+              "key": "당년F",
+              "label": "당년F",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                869,
+                21663,
+                25863,
+                90855,
+                108500,
+                51203
+              ]
+            },
+            {
+              "key": "당년S",
+              "label": "당년S",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                83530,
+                25754,
+                42062,
+                95544,
+                21019,
+                8235,
+                9139,
+                9039,
+                35966,
+                2345,
+                21804,
+                5111
+              ]
+            },
+            {
+              "key": "1년차",
+              "label": "1년차",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                570207,
+                164181,
+                2073319,
+                33129,
+                8864,
+                14543,
+                120546,
+                116638,
+                30640,
+                64037,
+                44726,
+                26863
+              ]
+            },
+            {
+              "key": "2년차",
+              "label": "2년차",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                142640,
+                425467,
+                1920413,
+                678946,
+                25015,
+                56741,
+                127851,
+                73318,
+                61003,
+                45424,
+                41109,
+                5972
+              ]
+            },
+            {
+              "key": "차기시즌",
+              "label": "차기시즌",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                12334
+              ]
+            },
+            {
+              "key": "과시즌",
+              "label": "과시즌",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                791430,
+                223251,
+                28119,
+                87061,
+                15057,
+                29556,
+                3906,
+                9029,
+                146746,
+                536316,
+                24898,
+                938
+              ]
+            },
+            {
+              "key": "ACC합계",
+              "label": "ACC합계",
+              "isTotal": false,
+              "isSubtotal": true,
+              "isLeaf": false,
+              "monthly": [
+                616760,
+                232038,
+                4474594,
+                355338,
+                40533,
+                43203,
+                231892,
+                130105,
+                54897,
+                135195,
+                97679,
+                33378
+              ]
+            },
+            {
+              "key": "신발",
+              "label": "신발",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                381190,
+                154336,
+                3394118,
+                235197,
+                34807,
+                22392,
+                154400,
+                61276,
+                37585,
+                69711,
+                63726,
+                26760
+              ]
+            },
+            {
+              "key": "모자",
+              "label": "모자",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                190188,
+                36308,
+                651299,
+                48414,
+                5076,
+                11549,
+                35970,
+                23298,
+                8843,
+                43488,
+                10330,
+                2083
+              ]
+            },
+            {
+              "key": "가방",
+              "label": "가방",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                35966,
+                32733,
+                395959,
+                67354,
+                null,
+                8187,
+                38023,
+                43353,
+                7693,
+                13884,
+                20814,
+                3696
+              ]
+            },
+            {
+              "key": "기타",
+              "label": "기타",
+              "isTotal": false,
+              "isSubtotal": false,
+              "isLeaf": true,
+              "monthly": [
+                9416,
+                8661,
+                33218,
+                4373,
+                650,
+                1075,
+                3499,
+                2178,
+                776,
+                8112,
+                2809,
+                839
+              ]
+            }
+          ]
+        },
+        "hq": {
+          "rows": [
+            {
+              "key": "매출합계",
+              "label": "매출합계",
+              "isTotal": true,
+              "isSubtotal": false,
+              "isLeaf": false,
+              "monthly": [
+                79041181,
+                24259164,
+                36630785,
+                39518741,
+                44027493,
+                28902409,
+                28572994,
+                39670275,
+                33634044,
+                57554520,
+                40534998,
+                41686927
+              ]
+            },
+            {
+              "key": "의류합계",
+              "label": "의류합계",
+              "isTotal": false,
+              "isSubtotal": true,
+              "isLeaf": false,
+              "monthly": [
+                57352182,
+                14824611,
+                24308055,
+                28390493,
+                30928756,
+                19045735,
+                17598852,
+                24556677,
+                22224054,
+                41110606,
+                28686220,
+                29863751
               ]
             },
             {
@@ -4026,13 +4303,13 @@
                 0,
                 null,
                 998,
-                null,
-                498439,
-                4430005,
-                5932133,
-                13377936,
-                12463962,
-                13035352
+                4249,
+                716061,
+                5603213,
+                7734965,
+                22618597,
+                16968326,
+                18447344
               ]
             },
             {
@@ -4042,18 +4319,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                9536293,
-                3655188,
-                9092509,
-                11958773,
-                14138602,
-                8533240,
-                7506205,
-                5668501,
-                2679323,
-                1958466,
-                617960,
-                621801
+                10768521,
+                4353555,
+                11484840,
+                15229936,
+                18786238,
+                11030843,
+                9332777,
+                6985052,
+                3169086,
+                2411276,
+                725343,
+                906817
               ]
             },
             {
@@ -4063,18 +4340,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                25251226,
-                5261262,
-                6981820,
-                4272236,
-                4219118,
-                2960119,
-                2674600,
-                3594504,
-                3610388,
-                4956995,
-                4487559,
-                3699739
+                32633874,
+                6563652,
+                8139987,
+                7886860,
+                7271663,
+                4348246,
+                3983467,
+                5814571,
+                6139899,
+                10263437,
+                6975696,
+                6044417
               ]
             },
             {
@@ -4084,18 +4361,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                6179455,
-                2048924,
-                3715190,
-                1907231,
-                1520051,
-                1344650,
-                1252711,
-                1649126,
-                1472939,
-                2202071,
-                2363067,
-                1533015
+                10760119,
+                2782014,
+                3705827,
+                3599942,
+                3361752,
+                2042874,
+                2165430,
+                3469974,
+                4115952,
+                4723600,
+                3676376,
+                2625814
               ]
             },
             {
@@ -4115,8 +4392,8 @@
                 null,
                 439,
                 null,
-                11393,
-                1126145
+                21180,
+                1599738
               ]
             },
             {
@@ -4126,18 +4403,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                2646126,
-                974609,
-                622407,
-                616955,
-                450489,
-                441678,
-                275114,
-                531484,
-                330907,
-                1077846,
-                314558,
-                224399
+                3189668,
+                1125390,
+                977401,
+                1673755,
+                1508105,
+                1619523,
+                1401117,
+                2683867,
+                1063713,
+                1093696,
+                319299,
+                239621
               ]
             },
             {
@@ -4147,18 +4424,18 @@
               "isSubtotal": true,
               "isLeaf": false,
               "monthly": [
-                16701673,
-                7268635,
-                12923907,
-                8237504,
-                8999853,
-                7650369,
-                8806880,
-                11078274,
-                8006271,
-                10318816,
-                8538070,
-                8161162
+                21688999,
+                9434553,
+                12322730,
+                11128248,
+                13098737,
+                9856674,
+                10974142,
+                15113598,
+                11409990,
+                16443914,
+                11848778,
+                11823176
               ]
             },
             {
@@ -4168,18 +4445,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                12387486,
-                4429978,
-                8503280,
-                4782917,
-                5245559,
-                3723349,
-                5402080,
-                6735488,
-                5200176,
-                6498738,
-                4870881,
-                4664961
+                15870631,
+                5659071,
+                7323028,
+                6300481,
+                7562439,
+                4903381,
+                6527480,
+                8987191,
+                7294942,
+                10066351,
+                6543359,
+                6661569
               ]
             },
             {
@@ -4189,18 +4466,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                2773041,
-                1577019,
-                2852563,
-                2115269,
-                2086510,
-                1439585,
-                1333758,
-                1397929,
-                1122766,
-                2105348,
-                1592367,
-                1480293
+                3815416,
+                2208643,
+                3579887,
+                3287688,
+                3195974,
+                2037981,
+                1917821,
+                2167543,
+                1933908,
+                3883773,
+                2635738,
+                2500772
               ]
             },
             {
@@ -4210,18 +4487,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                1212751,
-                1172926,
-                1422963,
-                1228245,
-                1560003,
-                2401143,
-                1995020,
-                2840147,
-                1612598,
-                1549700,
-                1930848,
-                1778637
+                1623488,
+                1460691,
+                1274732,
+                1401814,
+                2190534,
+                2810831,
+                2440725,
+                3829746,
+                2073103,
+                2252288,
+                2461969,
+                2355622
               ]
             },
             {
@@ -4231,295 +4508,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                328395,
-                88712,
-                145101,
-                111073,
-                107781,
-                86292,
-                76022,
-                104710,
-                70731,
-                165030,
-                143974,
-                237271
-              ]
-            }
-          ]
-        },
-        "hq": {
-          "rows": [
-            {
-              "key": "매출합계",
-              "label": "매출합계",
-              "isTotal": true,
-              "isSubtotal": false,
-              "isLeaf": false,
-              "monthly": [
-                20930975,
-                6121237,
-                11833459,
-                13776060,
-                14808870,
-                8124631,
-                8053248,
-                13078173,
-                11956759,
-                24536562,
-                12077145,
-                13421113
-              ]
-            },
-            {
-              "key": "의류합계",
-              "label": "의류합계",
-              "isTotal": false,
-              "isSubtotal": true,
-              "isLeaf": false,
-              "monthly": [
-                15326889,
-                3723281,
-                7960042,
-                10529978,
-                10669453,
-                5875123,
-                5654094,
-                8912744,
-                8498143,
-                18276269,
-                8668758,
-                9725721
-              ]
-            },
-            {
-              "key": "당년F",
-              "label": "당년F",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                null,
-                null,
-                null,
-                null,
-                null,
-                4249,
-                218491,
-                1194871,
-                1828695,
-                9331516,
-                4612864,
-                5463195
-              ]
-            },
-            {
-              "key": "당년S",
-              "label": "당년S",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                1315758,
-                724121,
-                2434393,
-                3366707,
-                4668655,
-                2505838,
-                1835711,
-                1325590,
-                525729,
-                455155,
-                129187,
-                290127
-              ]
-            },
-            {
-              "key": "1년차",
-              "label": "1년차",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                7952855,
-                1466571,
-                3231486,
-                3647753,
-                3061409,
-                1402670,
-                1429413,
-                2336705,
-                2560151,
-                5370479,
-                2532863,
-                2371541
-              ]
-            },
-            {
-              "key": "2년차",
-              "label": "2년차",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                4723304,
-                1158557,
-                1911050,
-                2371657,
-                1866716,
-                754965,
-                1040570,
-                1894166,
-                2704016,
-                2566953,
-                1354418,
-                1098771
-              ]
-            },
-            {
-              "key": "차기시즌",
-              "label": "차기시즌",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                9787,
-                485927
-              ]
-            },
-            {
-              "key": "과시즌",
-              "label": "과시즌",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                1334972,
-                374032,
-                383113,
-                1143861,
-                1072673,
-                1207401,
-                1129909,
-                2161412,
-                879552,
-                552166,
-                29639,
-                16160
-              ]
-            },
-            {
-              "key": "ACC합계",
-              "label": "ACC합계",
-              "isTotal": false,
-              "isSubtotal": true,
-              "isLeaf": false,
-              "monthly": [
-                5604086,
-                2397956,
-                3873417,
-                3246082,
-                4139417,
-                2249508,
-                2399154,
-                4165429,
-                3458616,
-                6260293,
-                3408387,
-                3695392
-              ]
-            },
-            {
-              "key": "신발",
-              "label": "신발",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                3864335,
-                1383429,
-                2213866,
-                1752761,
-                2351687,
-                1202424,
-                1279800,
-                2312979,
-                2132351,
-                3637324,
-                1736204,
-                2023368
-              ]
-            },
-            {
-              "key": "모자",
-              "label": "모자",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                1232563,
-                667932,
-                1378623,
-                1220833,
-                1114540,
-                609945,
-                620033,
-                792912,
-                819985,
-                1821913,
-                1053701,
-                1022562
-              ]
-            },
-            {
-              "key": "가방",
-              "label": "가방",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                446703,
-                320498,
-                247728,
-                240923,
-                630531,
-                417875,
-                483728,
-                1032952,
-                468198,
-                716472,
-                551935,
-                580681
-              ]
-            },
-            {
-              "key": "기타",
-              "label": "기타",
-              "isTotal": false,
-              "isSubtotal": false,
-              "isLeaf": true,
-              "monthly": [
-                60485,
-                26097,
-                33200,
-                31565,
-                42659,
-                19264,
-                15593,
-                26586,
-                38082,
-                84584,
-                66547,
-                68781
+                379464,
+                106148,
+                145083,
+                138265,
+                149790,
+                104481,
+                88116,
+                129118,
+                108037,
+                241502,
+                207712,
+                305213
               ]
             }
           ]
@@ -4536,18 +4536,18 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              60314773,
-              19208618,
-              33335833,
-              26992699,
-              29329111,
-              20930056,
-              21013949,
-              26951894,
-              22032400,
-              33892130,
-              28796569,
-              28401613
+              2204567,
+              1070691,
+              8538507,
+              1250018,
+              110488,
+              152278,
+              494203,
+              359792,
+              355115,
+              874172,
+              338716,
+              135799
             ]
           },
           {
@@ -4557,18 +4557,295 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              43613100,
-              11939983,
-              20411926,
-              18755195,
-              20329258,
-              13279687,
-              12207069,
-              15873620,
-              14026129,
-              23573314,
-              20258499,
-              20240451
+              1587807,
+              838653,
+              4063913,
+              894680,
+              69955,
+              109075,
+              262311,
+              229687,
+              300218,
+              738977,
+              241037,
+              102421
+            ]
+          },
+          {
+            "key": "당년F",
+            "label": "당년F",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              869,
+              21663,
+              25863,
+              90855,
+              108500,
+              51203
+            ]
+          },
+          {
+            "key": "당년S",
+            "label": "당년S",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              83530,
+              25754,
+              42062,
+              95544,
+              21019,
+              8235,
+              9139,
+              9039,
+              35966,
+              2345,
+              21804,
+              5111
+            ]
+          },
+          {
+            "key": "1년차",
+            "label": "1년차",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              570207,
+              164181,
+              2073319,
+              33129,
+              8864,
+              14543,
+              120546,
+              116638,
+              30640,
+              64037,
+              44726,
+              26863
+            ]
+          },
+          {
+            "key": "2년차",
+            "label": "2년차",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              142640,
+              425467,
+              1920413,
+              678946,
+              25015,
+              56741,
+              127851,
+              73318,
+              61003,
+              45424,
+              41109,
+              5972
+            ]
+          },
+          {
+            "key": "차기시즌",
+            "label": "차기시즌",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              12334
+            ]
+          },
+          {
+            "key": "과시즌",
+            "label": "과시즌",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              791430,
+              223251,
+              28119,
+              87061,
+              15057,
+              29556,
+              3906,
+              9029,
+              146746,
+              536316,
+              24898,
+              938
+            ]
+          },
+          {
+            "key": "ACC합계",
+            "label": "ACC합계",
+            "isTotal": false,
+            "isSubtotal": true,
+            "isLeaf": false,
+            "monthly": [
+              616760,
+              232038,
+              4474594,
+              355338,
+              40533,
+              43203,
+              231892,
+              130105,
+              54897,
+              135195,
+              97679,
+              33378
+            ]
+          },
+          {
+            "key": "신발",
+            "label": "신발",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              381190,
+              154336,
+              3394118,
+              235197,
+              34807,
+              22392,
+              154400,
+              61276,
+              37585,
+              69711,
+              63726,
+              26760
+            ]
+          },
+          {
+            "key": "모자",
+            "label": "모자",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              190188,
+              36308,
+              651299,
+              48414,
+              5076,
+              11549,
+              35970,
+              23298,
+              8843,
+              43488,
+              10330,
+              2083
+            ]
+          },
+          {
+            "key": "가방",
+            "label": "가방",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              35966,
+              32733,
+              395959,
+              67354,
+              null,
+              8187,
+              38023,
+              43353,
+              7693,
+              13884,
+              20814,
+              3696
+            ]
+          },
+          {
+            "key": "기타",
+            "label": "기타",
+            "isTotal": false,
+            "isSubtotal": false,
+            "isLeaf": true,
+            "monthly": [
+              9416,
+              8661,
+              33218,
+              4373,
+              650,
+              1075,
+              3499,
+              2178,
+              776,
+              8112,
+              2809,
+              839
+            ]
+          }
+        ]
+      },
+      "hq": {
+        "rows": [
+          {
+            "key": "매출합계",
+            "label": "매출합계",
+            "isTotal": true,
+            "isSubtotal": false,
+            "isLeaf": false,
+            "monthly": [
+              79041181,
+              24259164,
+              36630785,
+              39518741,
+              44027493,
+              28902409,
+              28572994,
+              39670275,
+              33634044,
+              57554520,
+              40534998,
+              41686927
+            ]
+          },
+          {
+            "key": "의류합계",
+            "label": "의류합계",
+            "isTotal": false,
+            "isSubtotal": true,
+            "isLeaf": false,
+            "monthly": [
+              57352182,
+              14824611,
+              24308055,
+              28390493,
+              30928756,
+              19045735,
+              17598852,
+              24556677,
+              22224054,
+              41110606,
+              28686220,
+              29863751
             ]
           },
           {
@@ -4583,13 +4860,13 @@
               0,
               null,
               998,
-              null,
-              498439,
-              4430005,
-              5932133,
-              13377936,
-              12463962,
-              13035352
+              4249,
+              716061,
+              5603213,
+              7734965,
+              22618597,
+              16968326,
+              18447344
             ]
           },
           {
@@ -4599,18 +4876,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              9536293,
-              3655188,
-              9092509,
-              11958773,
-              14138602,
-              8533240,
-              7506205,
-              5668501,
-              2679323,
-              1958466,
-              617960,
-              621801
+              10768521,
+              4353555,
+              11484840,
+              15229936,
+              18786238,
+              11030843,
+              9332777,
+              6985052,
+              3169086,
+              2411276,
+              725343,
+              906817
             ]
           },
           {
@@ -4620,18 +4897,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              25251226,
-              5261262,
-              6981820,
-              4272236,
-              4219118,
-              2960119,
-              2674600,
-              3594504,
-              3610388,
-              4956995,
-              4487559,
-              3699739
+              32633874,
+              6563652,
+              8139987,
+              7886860,
+              7271663,
+              4348246,
+              3983467,
+              5814571,
+              6139899,
+              10263437,
+              6975696,
+              6044417
             ]
           },
           {
@@ -4641,18 +4918,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              6179455,
-              2048924,
-              3715190,
-              1907231,
-              1520051,
-              1344650,
-              1252711,
-              1649126,
-              1472939,
-              2202071,
-              2363067,
-              1533015
+              10760119,
+              2782014,
+              3705827,
+              3599942,
+              3361752,
+              2042874,
+              2165430,
+              3469974,
+              4115952,
+              4723600,
+              3676376,
+              2625814
             ]
           },
           {
@@ -4672,8 +4949,8 @@
               null,
               439,
               null,
-              11393,
-              1126145
+              21180,
+              1599738
             ]
           },
           {
@@ -4683,18 +4960,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              2646126,
-              974609,
-              622407,
-              616955,
-              450489,
-              441678,
-              275114,
-              531484,
-              330907,
-              1077846,
-              314558,
-              224399
+              3189668,
+              1125390,
+              977401,
+              1673755,
+              1508105,
+              1619523,
+              1401117,
+              2683867,
+              1063713,
+              1093696,
+              319299,
+              239621
             ]
           },
           {
@@ -4704,18 +4981,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              16701673,
-              7268635,
-              12923907,
-              8237504,
-              8999853,
-              7650369,
-              8806880,
-              11078274,
-              8006271,
-              10318816,
-              8538070,
-              8161162
+              21688999,
+              9434553,
+              12322730,
+              11128248,
+              13098737,
+              9856674,
+              10974142,
+              15113598,
+              11409990,
+              16443914,
+              11848778,
+              11823176
             ]
           },
           {
@@ -4725,18 +5002,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              12387486,
-              4429978,
-              8503280,
-              4782917,
-              5245559,
-              3723349,
-              5402080,
-              6735488,
-              5200176,
-              6498738,
-              4870881,
-              4664961
+              15870631,
+              5659071,
+              7323028,
+              6300481,
+              7562439,
+              4903381,
+              6527480,
+              8987191,
+              7294942,
+              10066351,
+              6543359,
+              6661569
             ]
           },
           {
@@ -4746,18 +5023,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              2773041,
-              1577019,
-              2852563,
-              2115269,
-              2086510,
-              1439585,
-              1333758,
-              1397929,
-              1122766,
-              2105348,
-              1592367,
-              1480293
+              3815416,
+              2208643,
+              3579887,
+              3287688,
+              3195974,
+              2037981,
+              1917821,
+              2167543,
+              1933908,
+              3883773,
+              2635738,
+              2500772
             ]
           },
           {
@@ -4767,18 +5044,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              1212751,
-              1172926,
-              1422963,
-              1228245,
-              1560003,
-              2401143,
-              1995020,
-              2840147,
-              1612598,
-              1549700,
-              1930848,
-              1778637
+              1623488,
+              1460691,
+              1274732,
+              1401814,
+              2190534,
+              2810831,
+              2440725,
+              3829746,
+              2073103,
+              2252288,
+              2461969,
+              2355622
             ]
           },
           {
@@ -4788,295 +5065,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              328395,
-              88712,
-              145101,
-              111073,
-              107781,
-              86292,
-              76022,
-              104710,
-              70731,
-              165030,
-              143974,
-              237271
-            ]
-          }
-        ]
-      },
-      "hq": {
-        "rows": [
-          {
-            "key": "매출합계",
-            "label": "매출합계",
-            "isTotal": true,
-            "isSubtotal": false,
-            "isLeaf": false,
-            "monthly": [
-              20930975,
-              6121237,
-              11833459,
-              13776060,
-              14808870,
-              8124631,
-              8053248,
-              13078173,
-              11956759,
-              24536562,
-              12077145,
-              13421113
-            ]
-          },
-          {
-            "key": "의류합계",
-            "label": "의류합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              15326889,
-              3723281,
-              7960042,
-              10529978,
-              10669453,
-              5875123,
-              5654094,
-              8912744,
-              8498143,
-              18276269,
-              8668758,
-              9725721
-            ]
-          },
-          {
-            "key": "당년F",
-            "label": "당년F",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              null,
-              null,
-              null,
-              null,
-              null,
-              4249,
-              218491,
-              1194871,
-              1828695,
-              9331516,
-              4612864,
-              5463195
-            ]
-          },
-          {
-            "key": "당년S",
-            "label": "당년S",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              1315758,
-              724121,
-              2434393,
-              3366707,
-              4668655,
-              2505838,
-              1835711,
-              1325590,
-              525729,
-              455155,
-              129187,
-              290127
-            ]
-          },
-          {
-            "key": "1년차",
-            "label": "1년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              7952855,
-              1466571,
-              3231486,
-              3647753,
-              3061409,
-              1402670,
-              1429413,
-              2336705,
-              2560151,
-              5370479,
-              2532863,
-              2371541
-            ]
-          },
-          {
-            "key": "2년차",
-            "label": "2년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              4723304,
-              1158557,
-              1911050,
-              2371657,
-              1866716,
-              754965,
-              1040570,
-              1894166,
-              2704016,
-              2566953,
-              1354418,
-              1098771
-            ]
-          },
-          {
-            "key": "차기시즌",
-            "label": "차기시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              9787,
-              485927
-            ]
-          },
-          {
-            "key": "과시즌",
-            "label": "과시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              1334972,
-              374032,
-              383113,
-              1143861,
-              1072673,
-              1207401,
-              1129909,
-              2161412,
-              879552,
-              552166,
-              29639,
-              16160
-            ]
-          },
-          {
-            "key": "ACC합계",
-            "label": "ACC합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              5604086,
-              2397956,
-              3873417,
-              3246082,
-              4139417,
-              2249508,
-              2399154,
-              4165429,
-              3458616,
-              6260293,
-              3408387,
-              3695392
-            ]
-          },
-          {
-            "key": "신발",
-            "label": "신발",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              3864335,
-              1383429,
-              2213866,
-              1752761,
-              2351687,
-              1202424,
-              1279800,
-              2312979,
-              2132351,
-              3637324,
-              1736204,
-              2023368
-            ]
-          },
-          {
-            "key": "모자",
-            "label": "모자",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              1232563,
-              667932,
-              1378623,
-              1220833,
-              1114540,
-              609945,
-              620033,
-              792912,
-              819985,
-              1821913,
-              1053701,
-              1022562
-            ]
-          },
-          {
-            "key": "가방",
-            "label": "가방",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              446703,
-              320498,
-              247728,
-              240923,
-              630531,
-              417875,
-              483728,
-              1032952,
-              468198,
-              716472,
-              551935,
-              580681
-            ]
-          },
-          {
-            "key": "기타",
-            "label": "기타",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              60485,
-              26097,
-              33200,
-              31565,
-              42659,
-              19264,
-              15593,
-              26586,
-              38082,
-              84584,
-              66547,
-              68781
+              379464,
+              106148,
+              145083,
+              138265,
+              149790,
+              104481,
+              88116,
+              129118,
+              108037,
+              241502,
+              207712,
+              305213
             ]
           }
         ]
@@ -5085,7 +5085,7 @@
     "shipment": {
       "year": 2026,
       "brand": "MLB KIDS",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -5096,7 +5096,7 @@
             "isLeaf": false,
             "monthly": [
               34537532,
-              null,
+              8224869,
               null,
               null,
               null,
@@ -5117,7 +5117,7 @@
             "isLeaf": false,
             "monthly": [
               22069530,
-              null,
+              4569626,
               null,
               null,
               null,
@@ -5159,7 +5159,7 @@
             "isLeaf": true,
             "monthly": [
               19949316,
-              null,
+              4582940,
               null,
               null,
               null,
@@ -5180,7 +5180,7 @@
             "isLeaf": true,
             "monthly": [
               2120214,
-              null,
+              -13314,
               null,
               null,
               null,
@@ -5264,7 +5264,7 @@
             "isLeaf": false,
             "monthly": [
               12468002,
-              null,
+              3655243,
               null,
               null,
               null,
@@ -5285,7 +5285,7 @@
             "isLeaf": true,
             "monthly": [
               7960329,
-              null,
+              1920510,
               null,
               null,
               null,
@@ -5306,7 +5306,7 @@
             "isLeaf": true,
             "monthly": [
               1381108,
-              null,
+              582678,
               null,
               null,
               null,
@@ -5327,7 +5327,7 @@
             "isLeaf": true,
             "monthly": [
               3063487,
-              null,
+              1078309,
               null,
               null,
               null,
@@ -5348,7 +5348,7 @@
             "isLeaf": true,
             "monthly": [
               63078,
-              null,
+              73746,
               null,
               null,
               null,
@@ -5367,7 +5367,7 @@
     "purchase": {
       "year": 2026,
       "brand": "MLB KIDS",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -5646,14 +5646,14 @@
         ]
       }
     },
-    "savedAt": "2026-02-26T12:31:14.789Z",
-    "planFromMonth": 2
+    "savedAt": "2026-03-04T01:12:26.854Z",
+    "planFromMonth": 3
   },
   "2026:DISCOVERY": {
     "monthly": {
       "year": 2026,
       "brand": "DISCOVERY",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -5662,10 +5662,10 @@
             "isTotal": true,
             "isSubtotal": false,
             "isLeaf": false,
-            "opening": 67746896,
+            "opening": 11253260,
             "monthly": [
-              65160211,
-              null,
+              13434362,
+              6775128,
               null,
               null,
               null,
@@ -5684,10 +5684,10 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 58716480,
+            "opening": 9796070,
             "monthly": [
-              55956130,
-              null,
+              11968590,
+              5933150,
               null,
               null,
               null,
@@ -5730,8 +5730,8 @@
             "isLeaf": true,
             "opening": null,
             "monthly": [
-              11527340,
-              null,
+              161520,
+              204910,
               null,
               null,
               null,
@@ -5750,10 +5750,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 56585250,
+            "opening": 9572240,
             "monthly": [
-              44022410,
-              null,
+              11641260,
+              5567790,
               null,
               null,
               null,
@@ -5772,10 +5772,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 2131230,
+            "opening": 223830,
             "monthly": [
-              406380,
-              null,
+              165810,
+              160450,
               null,
               null,
               null,
@@ -5838,10 +5838,10 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 9030416,
+            "opening": 1457190,
             "monthly": [
-              9204081,
-              null,
+              1465772,
+              841978,
               null,
               null,
               null,
@@ -5860,10 +5860,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 6805030,
+            "opening": 1199110,
             "monthly": [
-              6702480,
-              null,
+              1191550,
+              828540,
               null,
               null,
               null,
@@ -5882,10 +5882,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 966640,
+            "opening": 112230,
             "monthly": [
-              1159330,
-              null,
+              116420,
+              9840,
               null,
               null,
               null,
@@ -5904,10 +5904,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 985460,
+            "opening": 115740,
             "monthly": [
-              1073490,
-              null,
+              127830,
+              2690,
               null,
               null,
               null,
@@ -5926,10 +5926,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 273286,
+            "opening": 30110,
             "monthly": [
-              268781,
-              null,
+              29972,
+              908,
               null,
               null,
               null,
@@ -5952,10 +5952,10 @@
             "isTotal": true,
             "isSubtotal": false,
             "isLeaf": false,
-            "opening": 452261678,
+            "opening": 375366989,
             "monthly": [
-              477209862,
-              null,
+              399310417,
+              439495001,
               null,
               null,
               null,
@@ -5974,10 +5974,10 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 422285160,
+            "opening": 351370280,
             "monthly": [
-              446042160,
-              null,
+              374596350,
+              413426200,
               null,
               null,
               null,
@@ -6018,10 +6018,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 6293610,
+            "opening": 5747310,
             "monthly": [
-              24583910,
-              null,
+              19392440,
+              37043670,
               null,
               null,
               null,
@@ -6040,10 +6040,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 393103530,
+            "opening": 329989220,
             "monthly": [
-              397461970,
-              null,
+              338114780,
+              359301200,
               null,
               null,
               null,
@@ -6062,10 +6062,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 22888020,
+            "opening": 15633750,
             "monthly": [
-              23996280,
-              null,
+              17089130,
+              17081330,
               null,
               null,
               null,
@@ -6128,10 +6128,10 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 29976518,
+            "opening": 23996709,
             "monthly": [
-              31167702,
-              null,
+              24714067,
+              26068801,
               null,
               null,
               null,
@@ -6150,10 +6150,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 16698750,
+            "opening": 12975200,
             "monthly": [
-              17099810,
-              null,
+              13450540,
+              14444240,
               null,
               null,
               null,
@@ -6172,10 +6172,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 6405280,
+            "opening": 5328150,
             "monthly": [
-              6845580,
-              null,
+              5581940,
+              5695410,
               null,
               null,
               null,
@@ -6194,10 +6194,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 5805840,
+            "opening": 4831850,
             "monthly": [
-              6193660,
-              null,
+              4832350,
+              5097950,
               null,
               null,
               null,
@@ -6216,10 +6216,10 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 1066648,
+            "opening": 861509,
             "monthly": [
-              1028652,
-              null,
+              849237,
+              831201,
               null,
               null,
               null,
@@ -6238,7 +6238,7 @@
     "retailActuals": {
       "year": 2026,
       "brand": "DISCOVERY",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -6248,8 +6248,8 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              5838605,
-              null,
+              63310,
+              111590,
               null,
               null,
               null,
@@ -6269,8 +6269,8 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              5560690,
-              null,
+              49460,
+              88320,
               null,
               null,
               null,
@@ -6311,7 +6311,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              483130,
+              null,
               null,
               null,
               null,
@@ -6332,8 +6332,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              4987010,
-              null,
+              27120,
+              88320,
               null,
               null,
               null,
@@ -6353,7 +6353,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              90550,
+              22340,
               null,
               null,
               null,
@@ -6416,8 +6416,8 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              277915,
-              null,
+              13850,
+              23270,
               null,
               null,
               null,
@@ -6437,8 +6437,8 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              93920,
-              null,
+              13850,
+              23270,
               null,
               null,
               null,
@@ -6458,7 +6458,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              142140,
+              null,
               null,
               null,
               null,
@@ -6479,7 +6479,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              27060,
+              null,
               null,
               null,
               null,
@@ -6500,7 +6500,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              14795,
+              null,
               null,
               null,
               null,
@@ -6525,7 +6525,7 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              4084151,
+              null,
               null,
               null,
               null,
@@ -6546,7 +6546,7 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              3858690,
+              null,
               null,
               null,
               null,
@@ -6588,7 +6588,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              155600,
+              null,
               null,
               null,
               null,
@@ -6609,7 +6609,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              3221660,
+              null,
               null,
               null,
               null,
@@ -6630,7 +6630,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              481430,
+              null,
               null,
               null,
               null,
@@ -6693,7 +6693,7 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              225461,
+              null,
               null,
               null,
               null,
@@ -6714,7 +6714,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              70710,
+              null,
               null,
               null,
               null,
@@ -6735,7 +6735,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              97550,
+              null,
               null,
               null,
               null,
@@ -6756,7 +6756,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              13870,
+              null,
               null,
               null,
               null,
@@ -6777,7 +6777,7 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              43331,
+              null,
               null,
               null,
               null,
@@ -6793,7 +6793,7 @@
           }
         ]
       },
-      "planFromMonth": 2,
+      "planFromMonth": 3,
       "retail2025": {
         "dealer": {
           "rows": [
@@ -6804,18 +6804,18 @@
               "isSubtotal": false,
               "isLeaf": false,
               "monthly": [
-                1383004,
-                834262,
-                966032,
-                1111810,
-                1702774,
-                1647628,
-                2341703,
-                3274981,
-                3129114,
-                4964226,
-                4581488,
-                6697403
+                null,
+                null,
+                null,
+                null,
+                null,
+                10560,
+                47769,
+                720,
+                1310,
+                32880,
+                39950,
+                441661
               ]
             },
             {
@@ -6825,18 +6825,18 @@
               "isSubtotal": true,
               "isLeaf": false,
               "monthly": [
-                1312750,
-                777890,
-                913530,
-                1007840,
-                1545490,
-                1461900,
-                2073500,
-                2781580,
-                2820430,
-                4720880,
-                4377640,
-                6380060
+                null,
+                null,
+                null,
+                null,
+                null,
+                7410,
+                42450,
+                null,
+                590,
+                32880,
+                25110,
+                366500
               ]
             },
             {
@@ -6852,12 +6852,12 @@
                 null,
                 null,
                 null,
-                1940,
-                1364490,
-                2487900,
-                4638700,
-                4354530,
-                5343060
+                null,
+                null,
+                null,
+                24150,
+                11570,
+                199430
               ]
             },
             {
@@ -6867,18 +6867,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                198360,
-                430610,
-                755600,
-                980380,
-                1536270,
-                1455390,
-                2063980,
-                1409150,
-                329750,
-                74080,
-                10510,
-                114810
+                null,
+                null,
+                null,
+                null,
+                null,
+                7410,
+                42450,
+                null,
+                590,
+                8730,
+                13540,
+                80180
               ]
             },
             {
@@ -6888,18 +6888,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                1114390,
-                347280,
-                157930,
-                27460,
-                9220,
-                6510,
-                7580,
-                7940,
-                2780,
-                8100,
-                12600,
-                922190
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                86890
               ]
             },
             {
@@ -6972,18 +6972,18 @@
               "isSubtotal": true,
               "isLeaf": false,
               "monthly": [
-                70254,
-                56372,
-                52502,
-                103970,
-                157284,
-                185728,
-                268203,
-                493401,
-                308684,
-                243346,
-                203848,
-                317343
+                null,
+                null,
+                null,
+                null,
+                null,
+                3150,
+                5319,
+                720,
+                720,
+                null,
+                14840,
+                75161
               ]
             },
             {
@@ -6993,18 +6993,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                59060,
-                36240,
-                36730,
-                73260,
-                115760,
-                139250,
-                197230,
-                173630,
-                109560,
-                86250,
-                96470,
-                165460
+                null,
+                null,
+                null,
+                null,
+                null,
+                3150,
+                4740,
+                720,
+                720,
+                null,
+                14290,
+                39130
               ]
             },
             {
@@ -7014,18 +7014,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                7320,
-                9790,
-                10990,
-                20170,
-                29000,
-                26230,
-                37230,
-                236030,
-                158060,
-                113340,
-                78070,
-                90340
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                520,
+                null,
+                null,
+                null,
+                550,
+                5460
               ]
             },
             {
@@ -7035,18 +7035,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                1750,
-                9180,
-                3950,
-                9370,
-                9810,
-                17120,
-                25960,
-                76430,
-                37040,
-                32490,
-                19840,
-                41030
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                29880
               ]
             },
             {
@@ -7056,18 +7056,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                2124,
-                1162,
-                832,
-                1170,
-                2714,
-                3128,
-                7783,
-                7311,
-                4024,
-                11266,
-                9468,
-                20513
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                59,
+                null,
+                null,
+                null,
+                null,
+                691
               ]
             }
           ]
@@ -7081,18 +7081,18 @@
               "isSubtotal": false,
               "isLeaf": false,
               "monthly": [
-                1416287,
-                1494566,
-                1207735,
-                1171494,
-                1532502,
-                1380146,
-                785408,
-                4018170,
-                2467223,
-                5387645,
-                2600599,
-                3604031
+                2799291,
+                2328828,
+                2173767,
+                2283304,
+                3235276,
+                3017214,
+                3079342,
+                7292431,
+                5595027,
+                10318991,
+                7142137,
+                9859773
               ]
             },
             {
@@ -7102,18 +7102,18 @@
               "isSubtotal": true,
               "isLeaf": false,
               "monthly": [
-                1341990,
-                1330920,
-                1113820,
-                942560,
-                1315550,
-                1189970,
-                686450,
-                3652760,
-                2212950,
-                5169970,
-                2469860,
-                3457990
+                2654740,
+                2108810,
+                2027350,
+                1950400,
+                2861040,
+                2644460,
+                2717500,
+                6434340,
+                5032790,
+                9857970,
+                6822390,
+                9471550
               ]
             },
             {
@@ -7129,12 +7129,12 @@
                 null,
                 null,
                 null,
-                1940,
-                2694260,
-                1857250,
-                3908130,
-                2196080,
-                2787150
+                3880,
+                4058750,
+                4345150,
+                8522680,
+                6539040,
+                7930780
               ]
             },
             {
@@ -7144,18 +7144,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                103300,
-                911600,
-                1010320,
-                901510,
-                1217800,
-                1154460,
-                663620,
-                836470,
-                250330,
-                146690,
-                57060,
-                42520
+                301660,
+                1342210,
+                1765920,
+                1881890,
+                2754070,
+                2602440,
+                2685150,
+                2245620,
+                579490,
+                212040,
+                54030,
+                77150
               ]
             },
             {
@@ -7165,18 +7165,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                1238690,
-                419320,
-                103500,
-                41050,
-                97750,
-                35510,
-                20890,
-                122030,
-                105370,
-                1115150,
-                216720,
-                628320
+                2353080,
+                766600,
+                261430,
+                68510,
+                106970,
+                42020,
+                28470,
+                129970,
+                108150,
+                1123250,
+                229320,
+                1463620
               ]
             },
             {
@@ -7249,18 +7249,18 @@
               "isSubtotal": true,
               "isLeaf": false,
               "monthly": [
-                74297,
-                163646,
-                93915,
-                228934,
-                216952,
-                190176,
-                98958,
-                365410,
-                254273,
-                217675,
-                130739,
-                146041
+                144551,
+                220018,
+                146417,
+                332904,
+                374236,
+                372754,
+                361842,
+                858091,
+                562237,
+                461021,
+                319747,
+                388223
               ]
             },
             {
@@ -7270,18 +7270,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                41290,
-                99780,
-                52050,
-                176100,
-                170480,
-                145080,
-                54160,
-                129320,
-                68910,
-                62960,
-                53380,
-                48340
+                100350,
+                136020,
+                88780,
+                249360,
+                286240,
+                281180,
+                246650,
+                302230,
+                177750,
+                149210,
+                135560,
+                174670
               ]
             },
             {
@@ -7291,18 +7291,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                17770,
-                32960,
-                26210,
-                34260,
-                28330,
-                27520,
-                29150,
-                132860,
-                128650,
-                117180,
-                59260,
-                50020
+                25090,
+                42750,
+                37200,
+                54430,
+                57330,
+                53750,
+                65860,
+                368890,
+                286710,
+                230520,
+                136780,
+                134900
               ]
             },
             {
@@ -7312,18 +7312,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                9720,
-                27830,
-                14510,
-                15290,
-                14540,
-                12380,
-                14070,
-                98080,
-                54270,
-                26040,
-                13770,
-                41920
+                11470,
+                37010,
+                18460,
+                24660,
+                24350,
+                29500,
+                40030,
+                174510,
+                91310,
+                58530,
+                33610,
+                53070
               ]
             },
             {
@@ -7333,18 +7333,18 @@
               "isSubtotal": false,
               "isLeaf": true,
               "monthly": [
-                5517,
-                3076,
-                1145,
-                3284,
-                3602,
-                5196,
-                1578,
-                5150,
-                2443,
-                11495,
-                4329,
-                5761
+                7641,
+                4238,
+                1977,
+                4454,
+                6316,
+                8324,
+                9302,
+                12461,
+                6467,
+                22761,
+                13797,
+                25583
               ]
             }
           ]
@@ -7361,18 +7361,18 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              1383004,
-              834262,
-              966032,
-              1111810,
-              1702774,
-              1647628,
-              2341703,
-              3274981,
-              3129114,
-              4964226,
-              4581488,
-              6697403
+              null,
+              null,
+              null,
+              null,
+              null,
+              10560,
+              47769,
+              720,
+              1310,
+              32880,
+              39950,
+              441661
             ]
           },
           {
@@ -7382,18 +7382,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              1312750,
-              777890,
-              913530,
-              1007840,
-              1545490,
-              1461900,
-              2073500,
-              2781580,
-              2820430,
-              4720880,
-              4377640,
-              6380060
+              null,
+              null,
+              null,
+              null,
+              null,
+              7410,
+              42450,
+              null,
+              590,
+              32880,
+              25110,
+              366500
             ]
           },
           {
@@ -7409,12 +7409,12 @@
               null,
               null,
               null,
-              1940,
-              1364490,
-              2487900,
-              4638700,
-              4354530,
-              5343060
+              null,
+              null,
+              null,
+              24150,
+              11570,
+              199430
             ]
           },
           {
@@ -7424,18 +7424,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              198360,
-              430610,
-              755600,
-              980380,
-              1536270,
-              1455390,
-              2063980,
-              1409150,
-              329750,
-              74080,
-              10510,
-              114810
+              null,
+              null,
+              null,
+              null,
+              null,
+              7410,
+              42450,
+              null,
+              590,
+              8730,
+              13540,
+              80180
             ]
           },
           {
@@ -7445,18 +7445,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              1114390,
-              347280,
-              157930,
-              27460,
-              9220,
-              6510,
-              7580,
-              7940,
-              2780,
-              8100,
-              12600,
-              922190
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              86890
             ]
           },
           {
@@ -7529,18 +7529,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              70254,
-              56372,
-              52502,
-              103970,
-              157284,
-              185728,
-              268203,
-              493401,
-              308684,
-              243346,
-              203848,
-              317343
+              null,
+              null,
+              null,
+              null,
+              null,
+              3150,
+              5319,
+              720,
+              720,
+              null,
+              14840,
+              75161
             ]
           },
           {
@@ -7550,18 +7550,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              59060,
-              36240,
-              36730,
-              73260,
-              115760,
-              139250,
-              197230,
-              173630,
-              109560,
-              86250,
-              96470,
-              165460
+              null,
+              null,
+              null,
+              null,
+              null,
+              3150,
+              4740,
+              720,
+              720,
+              null,
+              14290,
+              39130
             ]
           },
           {
@@ -7571,18 +7571,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              7320,
-              9790,
-              10990,
-              20170,
-              29000,
-              26230,
-              37230,
-              236030,
-              158060,
-              113340,
-              78070,
-              90340
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              520,
+              null,
+              null,
+              null,
+              550,
+              5460
             ]
           },
           {
@@ -7592,18 +7592,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              1750,
-              9180,
-              3950,
-              9370,
-              9810,
-              17120,
-              25960,
-              76430,
-              37040,
-              32490,
-              19840,
-              41030
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              29880
             ]
           },
           {
@@ -7613,18 +7613,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              2124,
-              1162,
-              832,
-              1170,
-              2714,
-              3128,
-              7783,
-              7311,
-              4024,
-              11266,
-              9468,
-              20513
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              59,
+              null,
+              null,
+              null,
+              null,
+              691
             ]
           }
         ]
@@ -7638,18 +7638,18 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              1416287,
-              1494566,
-              1207735,
-              1171494,
-              1532502,
-              1380146,
-              785408,
-              4018170,
-              2467223,
-              5387645,
-              2600599,
-              3604031
+              2799291,
+              2328828,
+              2173767,
+              2283304,
+              3235276,
+              3017214,
+              3079342,
+              7292431,
+              5595027,
+              10318991,
+              7142137,
+              9859773
             ]
           },
           {
@@ -7659,18 +7659,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              1341990,
-              1330920,
-              1113820,
-              942560,
-              1315550,
-              1189970,
-              686450,
-              3652760,
-              2212950,
-              5169970,
-              2469860,
-              3457990
+              2654740,
+              2108810,
+              2027350,
+              1950400,
+              2861040,
+              2644460,
+              2717500,
+              6434340,
+              5032790,
+              9857970,
+              6822390,
+              9471550
             ]
           },
           {
@@ -7686,12 +7686,12 @@
               null,
               null,
               null,
-              1940,
-              2694260,
-              1857250,
-              3908130,
-              2196080,
-              2787150
+              3880,
+              4058750,
+              4345150,
+              8522680,
+              6539040,
+              7930780
             ]
           },
           {
@@ -7701,18 +7701,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              103300,
-              911600,
-              1010320,
-              901510,
-              1217800,
-              1154460,
-              663620,
-              836470,
-              250330,
-              146690,
-              57060,
-              42520
+              301660,
+              1342210,
+              1765920,
+              1881890,
+              2754070,
+              2602440,
+              2685150,
+              2245620,
+              579490,
+              212040,
+              54030,
+              77150
             ]
           },
           {
@@ -7722,18 +7722,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              1238690,
-              419320,
-              103500,
-              41050,
-              97750,
-              35510,
-              20890,
-              122030,
-              105370,
-              1115150,
-              216720,
-              628320
+              2353080,
+              766600,
+              261430,
+              68510,
+              106970,
+              42020,
+              28470,
+              129970,
+              108150,
+              1123250,
+              229320,
+              1463620
             ]
           },
           {
@@ -7806,18 +7806,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              74297,
-              163646,
-              93915,
-              228934,
-              216952,
-              190176,
-              98958,
-              365410,
-              254273,
-              217675,
-              130739,
-              146041
+              144551,
+              220018,
+              146417,
+              332904,
+              374236,
+              372754,
+              361842,
+              858091,
+              562237,
+              461021,
+              319747,
+              388223
             ]
           },
           {
@@ -7827,18 +7827,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              41290,
-              99780,
-              52050,
-              176100,
-              170480,
-              145080,
-              54160,
-              129320,
-              68910,
-              62960,
-              53380,
-              48340
+              100350,
+              136020,
+              88780,
+              249360,
+              286240,
+              281180,
+              246650,
+              302230,
+              177750,
+              149210,
+              135560,
+              174670
             ]
           },
           {
@@ -7848,18 +7848,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              17770,
-              32960,
-              26210,
-              34260,
-              28330,
-              27520,
-              29150,
-              132860,
-              128650,
-              117180,
-              59260,
-              50020
+              25090,
+              42750,
+              37200,
+              54430,
+              57330,
+              53750,
+              65860,
+              368890,
+              286710,
+              230520,
+              136780,
+              134900
             ]
           },
           {
@@ -7869,18 +7869,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              9720,
-              27830,
-              14510,
-              15290,
-              14540,
-              12380,
-              14070,
-              98080,
-              54270,
-              26040,
-              13770,
-              41920
+              11470,
+              37010,
+              18460,
+              24660,
+              24350,
+              29500,
+              40030,
+              174510,
+              91310,
+              58530,
+              33610,
+              53070
             ]
           },
           {
@@ -7890,18 +7890,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              5517,
-              3076,
-              1145,
-              3284,
-              3602,
-              5196,
-              1578,
-              5150,
-              2443,
-              11495,
-              4329,
-              5761
+              7641,
+              4238,
+              1977,
+              4454,
+              6316,
+              8324,
+              9302,
+              12461,
+              6467,
+              22761,
+              13797,
+              25583
             ]
           }
         ]
@@ -7910,7 +7910,7 @@
     "shipment": {
       "year": 2026,
       "brand": "DISCOVERY",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -7921,7 +7921,7 @@
             "isLeaf": false,
             "monthly": [
               2395686,
-              null,
+              4583762,
               null,
               null,
               null,
@@ -7942,7 +7942,7 @@
             "isLeaf": false,
             "monthly": [
               2643260,
-              null,
+              4388240,
               null,
               null,
               null,
@@ -7984,7 +7984,7 @@
             "isLeaf": true,
             "monthly": [
               12003360,
-              null,
+              2401280,
               null,
               null,
               null,
@@ -8005,7 +8005,7 @@
             "isLeaf": true,
             "monthly": [
               -7747090,
-              null,
+              1986960,
               null,
               null,
               null,
@@ -8089,7 +8089,7 @@
             "isLeaf": false,
             "monthly": [
               -247574,
-              null,
+              195522,
               null,
               null,
               null,
@@ -8110,7 +8110,7 @@
             "isLeaf": true,
             "monthly": [
               -477900,
-              null,
+              118530,
               null,
               null,
               null,
@@ -8131,7 +8131,7 @@
             "isLeaf": true,
             "monthly": [
               146460,
-              null,
+              25800,
               null,
               null,
               null,
@@ -8152,7 +8152,7 @@
             "isLeaf": true,
             "monthly": [
               87940,
-              null,
+              50720,
               null,
               null,
               null,
@@ -8173,7 +8173,7 @@
             "isLeaf": true,
             "monthly": [
               -4074,
-              null,
+              472,
               null,
               null,
               null,
@@ -8192,7 +8192,7 @@
     "purchase": {
       "year": 2026,
       "brand": "DISCOVERY",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -8471,14 +8471,14 @@
         ]
       }
     },
-    "savedAt": "2026-02-26T12:31:17.398Z",
-    "planFromMonth": 2
+    "savedAt": "2026-03-04T01:12:59.836Z",
+    "planFromMonth": 3
   },
   "2025:MLB": {
     "monthly": {
       "year": 2025,
       "brand": "MLB",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -9063,7 +9063,7 @@
     "retailActuals": {
       "year": 2025,
       "brand": "MLB",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -9623,7 +9623,7 @@
     "shipment": {
       "year": 2025,
       "brand": "MLB",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -9905,7 +9905,7 @@
     "purchase": {
       "year": 2025,
       "brand": "MLB",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -10184,13 +10184,13 @@
         ]
       }
     },
-    "savedAt": "2026-02-26T12:27:47.229Z"
+    "savedAt": "2026-03-04T04:22:03.289Z"
   },
   "2025:MLB KIDS": {
     "monthly": {
       "year": 2025,
-      "brand": "MLB",
-      "closedThrough": "202601",
+      "brand": "MLB KIDS",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -10199,20 +10199,20 @@
             "isTotal": true,
             "isSubtotal": false,
             "isLeaf": false,
-            "opening": 5400835248,
+            "opening": 384849082,
             "monthly": [
-              5212821076,
-              5442874289,
-              5733456938,
-              5742650250,
-              5214353480,
-              5247173354,
-              5351971197,
-              5846219566,
-              6271185433,
-              6353967774,
-              6081066408,
-              5874775131
+              362258360,
+              369005564,
+              356955566,
+              345193322,
+              311766843,
+              310162003,
+              306238942,
+              323147987,
+              346244902,
+              329612649,
+              313779010,
+              306468524
             ]
           },
           {
@@ -10221,20 +10221,20 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 3208876249,
+            "opening": 258565821,
             "monthly": [
-              2943232390,
-              3163280029,
-              3496470251,
-              3546403822,
-              3190819637,
-              3087092055,
-              3060206000,
-              3354611217,
-              3723248326,
-              3900325020,
-              3681993369,
-              3441602093
+              241902150,
+              246674077,
+              247332498,
+              239165649,
+              213665120,
+              207520244,
+              205026553,
+              218749333,
+              242817779,
+              234291824,
+              220804260,
+              212293778
             ]
           },
           {
@@ -10245,18 +10245,18 @@
             "isLeaf": true,
             "opening": null,
             "monthly": [
-              -3867,
               null,
-              -1967,
-              -4395,
-              -1299,
-              7217915,
-              278491689,
-              819906662,
-              1435110003,
-              1814933155,
-              1806584684,
-              1528109636
+              null,
+              569,
+              null,
+              null,
+              null,
+              16754257,
+              38198520,
+              72081106,
+              83851495,
+              80346128,
+              68179664
             ]
           },
           {
@@ -10265,20 +10265,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 374645490,
+            "opening": 18691807,
             "monthly": [
-              608061462,
-              977545278,
-              1446974255,
-              1609142492,
-              1425017737,
-              1357282694,
-              1165723816,
-              1037079818,
-              953423459,
-              808757477,
-              775390758,
-              729542578
+              35769192,
+              48713434,
+              71399081,
+              86030778,
+              72740126,
+              63881587,
+              54376493,
+              50199694,
+              47828633,
+              38218536,
+              33877609,
+              33667815
             ]
           },
           {
@@ -10287,20 +10287,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 1986446700,
+            "opening": 150508961,
             "monthly": [
-              1595133923,
-              1495786775,
-              1397649313,
-              1325920584,
-              1214438199,
-              1171749752,
-              1114470113,
-              1039046869,
-              936672570,
-              911461240,
-              786591523,
-              691970533
+              125464012,
+              120372201,
+              110800454,
+              91627735,
+              84174898,
+              86772363,
+              81583568,
+              78383056,
+              73448633,
+              67474793,
+              62731874,
+              57335920
             ]
           },
           {
@@ -10309,20 +10309,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 617165387,
+            "opening": 62828910,
             "monthly": [
-              538103697,
-              506085871,
-              478639081,
-              452830100,
-              405785265,
-              410425258,
-              378172319,
-              347651999,
-              303070390,
-              276345297,
-              240748355,
-              192022932
+              56792311,
+              55107098,
+              46003721,
+              43172328,
+              39606395,
+              39823673,
+              37423499,
+              36897863,
+              34680903,
+              31162482,
+              28573613,
+              26512154
             ]
           },
           {
@@ -10343,8 +10343,8 @@
               null,
               null,
               null,
-              null,
-              244037829
+              1989736,
+              13880284
             ]
           },
           {
@@ -10353,20 +10353,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 230618672,
+            "opening": 26536143,
             "monthly": [
-              201937175,
-              183862105,
-              173209569,
-              158515041,
-              145579735,
-              140416436,
-              123348063,
-              110925869,
-              94971904,
-              88827851,
-              72678049,
-              55918585
+              23876635,
+              22481344,
+              19128673,
+              18334808,
+              17143701,
+              17042621,
+              14888736,
+              15070200,
+              14778504,
+              13584518,
+              13285300,
+              12717941
             ]
           },
           {
@@ -10375,20 +10375,20 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 2191958999,
+            "opening": 126283261,
             "monthly": [
-              2269588686,
-              2279594260,
-              2236986687,
-              2196246428,
-              2023533843,
-              2160081299,
-              2291765197,
-              2491608349,
-              2547937107,
-              2453642754,
-              2399073039,
-              2433173038
+              120356210,
+              122331487,
+              109623068,
+              106027673,
+              98101723,
+              102641759,
+              101212389,
+              104398654,
+              103427123,
+              95320825,
+              92974750,
+              94174746
             ]
           },
           {
@@ -10397,20 +10397,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 1430075236,
+            "opening": 77286166,
             "monthly": [
-              1516062266,
-              1543056693,
-              1515579684,
-              1520166877,
-              1408824764,
-              1496191244,
-              1549432321,
-              1695604499,
-              1732974120,
-              1699098982,
-              1686159465,
-              1712126965
+              72682933,
+              77408466,
+              71427977,
+              69492369,
+              64207454,
+              66394397,
+              66674358,
+              70946725,
+              67336266,
+              61728941,
+              58712799,
+              59891825
             ]
           },
           {
@@ -10419,20 +10419,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 523356991,
+            "opening": 32607074,
             "monthly": [
-              496927257,
-              471530556,
-              450708889,
-              411049581,
-              375761671,
-              427390238,
-              500290973,
-              543462701,
-              581045582,
-              539487494,
-              511973976,
-              505728060
+              30327932,
+              28863689,
+              24053551,
+              22886302,
+              20161465,
+              21728326,
+              19958854,
+              19839872,
+              22989565,
+              21612769,
+              21513415,
+              20825171
             ]
           },
           {
@@ -10441,20 +10441,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 204798278,
+            "opening": 12234782,
             "monthly": [
-              223508549,
-              232126596,
-              239247396,
-              233066768,
-              208708243,
-              201860493,
-              207024323,
-              215728893,
-              197562229,
-              180631690,
-              167945353,
-              180258740
+              13172874,
+              11959972,
+              10331877,
+              9979506,
+              10233205,
+              11053988,
+              11221971,
+              10538833,
+              9897006,
+              8922544,
+              9793047,
+              10528993
             ]
           },
           {
@@ -10463,20 +10463,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 33728494,
+            "opening": 4155239,
             "monthly": [
-              33090614,
-              32880415,
-              31450718,
-              31963202,
-              30239165,
-              34639324,
-              35017580,
-              36812256,
-              36355176,
-              34424588,
-              32994245,
-              35059273
+              4172471,
+              4099360,
+              3809663,
+              3669496,
+              3499599,
+              3465048,
+              3357206,
+              3073224,
+              3204286,
+              3056571,
+              2955489,
+              2928757
             ]
           }
         ]
@@ -10489,20 +10489,20 @@
             "isTotal": true,
             "isSubtotal": false,
             "isLeaf": false,
-            "opening": 2050405010,
+            "opening": 198265270,
             "monthly": [
-              1748582112,
-              2227375263,
-              1822704308,
-              1392089880,
-              1427134676,
-              1825825041,
-              2688721705,
-              3537397151,
-              3901363600,
-              3603538692,
-              3450534080,
-              3718234069
+              166565095,
+              187700783,
+              189098931,
+              10014886849376,
+              10014878873447,
+              10014894607577,
+              211091796,
+              217176741,
+              224373400,
+              190755922,
+              197308193,
+              199694309
             ]
           },
           {
@@ -10511,20 +10511,20 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 1222412241,
+            "opening": 149646982,
             "monthly": [
-              1120691798,
-              1667103044,
-              1403872342,
-              927104091,
-              980861268,
-              1075185680,
-              1691222143,
-              2179490037,
-              2346288765,
-              1784923110,
-              1516543731,
-              1747850308
+              118817420,
+              143882654,
+              142374220,
+              10014840413517,
+              10014831767851,
+              10014836891208,
+              144554381,
+              154172952,
+              167725004,
+              140336630,
+              140605402,
+              136273447
             ]
           },
           {
@@ -10539,14 +10539,14 @@
               null,
               null,
               null,
-              67204912,
-              191698666,
-              848725467,
-              1361983731,
-              1556475391,
-              1034927351,
-              645663302,
-              494545105
+              null,
+              12402409,
+              38475736,
+              55113126,
+              75314258,
+              53103852,
+              41436382,
+              35352560
             ]
           },
           {
@@ -10555,20 +10555,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 459136241,
+            "opening": 40577380,
             "monthly": [
-              451745315,
-              1024964770,
-              790920302,
-              347181826,
-              361453581,
-              281833847,
-              253933317,
-              240011646,
-              233542680,
-              250141294,
-              333208062,
-              345842649
+              22611927,
+              52839998,
+              46499958,
+              10014739342106,
+              10014735356811,
+              10014731468533,
+              16234196,
+              15067484,
+              14535656,
+              17830625,
+              23820196,
+              23028970
             ]
           },
           {
@@ -10577,20 +10577,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 420824315,
+            "opening": 56421742,
             "monthly": [
-              365366674,
-              350125551,
-              336338721,
-              318083833,
-              303216485,
-              358617880,
-              352031087,
-              344522452,
-              332116019,
-              297828102,
-              273265788,
-              254497908
+              48256620,
+              45694035,
+              44011831,
+              52596367,
+              50776810,
+              49387701,
+              47673290,
+              45438181,
+              42925686,
+              37552770,
+              35019677,
+              32488261
             ]
           },
           {
@@ -10599,20 +10599,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 158514718,
+            "opening": 39576252,
             "monthly": [
-              131520243,
-              126690266,
-              117370445,
-              109400168,
-              102927995,
-              99845388,
-              96912584,
-              93973744,
-              87417145,
-              75300235,
-              69806997,
-              65746643
+              35626947,
+              33995055,
+              37253023,
+              35246190,
+              33452470,
+              32632593,
+              31414706,
+              29786089,
+              27060714,
+              24500870,
+              23146452,
+              21908363
             ]
           },
           {
@@ -10633,8 +10633,8 @@
               null,
               null,
               null,
-              71540985,
-              466947680
+              9862622,
+              16180749
             ]
           },
           {
@@ -10643,20 +10643,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 183936967,
+            "opening": 13071608,
             "monthly": [
-              172059566,
-              165322457,
-              159242874,
-              152438264,
-              146058295,
-              143189899,
-              139619688,
-              138998464,
-              136737530,
-              126726128,
-              123058597,
-              120270323
+              12321926,
+              11353566,
+              14609408,
+              13228854,
+              12181760,
+              10999972,
+              10756453,
+              8768072,
+              7888690,
+              7348513,
+              7320073,
+              7314544
             ]
           },
           {
@@ -10665,20 +10665,20 @@
             "isTotal": false,
             "isSubtotal": true,
             "isLeaf": false,
-            "opening": 827992769,
+            "opening": 48618288,
             "monthly": [
-              627890314,
-              560272219,
-              418831966,
-              464985789,
-              446273408,
-              750639361,
-              997499562,
-              1357907114,
-              1555074835,
-              1818615582,
-              1933990349,
-              1970383761
+              47747675,
+              43818129,
+              46724711,
+              46435859,
+              47105596,
+              57716369,
+              66537415,
+              63003789,
+              56648396,
+              50419292,
+              56702791,
+              63420862
             ]
           },
           {
@@ -10687,20 +10687,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 534234192,
+            "opening": 29029522,
             "monthly": [
-              381174147,
-              361796509,
-              248500016,
-              300451015,
-              287095728,
-              538684486,
-              574858695,
-              854677364,
-              1059530594,
-              1360424788,
-              1443337827,
-              1489768405
+              32519961,
+              27401046,
+              27038861,
+              28413250,
+              28363640,
+              36348579,
+              41527020,
+              34816274,
+              31224250,
+              29048244,
+              32253375,
+              30132035
             ]
           },
           {
@@ -10709,20 +10709,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 154076937,
+            "opening": 11409718,
             "monthly": [
-              124020511,
-              110433414,
-              102523942,
-              95150455,
-              105202803,
-              138242567,
-              307486123,
-              409047166,
-              416599710,
-              372895414,
-              412060906,
-              356938781
+              10055437,
+              11714145,
+              13824075,
+              12537708,
+              11389976,
+              14991548,
+              18593896,
+              19043125,
+              17835887,
+              15427928,
+              16222171,
+              17818945
             ]
           },
           {
@@ -10731,20 +10731,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 125498301,
+            "opening": 6980170,
             "monthly": [
-              113839121,
-              80016584,
-              61218922,
-              63521004,
-              48203313,
-              67145067,
-              103838368,
-              79423645,
-              65882191,
-              73052610,
-              63470400,
-              110739345
+              4406356,
+              3985237,
+              4986002,
+              4641315,
+              6550551,
+              5593918,
+              5620633,
+              7767674,
+              6354420,
+              4949897,
+              7235974,
+              14194018
             ]
           },
           {
@@ -10753,20 +10753,20 @@
             "isTotal": false,
             "isSubtotal": false,
             "isLeaf": true,
-            "opening": 14183339,
+            "opening": 1198878,
             "monthly": [
-              8856535,
-              8025712,
-              6589086,
-              5863315,
-              5771564,
-              6567241,
-              11316376,
-              14758939,
-              13062340,
-              12242770,
-              15121216,
-              12937230
+              765921,
+              717701,
+              875773,
+              843586,
+              801429,
+              782324,
+              795866,
+              1376716,
+              1233839,
+              993223,
+              991271,
+              1275864
             ]
           }
         ]
@@ -10774,8 +10774,8 @@
     },
     "retailActuals": {
       "year": 2025,
-      "brand": "MLB",
-      "closedThrough": "202601",
+      "brand": "MLB KIDS",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -10785,18 +10785,18 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              1071504768,
-              523963155,
-              640842899,
-              628797061,
-              681168801,
-              547940523,
-              532990002,
-              577069720,
-              537533435,
-              820452546,
-              791155483,
-              772660360
+              60314773,
+              19208618,
+              33335833,
+              26992699,
+              29329111,
+              20930056,
+              21013949,
+              26951894,
+              22032400,
+              33892130,
+              28796569,
+              28401613
             ]
           },
           {
@@ -10806,18 +10806,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              662924772,
-              267098995,
-              345947973,
-              351403221,
-              376739761,
-              296154272,
-              276329922,
-              290784559,
-              279358700,
-              480741918,
-              476818470,
-              477857387
+              43613100,
+              11939983,
+              20411926,
+              18755195,
+              20329258,
+              13279687,
+              12207069,
+              15873620,
+              14026129,
+              23573314,
+              20258499,
+              20240451
             ]
           },
           {
@@ -10827,18 +10827,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              3867,
-              -1500,
-              3166,
-              3366,
-              499,
-              50282,
-              30460771,
-              103694805,
-              145410252,
-              307879218,
-              357279587,
-              368467292
+              null,
+              null,
+              0,
+              null,
+              998,
+              null,
+              498439,
+              4430005,
+              5932133,
+              13377936,
+              12463962,
+              13035352
             ]
           },
           {
@@ -10848,18 +10848,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              189691036,
-              128662514,
-              229439685,
-              266992127,
-              297745185,
-              235043476,
-              185977151,
-              117210152,
-              62514562,
-              57381514,
-              19484291,
-              16407640
+              9536293,
+              3655188,
+              9092509,
+              11958773,
+              14138602,
+              8533240,
+              7506205,
+              5668501,
+              2679323,
+              1958466,
+              617960,
+              621801
             ]
           },
           {
@@ -10869,18 +10869,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              375917417,
-              98462927,
-              77339800,
-              59276482,
-              55062994,
-              43721034,
-              43186078,
-              46107969,
-              47819061,
-              79040166,
-              67240238,
-              56538587
+              25251226,
+              5261262,
+              6981820,
+              4272236,
+              4219118,
+              2960119,
+              2674600,
+              3594504,
+              3610388,
+              4956995,
+              4487559,
+              3699739
             ]
           },
           {
@@ -10890,18 +10890,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              70300371,
-              27137121,
-              26410242,
-              18792848,
-              17242627,
-              12446613,
-              12818517,
-              18056142,
-              18903738,
-              29526661,
-              28470811,
-              23351829
+              6179455,
+              2048924,
+              3715190,
+              1907231,
+              1520051,
+              1344650,
+              1252711,
+              1649126,
+              1472939,
+              2202071,
+              2363067,
+              1533015
             ]
           },
           {
@@ -10918,11 +10918,11 @@
               null,
               null,
               null,
-              599,
-              869,
+              null,
               439,
               null,
-              9501025
+              11393,
+              1126145
             ]
           },
           {
@@ -10932,18 +10932,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              27012081,
-              12837933,
-              12755080,
-              6338398,
-              6688456,
-              4892867,
-              3887405,
-              5714892,
-              4710218,
-              6913920,
-              4343543,
-              3591014
+              2646126,
+              974609,
+              622407,
+              616955,
+              450489,
+              441678,
+              275114,
+              531484,
+              330907,
+              1077846,
+              314558,
+              224399
             ]
           },
           {
@@ -10953,18 +10953,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              408579996,
-              256864160,
-              294894926,
-              277393840,
-              304429040,
-              251786251,
-              256660080,
-              286285161,
-              258174735,
-              339710628,
-              314337013,
-              294802973
+              16701673,
+              7268635,
+              12923907,
+              8237504,
+              8999853,
+              7650369,
+              8806880,
+              11078274,
+              8006271,
+              10318816,
+              8538070,
+              8161162
             ]
           },
           {
@@ -10974,18 +10974,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              300235516,
-              167149867,
-              191393300,
-              175435623,
-              194378492,
-              158819545,
-              158988345,
-              179709651,
-              169663859,
-              221909764,
-              210428680,
-              195331804
+              12387486,
+              4429978,
+              8503280,
+              4782917,
+              5245559,
+              3723349,
+              5402080,
+              6735488,
+              5200176,
+              6498738,
+              4870881,
+              4664961
             ]
           },
           {
@@ -10995,18 +10995,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              78310906,
-              63145024,
-              76159011,
-              74803051,
-              76178803,
-              59169694,
-              65693867,
-              71873966,
-              62483795,
-              88416423,
-              81538587,
-              80910370
+              2773041,
+              1577019,
+              2852563,
+              2115269,
+              2086510,
+              1439585,
+              1333758,
+              1397929,
+              1122766,
+              2105348,
+              1592367,
+              1480293
             ]
           },
           {
@@ -11016,18 +11016,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              24951231,
-              24464290,
-              24889339,
-              24564382,
-              30789189,
-              31019027,
-              29418645,
-              32139237,
-              23672254,
-              25794301,
-              18990536,
-              14845990
+              1212751,
+              1172926,
+              1422963,
+              1228245,
+              1560003,
+              2401143,
+              1995020,
+              2840147,
+              1612598,
+              1549700,
+              1930848,
+              1778637
             ]
           },
           {
@@ -11037,18 +11037,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              5082343,
-              2104979,
-              2453276,
-              2590784,
-              3082556,
-              2777985,
-              2559223,
-              2562307,
-              2354827,
-              3590140,
-              3379210,
-              3714809
+              328395,
+              88712,
+              145101,
+              111073,
+              107781,
+              86292,
+              76022,
+              104710,
+              70731,
+              165030,
+              143974,
+              237271
             ]
           }
         ]
@@ -11062,18 +11062,18 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              165157813,
-              73723342,
-              112212428,
-              100675258,
-              137166183,
-              74100092,
-              68042305,
-              84244839,
-              88902923,
-              238082240,
-              135176043,
-              122730263
+              20930975,
+              6121237,
+              11833459,
+              13776060,
+              14808870,
+              8124631,
+              8053248,
+              13078173,
+              11956759,
+              24536562,
+              12077145,
+              13421113
             ]
           },
           {
@@ -11083,18 +11083,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              92928196,
-              31829958,
-              55711117,
-              56958396,
-              68925591,
-              36160452,
-              32148630,
-              35069614,
-              40492529,
-              126347254,
-              72648750,
-              68881800
+              15326889,
+              3723281,
+              7960042,
+              10529978,
+              10669453,
+              5875123,
+              5654094,
+              8912744,
+              8498143,
+              18276269,
+              8668758,
+              9725721
             ]
           },
           {
@@ -11109,13 +11109,13 @@
               null,
               null,
               null,
-              341347,
-              2136381,
-              6952365,
-              12276140,
-              61428361,
-              37177107,
-              40171519
+              4249,
+              218491,
+              1194871,
+              1828695,
+              9331516,
+              4612864,
+              5463195
             ]
           },
           {
@@ -11125,18 +11125,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              8112009,
-              8077949,
-              20808620,
-              25273481,
-              41399068,
-              23807380,
-              19283331,
-              15294085,
-              6353425,
-              7189572,
-              1901240,
-              1320189
+              1315758,
+              724121,
+              2434393,
+              3366707,
+              4668655,
+              2505838,
+              1835711,
+              1325590,
+              525729,
+              455155,
+              129187,
+              290127
             ]
           },
           {
@@ -11146,18 +11146,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              49226417,
-              12689676,
-              20175996,
-              15814834,
-              14163090,
-              6105954,
-              6107973,
-              7440103,
-              13052453,
-              34964548,
-              24409837,
-              17888244
+              7952855,
+              1466571,
+              3231486,
+              3647753,
+              3061409,
+              1402670,
+              1429413,
+              2336705,
+              2560151,
+              5370479,
+              2532863,
+              2371541
             ]
           },
           {
@@ -11167,18 +11167,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              23746130,
-              5944868,
-              8274758,
-              7504250,
-              6781897,
-              2915058,
-              2376439,
-              3386761,
-              6559576,
-              12652054,
-              5493035,
-              4208461
+              4723304,
+              1158557,
+              1911050,
+              2371657,
+              1866716,
+              754965,
+              1040570,
+              1894166,
+              2704016,
+              2566953,
+              1354418,
+              1098771
             ]
           },
           {
@@ -11198,8 +11198,8 @@
               null,
               null,
               null,
-              null,
-              1396254
+              9787,
+              485927
             ]
           },
           {
@@ -11209,18 +11209,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              11843640,
-              5117465,
-              6451743,
-              8365831,
-              6581536,
-              2990713,
-              2244506,
-              1996300,
-              2250935,
-              10112719,
-              3667531,
-              3897133
+              1334972,
+              374032,
+              383113,
+              1143861,
+              1072673,
+              1207401,
+              1129909,
+              2161412,
+              879552,
+              552166,
+              29639,
+              16160
             ]
           },
           {
@@ -11230,18 +11230,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              72229617,
-              41893384,
-              56501311,
-              43716862,
-              68240592,
-              37939640,
-              35893675,
-              49175225,
-              48410394,
-              111734986,
-              62527293,
-              53848463
+              5604086,
+              2397956,
+              3873417,
+              3246082,
+              4139417,
+              2249508,
+              2399154,
+              4165429,
+              3458616,
+              6260293,
+              3408387,
+              3695392
             ]
           },
           {
@@ -11251,18 +11251,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              49396215,
-              25982399,
-              33147621,
-              23994983,
-              39745124,
-              20553578,
-              20944776,
-              29736770,
-              32436677,
-              74283461,
-              37455940,
-              33334224
+              3864335,
+              1383429,
+              2213866,
+              1752761,
+              2351687,
+              1202424,
+              1279800,
+              2312979,
+              2132351,
+              3637324,
+              1736204,
+              2023368
             ]
           },
           {
@@ -11272,18 +11272,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              16341861,
-              11707543,
-              17681251,
-              15542507,
-              19033092,
-              11942634,
-              10270278,
-              12731196,
-              11909051,
-              29065689,
-              20140415,
-              17063862
+              1232563,
+              667932,
+              1378623,
+              1220833,
+              1114540,
+              609945,
+              620033,
+              792912,
+              819985,
+              1821913,
+              1053701,
+              1022562
             ]
           },
           {
@@ -11293,18 +11293,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              5686316,
-              3872051,
-              5423599,
-              3975943,
-              9156101,
-              5170552,
-              4463857,
-              6435177,
-              3799510,
-              7742864,
-              4016208,
-              2779580
+              446703,
+              320498,
+              247728,
+              240923,
+              630531,
+              417875,
+              483728,
+              1032952,
+              468198,
+              716472,
+              551935,
+              580681
             ]
           },
           {
@@ -11314,583 +11314,28 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              805225,
-              331391,
-              248840,
-              203429,
-              306275,
-              272876,
-              214764,
-              272082,
-              265156,
-              642972,
-              914730,
-              670797
+              60485,
+              26097,
+              33200,
+              31565,
+              42659,
+              19264,
+              15593,
+              26586,
+              38082,
+              84584,
+              66547,
+              68781
             ]
           }
         ]
       }
     },
-    "retail2025": {
-      "dealer": {
-        "rows": [
-          {
-            "key": "매출합계",
-            "label": "매출합계",
-            "isTotal": true,
-            "isSubtotal": false,
-            "isLeaf": false,
-            "monthly": [
-              1071504768,
-              523963155,
-              640842899,
-              628797061,
-              681168801,
-              547940523,
-              532990002,
-              577069720,
-              537533435,
-              820452546,
-              791155483,
-              772660360
-            ]
-          },
-          {
-            "key": "의류합계",
-            "label": "의류합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              662924772,
-              267098995,
-              345947973,
-              351403221,
-              376739761,
-              296154272,
-              276329922,
-              290784559,
-              279358700,
-              480741918,
-              476818470,
-              477857387
-            ]
-          },
-          {
-            "key": "당년F",
-            "label": "당년F",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              3867,
-              -1500,
-              3166,
-              3366,
-              499,
-              50282,
-              30460771,
-              103694805,
-              145410252,
-              307879218,
-              357279587,
-              368467292
-            ]
-          },
-          {
-            "key": "당년S",
-            "label": "당년S",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              189691036,
-              128662514,
-              229439685,
-              266992127,
-              297745185,
-              235043476,
-              185977151,
-              117210152,
-              62514562,
-              57381514,
-              19484291,
-              16407640
-            ]
-          },
-          {
-            "key": "1년차",
-            "label": "1년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              375917417,
-              98462927,
-              77339800,
-              59276482,
-              55062994,
-              43721034,
-              43186078,
-              46107969,
-              47819061,
-              79040166,
-              67240238,
-              56538587
-            ]
-          },
-          {
-            "key": "2년차",
-            "label": "2년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              70300371,
-              27137121,
-              26410242,
-              18792848,
-              17242627,
-              12446613,
-              12818517,
-              18056142,
-              18903738,
-              29526661,
-              28470811,
-              23351829
-            ]
-          },
-          {
-            "key": "차기시즌",
-            "label": "차기시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              599,
-              869,
-              439,
-              null,
-              9501025
-            ]
-          },
-          {
-            "key": "과시즌",
-            "label": "과시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              27012081,
-              12837933,
-              12755080,
-              6338398,
-              6688456,
-              4892867,
-              3887405,
-              5714892,
-              4710218,
-              6913920,
-              4343543,
-              3591014
-            ]
-          },
-          {
-            "key": "ACC합계",
-            "label": "ACC합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              408579996,
-              256864160,
-              294894926,
-              277393840,
-              304429040,
-              251786251,
-              256660080,
-              286285161,
-              258174735,
-              339710628,
-              314337013,
-              294802973
-            ]
-          },
-          {
-            "key": "신발",
-            "label": "신발",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              300235516,
-              167149867,
-              191393300,
-              175435623,
-              194378492,
-              158819545,
-              158988345,
-              179709651,
-              169663859,
-              221909764,
-              210428680,
-              195331804
-            ]
-          },
-          {
-            "key": "모자",
-            "label": "모자",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              78310906,
-              63145024,
-              76159011,
-              74803051,
-              76178803,
-              59169694,
-              65693867,
-              71873966,
-              62483795,
-              88416423,
-              81538587,
-              80910370
-            ]
-          },
-          {
-            "key": "가방",
-            "label": "가방",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              24951231,
-              24464290,
-              24889339,
-              24564382,
-              30789189,
-              31019027,
-              29418645,
-              32139237,
-              23672254,
-              25794301,
-              18990536,
-              14845990
-            ]
-          },
-          {
-            "key": "기타",
-            "label": "기타",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              5082343,
-              2104979,
-              2453276,
-              2590784,
-              3082556,
-              2777985,
-              2559223,
-              2562307,
-              2354827,
-              3590140,
-              3379210,
-              3714809
-            ]
-          }
-        ]
-      },
-      "hq": {
-        "rows": [
-          {
-            "key": "매출합계",
-            "label": "매출합계",
-            "isTotal": true,
-            "isSubtotal": false,
-            "isLeaf": false,
-            "monthly": [
-              165157813,
-              73723342,
-              112212428,
-              100675258,
-              137166183,
-              74100092,
-              68042305,
-              84244839,
-              88902923,
-              238082240,
-              135176043,
-              122730263
-            ]
-          },
-          {
-            "key": "의류합계",
-            "label": "의류합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              92928196,
-              31829958,
-              55711117,
-              56958396,
-              68925591,
-              36160452,
-              32148630,
-              35069614,
-              40492529,
-              126347254,
-              72648750,
-              68881800
-            ]
-          },
-          {
-            "key": "당년F",
-            "label": "당년F",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              null,
-              null,
-              null,
-              null,
-              null,
-              341347,
-              2136381,
-              6952365,
-              12276140,
-              61428361,
-              37177107,
-              40171519
-            ]
-          },
-          {
-            "key": "당년S",
-            "label": "당년S",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              8112009,
-              8077949,
-              20808620,
-              25273481,
-              41399068,
-              23807380,
-              19283331,
-              15294085,
-              6353425,
-              7189572,
-              1901240,
-              1320189
-            ]
-          },
-          {
-            "key": "1년차",
-            "label": "1년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              49226417,
-              12689676,
-              20175996,
-              15814834,
-              14163090,
-              6105954,
-              6107973,
-              7440103,
-              13052453,
-              34964548,
-              24409837,
-              17888244
-            ]
-          },
-          {
-            "key": "2년차",
-            "label": "2년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              23746130,
-              5944868,
-              8274758,
-              7504250,
-              6781897,
-              2915058,
-              2376439,
-              3386761,
-              6559576,
-              12652054,
-              5493035,
-              4208461
-            ]
-          },
-          {
-            "key": "차기시즌",
-            "label": "차기시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              1396254
-            ]
-          },
-          {
-            "key": "과시즌",
-            "label": "과시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              11843640,
-              5117465,
-              6451743,
-              8365831,
-              6581536,
-              2990713,
-              2244506,
-              1996300,
-              2250935,
-              10112719,
-              3667531,
-              3897133
-            ]
-          },
-          {
-            "key": "ACC합계",
-            "label": "ACC합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              72229617,
-              41893384,
-              56501311,
-              43716862,
-              68240592,
-              37939640,
-              35893675,
-              49175225,
-              48410394,
-              111734986,
-              62527293,
-              53848463
-            ]
-          },
-          {
-            "key": "신발",
-            "label": "신발",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              49396215,
-              25982399,
-              33147621,
-              23994983,
-              39745124,
-              20553578,
-              20944776,
-              29736770,
-              32436677,
-              74283461,
-              37455940,
-              33334224
-            ]
-          },
-          {
-            "key": "모자",
-            "label": "모자",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              16341861,
-              11707543,
-              17681251,
-              15542507,
-              19033092,
-              11942634,
-              10270278,
-              12731196,
-              11909051,
-              29065689,
-              20140415,
-              17063862
-            ]
-          },
-          {
-            "key": "가방",
-            "label": "가방",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              5686316,
-              3872051,
-              5423599,
-              3975943,
-              9156101,
-              5170552,
-              4463857,
-              6435177,
-              3799510,
-              7742864,
-              4016208,
-              2779580
-            ]
-          },
-          {
-            "key": "기타",
-            "label": "기타",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              805225,
-              331391,
-              248840,
-              203429,
-              306275,
-              272876,
-              214764,
-              272082,
-              265156,
-              642972,
-              914730,
-              670797
-            ]
-          }
-        ]
-      }
-    },
+    "retail2025": null,
     "shipment": {
       "year": 2025,
-      "brand": "MLB",
-      "closedThrough": "202601",
+      "brand": "MLB KIDS",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -11900,18 +11345,18 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              939898886,
-              773146073,
-              852337300,
-              582685888,
-              382148064,
-              498566248,
-              717617866,
-              1203856738,
-              1156934868,
-              848071265,
-              526373892,
-              740103020
+              36407290,
+              22869671,
+              20387049,
+              21390999,
+              5091834,
+              10709174,
+              24887613,
+              34976827,
+              43212000,
+              22586481,
+              8071068,
+              21465418
             ]
           },
           {
@@ -11921,18 +11366,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              436681609,
-              494055070,
-              633877705,
-              387321891,
-              106716467,
-              111431425,
-              299916479,
-              646652610,
-              760274650,
-              606442246,
-              269377313,
-              332613895
+              26275836,
+              14678770,
+              20432004,
+              15443838,
+              964739,
+              259368,
+              15579079,
+              24165647,
+              37365383,
+              19447174,
+              2661933,
+              13113024
             ]
           },
           {
@@ -11947,13 +11392,13 @@
               null,
               null,
               null,
-              7268997,
-              294247154,
-              646758647,
-              760974617,
-              631538573,
-              354404477,
-              105272969
+              null,
+              16579468,
+              24592519,
+              37430431,
+              23239178,
+              6885655,
+              1711293
             ]
           },
           {
@@ -11963,18 +11408,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              431546256,
-              494763026,
-              636043417,
-              388226768,
-              106776533,
-              165933643,
-              5715608,
-              -24270,
-              -27365,
-              -24110336,
-              -85027164,
-              -14146034
+              25939356,
+              14724478,
+              29263938,
+              28160675,
+              2126173,
+              79969,
+              18257,
+              -16922,
+              -299,
+              -3792004,
+              -6198413,
+              0
             ]
           },
           {
@@ -11984,18 +11429,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              5021118,
-              -788297,
-              -2165712,
-              -904877,
-              -60066,
-              -61771215,
-              -46283,
-              -81767,
-              -672602,
-              -985991,
+              10231,
+              -5394,
+              -1142897,
+              -12517965,
+              -1161434,
+              -799,
               null,
-              null
+              null,
+              -64749,
+              null,
+              null,
+              0
             ]
           },
           {
@@ -12005,14 +11450,14 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              33389,
-              77346,
+              267437,
+              -29922,
+              -4892042,
+              -203669,
               null,
+              75661,
               null,
-              null,
-              null,
-              null,
-              null,
+              -214057,
               null,
               null,
               null,
@@ -12036,8 +11481,8 @@
               null,
               null,
               null,
-              null,
-              241486960
+              1974691,
+              11401731
             ]
           },
           {
@@ -12047,14 +11492,14 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              80846,
-              2995,
+              58812,
+              -10392,
+              -2796995,
+              4797,
               null,
-              null,
-              null,
-              null,
-              null,
-              null,
+              104537,
+              -1018646,
+              -195893,
               null,
               null,
               null,
@@ -12068,18 +11513,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              503217277,
-              279091003,
-              218459595,
-              195363997,
-              275431597,
-              387134823,
-              417701387,
-              557204128,
-              396660218,
-              241629019,
-              256996579,
-              407489125
+              10131454,
+              8190901,
+              -44955,
+              5947161,
+              4127095,
+              10449806,
+              9308534,
+              10811180,
+              5846617,
+              3139307,
+              5409135,
+              8352394
             ]
           },
           {
@@ -12089,18 +11534,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              395110682,
-              205343166,
-              156524785,
-              156387036,
-              205729557,
-              244776842,
-              231590298,
-              374372127,
-              264979053,
-              188898484,
-              192935270,
-              267470439
+              6987314,
+              8020320,
+              2407675,
+              3680440,
+              2094999,
+              4844100,
+              6873706,
+              8165396,
+              1406631,
+              1732709,
+              1624367,
+              4671660
             ]
           },
           {
@@ -12110,18 +11555,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              57953693,
-              39246509,
-              46884002,
-              26855019,
-              53037865,
-              110465092,
-              144835190,
-              131123563,
-              114967646,
-              42844479,
-              55709134,
-              96471054
+              606105,
+              95495,
+              -2127165,
+              1239006,
+              74130,
+              2407888,
+              105656,
+              812911,
+              3363150,
+              695469,
+              1304636,
+              1151743
             ]
           },
           {
@@ -12131,18 +11576,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              45097423,
-              32511400,
-              14204204,
-              9890450,
-              15235501,
-              24872626,
-              38254428,
-              46705186,
-              13961477,
-              8240379,
-              6154261,
-              37328004
+              2163208,
+              75007,
+              -154143,
+              1027844,
+              1957966,
+              3197818,
+              2290051,
+              2027140,
+              933267,
+              688850,
+              2437328,
+              2311272
             ]
           },
           {
@@ -12152,18 +11597,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              5055479,
-              1989928,
-              846604,
-              2231492,
-              1428674,
-              7020263,
-              3021471,
-              5003252,
-              2752042,
-              1645677,
-              2197914,
-              6219628
+              374827,
+              79,
+              -171322,
+              -129,
+              null,
+              null,
+              39121,
+              -194267,
+              143569,
+              22279,
+              42804,
+              217719
             ]
           }
         ]
@@ -12171,8 +11616,8 @@
     },
     "purchase": {
       "year": 2025,
-      "brand": "MLB",
-      "closedThrough": "202601",
+      "brand": "MLB KIDS",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -12182,18 +11627,18 @@
             "isSubtotal": false,
             "isLeaf": false,
             "monthly": [
-              784698366,
-              1354991505,
-              618274492,
-              392544675,
-              598112903,
-              983958541,
-              1780482470,
-              2026466554,
-              1603682374,
-              866076527,
-              529118274,
-              1188258430
+              25594313,
+              55744718,
+              31304739,
+              19806441,
+              11264122,
+              34753612,
+              63552801,
+              56844414,
+              66756329,
+              16856118,
+              27916864,
+              52026401
             ]
           },
           {
@@ -12203,18 +11648,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              407125856,
-              1085326675,
-              455520566,
-              39681615,
-              240103658,
-              252365992,
-              981064430,
-              1135813341,
-              972923572,
-              221598653,
-              78009375,
-              667400093
+              9830147,
+              47539825,
+              25867626,
+              10256907,
+              2541531,
+              11301435,
+              43101012,
+              43169764,
+              62956289,
+              13204288,
+              12336295,
+              28073579
             ]
           },
           {
@@ -12228,14 +11673,14 @@
               null,
               null,
               null,
-              67204912,
-              140621086,
-              981063861,
-              1135813341,
-              972923572,
-              221650091,
-              6544031,
-              -34038
+              null,
+              12404683,
+              43101012,
+              43170563,
+              62956289,
+              13246635,
+              540275,
+              -27437
             ]
           },
           {
@@ -12245,18 +11690,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              407163746,
-              1085326675,
-              455520566,
-              40445500,
-              174029088,
-              111744906,
-              569,
+              9830147,
+              47539825,
+              26644479,
+              10334551,
+              2581004,
+              -1103248,
               0,
               0,
-              -13542,
-              -57051,
-              -120483
+              0,
+              -42347,
+              -78017,
+              -161526
             ]
           },
           {
@@ -12266,18 +11711,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              -37890,
               0,
               0,
-              -726959,
-              -1130342,
+              -776853,
+              -77644,
+              -39473,
+              0,
+              0,
+              -799,
               0,
               0,
               0,
-              0,
-              -1968,
-              -18590,
-              -280347
+              -999
             ]
           },
           {
@@ -12290,13 +11735,13 @@
               0,
               0,
               0,
-              -36926,
               0,
               0,
               0,
               0,
               0,
-              -35928,
+              0,
+              0,
               0,
               0
             ]
@@ -12318,8 +11763,8 @@
               null,
               null,
               null,
-              71540985,
-              667834961
+              11874037,
+              28263541
             ]
           },
           {
@@ -12350,18 +11795,18 @@
             "isSubtotal": true,
             "isLeaf": false,
             "monthly": [
-              377572510,
-              269664830,
-              162753926,
-              352863060,
-              358009245,
-              731592549,
-              799418040,
-              890653213,
-              630758802,
-              644477874,
-              451108899,
-              520858337
+              15764166,
+              8204893,
+              5437113,
+              9549534,
+              8722591,
+              23452177,
+              20451789,
+              13674650,
+              3800040,
+              3651830,
+              15580569,
+              23952822
             ]
           },
           {
@@ -12371,18 +11816,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              291633055,
-              211349123,
-              86686191,
-              274659045,
-              255161805,
-              518475623,
-              382868888,
-              610063657,
-              486566319,
-              587659824,
-              323944284,
-              343900733
+              15318955,
+              5192840,
+              3815500,
+              7152813,
+              4258991,
+              14094030,
+              13151000,
+              5870641,
+              0,
+              3235970,
+              6928941,
+              9225350
             ]
           },
           {
@@ -12392,18 +11837,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              45513390,
-              39351242,
-              69576325,
-              49482265,
-              90857715,
-              155885920,
-              327047041,
-              244786081,
-              138531593,
-              31691730,
-              119923930,
-              83689563
+              445211,
+              3012053,
+              589889,
+              1408521,
+              0,
+              6685527,
+              4401285,
+              2109396,
+              3724841,
+              415860,
+              3187845,
+              4031045
             ]
           },
           {
@@ -12413,18 +11858,18 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              39808935,
-              17624750,
-              5091930,
-              27043185,
-              10146175,
-              49130522,
-              81480020,
-              27077700,
-              4316140,
-              23466690,
-              1202720,
-              88469560
+              0,
+              0,
+              1031724,
+              988200,
+              4463600,
+              2672620,
+              2825122,
+              5271200,
+              0,
+              0,
+              5463783,
+              10119173
             ]
           },
           {
@@ -12434,30 +11879,30 @@
             "isSubtotal": false,
             "isLeaf": true,
             "monthly": [
-              617130,
-              1339715,
-              1399480,
-              1678565,
-              1843550,
-              8100484,
-              8022091,
-              8725775,
-              1344750,
-              1659630,
-              6037965,
-              4798481
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              74382,
+              423413,
+              75199,
+              0,
+              0,
+              577254
             ]
           }
         ]
       }
     },
-    "savedAt": "2026-02-26T12:30:52.354Z"
+    "savedAt": "2026-03-04T04:22:07.797Z"
   },
   "2025:DISCOVERY": {
     "monthly": {
       "year": 2025,
       "brand": "DISCOVERY",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -13042,7 +12487,7 @@
     "retailActuals": {
       "year": 2025,
       "brand": "DISCOVERY",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "dealer": {
         "rows": [
           {
@@ -13598,566 +13043,11 @@
         ]
       }
     },
-    "retail2025": {
-      "dealer": {
-        "rows": [
-          {
-            "key": "매출합계",
-            "label": "매출합계",
-            "isTotal": true,
-            "isSubtotal": false,
-            "isLeaf": false,
-            "monthly": [
-              1071504768,
-              523963155,
-              640842899,
-              628797061,
-              681168801,
-              547940523,
-              532990002,
-              577069720,
-              537533435,
-              820452546,
-              791155483,
-              772660360
-            ]
-          },
-          {
-            "key": "의류합계",
-            "label": "의류합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              662924772,
-              267098995,
-              345947973,
-              351403221,
-              376739761,
-              296154272,
-              276329922,
-              290784559,
-              279358700,
-              480741918,
-              476818470,
-              477857387
-            ]
-          },
-          {
-            "key": "당년F",
-            "label": "당년F",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              3867,
-              -1500,
-              3166,
-              3366,
-              499,
-              50282,
-              30460771,
-              103694805,
-              145410252,
-              307879218,
-              357279587,
-              368467292
-            ]
-          },
-          {
-            "key": "당년S",
-            "label": "당년S",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              189691036,
-              128662514,
-              229439685,
-              266992127,
-              297745185,
-              235043476,
-              185977151,
-              117210152,
-              62514562,
-              57381514,
-              19484291,
-              16407640
-            ]
-          },
-          {
-            "key": "1년차",
-            "label": "1년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              375917417,
-              98462927,
-              77339800,
-              59276482,
-              55062994,
-              43721034,
-              43186078,
-              46107969,
-              47819061,
-              79040166,
-              67240238,
-              56538587
-            ]
-          },
-          {
-            "key": "2년차",
-            "label": "2년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              70300371,
-              27137121,
-              26410242,
-              18792848,
-              17242627,
-              12446613,
-              12818517,
-              18056142,
-              18903738,
-              29526661,
-              28470811,
-              23351829
-            ]
-          },
-          {
-            "key": "차기시즌",
-            "label": "차기시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              599,
-              869,
-              439,
-              null,
-              9501025
-            ]
-          },
-          {
-            "key": "과시즌",
-            "label": "과시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              27012081,
-              12837933,
-              12755080,
-              6338398,
-              6688456,
-              4892867,
-              3887405,
-              5714892,
-              4710218,
-              6913920,
-              4343543,
-              3591014
-            ]
-          },
-          {
-            "key": "ACC합계",
-            "label": "ACC합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              408579996,
-              256864160,
-              294894926,
-              277393840,
-              304429040,
-              251786251,
-              256660080,
-              286285161,
-              258174735,
-              339710628,
-              314337013,
-              294802973
-            ]
-          },
-          {
-            "key": "신발",
-            "label": "신발",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              300235516,
-              167149867,
-              191393300,
-              175435623,
-              194378492,
-              158819545,
-              158988345,
-              179709651,
-              169663859,
-              221909764,
-              210428680,
-              195331804
-            ]
-          },
-          {
-            "key": "모자",
-            "label": "모자",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              78310906,
-              63145024,
-              76159011,
-              74803051,
-              76178803,
-              59169694,
-              65693867,
-              71873966,
-              62483795,
-              88416423,
-              81538587,
-              80910370
-            ]
-          },
-          {
-            "key": "가방",
-            "label": "가방",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              24951231,
-              24464290,
-              24889339,
-              24564382,
-              30789189,
-              31019027,
-              29418645,
-              32139237,
-              23672254,
-              25794301,
-              18990536,
-              14845990
-            ]
-          },
-          {
-            "key": "기타",
-            "label": "기타",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              5082343,
-              2104979,
-              2453276,
-              2590784,
-              3082556,
-              2777985,
-              2559223,
-              2562307,
-              2354827,
-              3590140,
-              3379210,
-              3714809
-            ]
-          }
-        ]
-      },
-      "hq": {
-        "rows": [
-          {
-            "key": "매출합계",
-            "label": "매출합계",
-            "isTotal": true,
-            "isSubtotal": false,
-            "isLeaf": false,
-            "monthly": [
-              165157813,
-              73723342,
-              112212428,
-              100675258,
-              137166183,
-              74100092,
-              68042305,
-              84244839,
-              88902923,
-              238082240,
-              135176043,
-              122730263
-            ]
-          },
-          {
-            "key": "의류합계",
-            "label": "의류합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              92928196,
-              31829958,
-              55711117,
-              56958396,
-              68925591,
-              36160452,
-              32148630,
-              35069614,
-              40492529,
-              126347254,
-              72648750,
-              68881800
-            ]
-          },
-          {
-            "key": "당년F",
-            "label": "당년F",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              null,
-              null,
-              null,
-              null,
-              null,
-              341347,
-              2136381,
-              6952365,
-              12276140,
-              61428361,
-              37177107,
-              40171519
-            ]
-          },
-          {
-            "key": "당년S",
-            "label": "당년S",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              8112009,
-              8077949,
-              20808620,
-              25273481,
-              41399068,
-              23807380,
-              19283331,
-              15294085,
-              6353425,
-              7189572,
-              1901240,
-              1320189
-            ]
-          },
-          {
-            "key": "1년차",
-            "label": "1년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              49226417,
-              12689676,
-              20175996,
-              15814834,
-              14163090,
-              6105954,
-              6107973,
-              7440103,
-              13052453,
-              34964548,
-              24409837,
-              17888244
-            ]
-          },
-          {
-            "key": "2년차",
-            "label": "2년차",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              23746130,
-              5944868,
-              8274758,
-              7504250,
-              6781897,
-              2915058,
-              2376439,
-              3386761,
-              6559576,
-              12652054,
-              5493035,
-              4208461
-            ]
-          },
-          {
-            "key": "차기시즌",
-            "label": "차기시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              1396254
-            ]
-          },
-          {
-            "key": "과시즌",
-            "label": "과시즌",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              11843640,
-              5117465,
-              6451743,
-              8365831,
-              6581536,
-              2990713,
-              2244506,
-              1996300,
-              2250935,
-              10112719,
-              3667531,
-              3897133
-            ]
-          },
-          {
-            "key": "ACC합계",
-            "label": "ACC합계",
-            "isTotal": false,
-            "isSubtotal": true,
-            "isLeaf": false,
-            "monthly": [
-              72229617,
-              41893384,
-              56501311,
-              43716862,
-              68240592,
-              37939640,
-              35893675,
-              49175225,
-              48410394,
-              111734986,
-              62527293,
-              53848463
-            ]
-          },
-          {
-            "key": "신발",
-            "label": "신발",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              49396215,
-              25982399,
-              33147621,
-              23994983,
-              39745124,
-              20553578,
-              20944776,
-              29736770,
-              32436677,
-              74283461,
-              37455940,
-              33334224
-            ]
-          },
-          {
-            "key": "모자",
-            "label": "모자",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              16341861,
-              11707543,
-              17681251,
-              15542507,
-              19033092,
-              11942634,
-              10270278,
-              12731196,
-              11909051,
-              29065689,
-              20140415,
-              17063862
-            ]
-          },
-          {
-            "key": "가방",
-            "label": "가방",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              5686316,
-              3872051,
-              5423599,
-              3975943,
-              9156101,
-              5170552,
-              4463857,
-              6435177,
-              3799510,
-              7742864,
-              4016208,
-              2779580
-            ]
-          },
-          {
-            "key": "기타",
-            "label": "기타",
-            "isTotal": false,
-            "isSubtotal": false,
-            "isLeaf": true,
-            "monthly": [
-              805225,
-              331391,
-              248840,
-              203429,
-              306275,
-              272876,
-              214764,
-              272082,
-              265156,
-              642972,
-              914730,
-              670797
-            ]
-          }
-        ]
-      }
-    },
+    "retail2025": null,
     "shipment": {
       "year": 2025,
       "brand": "DISCOVERY",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -14439,7 +13329,7 @@
     "purchase": {
       "year": 2025,
       "brand": "DISCOVERY",
-      "closedThrough": "202601",
+      "closedThrough": "202602",
       "data": {
         "rows": [
           {
@@ -14718,6 +13608,6 @@
         ]
       }
     },
-    "savedAt": "2026-02-26T12:30:57.526Z"
+    "savedAt": "2026-03-04T04:22:11.026Z"
   }
 }

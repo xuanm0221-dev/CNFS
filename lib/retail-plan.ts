@@ -50,7 +50,8 @@ export function mergePlanMonths(
     monthly: Array.from({ length: 12 }, (_, i) => {
       const c = clothingSubtotal.monthly[i];
       const a = accSubtotal.monthly[i];
-      return c != null && a != null ? c + a : null;
+      if (c == null && a == null) return null;
+      return (c ?? 0) + (a ?? 0);
     }),
   };
   return [

@@ -691,6 +691,18 @@ export default function InventoryDashboard() {
         return;
       }
 
+      if (year === 2026) {
+        setSnapshotSaved(false);
+        setSnapshotSavedAt(null);
+        await Promise.all([
+          fetchMonthlyData(),
+          fetchRetailData(),
+          fetchShipmentData(),
+          fetchPurchaseData(),
+        ]);
+        return;
+      }
+
       const serverSnap = await fetchSnapshotFromServer(year, brand);
       if (cancelled) return;
       if (serverSnap) {
@@ -774,35 +786,22 @@ export default function InventoryDashboard() {
     };
   }, [year]);
 
-  // growthRate / growthRateHq 변경 시 저장된 스냅샷이면 계획 구간만 재계산 (API 재조회 없음)
+  // 2026은 snapshot을 우회하므로 성장률 변경 시 리테일 API를 다시 조회한다.
   useEffect(() => {
-    if (!snapshotSaved) return;
-    const snap = loadSnapshot(year, brand);
-    if (!snap || year !== 2026 || !snap.planFromMonth || !snap.retail2025) return;
-    setRetailData(
-      applyPlanToSnapshot(snap.retailActuals, snap.retail2025 as RetailSalesResponse, snap.planFromMonth, growthRate, growthRateHq),
-    );
+    if (year !== 2026) return;
+    void fetchRetailData();
+    setSnapshotSaved(false);
+    setSnapshotSavedAt(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [growthRate, growthRateHq]);
+  }, [year, growthRate, growthRateHq]);
 
   useEffect(() => {
     if (year !== 2026 || brand !== '전체') return;
     let cancelled = false;
 
     const warmServerSnapshotsToLocal = async () => {
-      const localSnapshots: Partial<Record<LeafBrand, SnapshotData>> = {};
-
-      await Promise.all(
-        BRANDS_TO_AGGREGATE.map(async (b) => {
-          const snap = await fetchSnapshotFromServer(year, b);
-          if (!cancelled && snap) {
-            saveSnapshot(year, b, snap);
-            localSnapshots[b] = snap;
-          }
-        }),
-      );
       if (!cancelled) {
-        setSavedSnapshotByBrand({ ...localSnapshots });
+        setSavedSnapshotByBrand({});
       }
     };
 
@@ -835,6 +834,22 @@ export default function InventoryDashboard() {
     const run = async () => {
       try {
         const prevYear = year - 1;
+        if (brand !== '전체') {
+          const localPrevSnap = loadSnapshot(prevYear, brand);
+          const prevSnap = localPrevSnap ?? await fetchSnapshotFromServer(prevYear, brand);
+          if (cancelled) return;
+          if (prevSnap) {
+            if (!localPrevSnap) {
+              saveSnapshot(prevYear, brand, prevSnap);
+            }
+            setPrevYearMonthlyData(prevSnap.monthly);
+            setPrevYearRetailData(prevSnap.retailActuals);
+            setPrevYearShipmentData(prevSnap.shipment);
+            setPrevYearPurchaseData(prevSnap.purchase);
+            return;
+          }
+        }
+
         if (brand === '전체') {
           const [monthlyRess, retailRess, shipmentRess, purchaseRess] = await Promise.all([
             Promise.all(BRANDS_TO_AGGREGATE.map((b) =>
@@ -924,14 +939,16 @@ export default function InventoryDashboard() {
       !monthlyData ||
       !retailData ||
       !shipmentData ||
+      !purchaseData ||
       monthlyData.dealer.rows.length === 0 ||
       retailData.dealer.rows.length === 0 ||
-      shipmentData.data.rows.length === 0
+      shipmentData.data.rows.length === 0 ||
+      purchaseData.data.rows.length === 0
     ) {
       return null;
     }
     if (year === 2026 && brand === '전체') {
-      if (BRANDS_TO_AGGREGATE.some((b) => !monthlyDataByBrand[b] || !retailDataByBrand[b] || !shipmentDataByBrand[b])) {
+      if (BRANDS_TO_AGGREGATE.some((b) => !monthlyDataByBrand[b] || !retailDataByBrand[b] || !shipmentDataByBrand[b] || !purchaseDataByBrand[b])) {
         return null;
       }
       const perBrandTables: TopTablePair[] = BRANDS_TO_AGGREGATE.map((b) => {
@@ -1108,6 +1125,7 @@ export default function InventoryDashboard() {
   const yoyPending = year === 2026 && !prevYearError && (prevYearLoading || !prevYearTableData);
   const statusLoading = loading || monthlyLoading || retailLoading || shipmentLoading || purchaseLoading || recalcLoading || yoyPending;
   const statusError = !!error || !!monthlyError || !!retailError || !!shipmentError || !!purchaseError || prevYearError;
+  const statusErrorMessage = error || monthlyError || retailError || shipmentError || purchaseError || prevYearError || null;
 
   // 2026 ACC ???ш퀬二쇱닔 ?몄쭛 ???곹깭 諛섏쁺 (??? ?먮뒗 湲곕낯媛?釉붾줉怨??곕룞)
   const handleWoiChange = useCallback((tableType: 'dealer' | 'hq', rowKey: string, newWoi: number) => {
@@ -1143,6 +1161,11 @@ export default function InventoryDashboard() {
   // 저장 시 월별 재고잔액·리테일 매출·출고·매입 4개만 저장
   const handleSave = useCallback(async () => {
     if (!monthlyData || !retailData || !shipmentData || !purchaseData) return;
+    if (year === 2026) {
+      setSnapshotSaved(false);
+      setSnapshotSavedAt(null);
+      return;
+    }
     const retailActuals =
       year === 2026 && retailData.planFromMonth
         ? stripPlanMonths(retailData, retailData.planFromMonth)
@@ -1210,6 +1233,12 @@ export default function InventoryDashboard() {
       shipmentByBrandRef.current[brand as LeafBrand] = fs;
       purchaseByBrandRef.current[brand as LeafBrand] = fp;
       if (fr.retail2025) retail2025Ref.current = fr.retail2025;
+
+      if (year === 2026) {
+        setSnapshotSaved(false);
+        setSnapshotSavedAt(null);
+        return;
+      }
 
       const retailActuals =
         year === 2026 && fr.planFromMonth
@@ -1280,13 +1309,13 @@ export default function InventoryDashboard() {
 
       <div className="px-6 py-5">
         {/* ?? 湲곗〈 Sell-in / Sell-out ???? */}
-        {loading && !dealerTableData && (
+        {statusLoading && !dealerTableData && (
             <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
               로딩 중...
             </div>
         )}
-        {error && !dealerTableData && (
-          <div className="py-10 text-center text-red-500 text-sm">{error}</div>
+        {statusErrorMessage && !statusLoading && !dealerTableData && (
+          <div className="py-10 text-center text-red-500 text-sm">{statusErrorMessage}</div>
         )}
         {dealerTableData && hqTableData && (
           <>
