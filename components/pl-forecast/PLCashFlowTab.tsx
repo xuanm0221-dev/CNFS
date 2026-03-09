@@ -491,6 +491,7 @@ export default function PLCashFlowTab() {
   const [cfPlanByKey, setCfPlanByKey] = useState<Record<string, number>>({});
   const [cashDebtPlan, setCashDebtPlan] = useState<{ cash: number | null; borrowing: number | null }>({ cash: null, borrowing: null });
   const [wcPlanByKey, setWcPlanByKey] = useState<Record<string, number>>({});
+  const [wcForecastByKey, setWcForecastByKey] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetch('/api/pl-forecast/cf-plan', { cache: 'no-store' })
@@ -515,6 +516,15 @@ export default function PLCashFlowTab() {
       .then((res) => res.json())
       .then((data: Record<string, number>) => {
         if (data && !('error' in data)) setWcPlanByKey(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/pl-forecast/wc-forecast', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data: Record<string, number>) => {
+        if (data && !('error' in data)) setWcForecastByKey(data);
       })
       .catch(() => {});
   }, []);
@@ -986,7 +996,13 @@ export default function PLCashFlowTab() {
 
   const workingCapital2026 = (rowKey: string): number | null => {
     const monthEndIndex = 11;
+    // CSV forecast 값이 있으면 우선 사용 (1위안 → K단위 변환)
+    const forecastArDealer = wcForecastByKey['wc_ar_dealer'] != null ? wcForecastByKey['wc_ar_dealer'] / 1000 : null;
+    const forecastArDirect = wcForecastByKey['wc_ar_direct'] != null ? wcForecastByKey['wc_ar_direct'] / 1000 : null;
+    const forecastApHq = wcForecastByKey['wc_ap_hq'] != null ? wcForecastByKey['wc_ap_hq'] / 1000 : null;
+    const forecastApGoods = wcForecastByKey['wc_ap_goods'] != null ? wcForecastByKey['wc_ap_goods'] / 1000 : null;
     const arDealer =
+      forecastArDealer ??
       HARDCODED_WC_MONTHLY_K.wc_ar_dealer[monthEndIndex] ??
       TAG_COST_RATIO_BRANDS.reduce<number | null>((sum, brand) => {
         const shipmentK = toDisplayK(shipmentMonthlyByBrand[brand][monthEndIndex]);
@@ -996,7 +1012,7 @@ export default function PLCashFlowTab() {
         return (sum ?? 0) + planned;
       }, null) ??
       0;
-    const arDirect = HARDCODED_WC_MONTHLY_K.wc_ar_direct[monthEndIndex] ?? arDealer * WC_AR_DIRECT_SHARE_OF_DEALER_AR;
+    const arDirect = forecastArDirect ?? HARDCODED_WC_MONTHLY_K.wc_ar_direct[monthEndIndex] ?? arDealer * WC_AR_DIRECT_SHARE_OF_DEALER_AR;
     const inventoryMlbTag = inventoryHqClosing.MLB || 0;
     const inventoryKidsTag = inventoryHqClosing['MLB KIDS'] || 0;
     const inventoryDiscoveryTag = inventoryHqClosing.DISCOVERY || 0;
@@ -1013,6 +1029,7 @@ export default function PLCashFlowTab() {
         ? 0
         : (inventoryDiscoveryTag / 1.13) * tagCostRatio.DISCOVERY * (1 - VALUATION_REDUCTION_RATE.DISCOVERY);
     const apHq =
+      forecastApHq ??
       HARDCODED_WC_MONTHLY_K.wc_ap_hq[monthEndIndex] ??
       TAG_COST_RATIO_BRANDS.reduce<number | null>((sum, brand) => {
         const purchaseK = toDisplayK(purchaseMonthlyByBrand[brand][monthEndIndex]);
@@ -1022,7 +1039,7 @@ export default function PLCashFlowTab() {
         return (sum ?? 0) + planned;
       }, null) ??
       0;
-    const apGoods = HARDCODED_WC_MONTHLY_K.wc_ap_goods[monthEndIndex] ?? apHq * WC_AP_GOODS_SHARE_OF_HQ_AP;
+    const apGoods = forecastApGoods ?? HARDCODED_WC_MONTHLY_K.wc_ap_goods[monthEndIndex] ?? apHq * WC_AP_GOODS_SHARE_OF_HQ_AP;
 
     if (rowKey === 'wc_total') {
       return arDirect + arDealer + inventoryMlb + inventoryKids + inventoryDiscovery + apHq + apGoods;
@@ -1074,7 +1091,13 @@ export default function PLCashFlowTab() {
       if (value == null) return sum;
       return (sum ?? 0) + value;
     }, null);
-    const arDealer = HARDCODED_WC_MONTHLY_K.wc_ar_dealer[monthIndex] ?? TAG_COST_RATIO_BRANDS.reduce<number | null>((sum, brand) => {
+    // 12월(monthIndex=11)은 forecast CSV 값 우선 적용 (1위안 → K단위)
+    const isForecastMonth = monthIndex === 11;
+    const forecastArDealer = isForecastMonth && wcForecastByKey['wc_ar_dealer'] != null ? wcForecastByKey['wc_ar_dealer'] / 1000 : null;
+    const forecastArDirect = isForecastMonth && wcForecastByKey['wc_ar_direct'] != null ? wcForecastByKey['wc_ar_direct'] / 1000 : null;
+    const forecastApHq = isForecastMonth && wcForecastByKey['wc_ap_hq'] != null ? wcForecastByKey['wc_ap_hq'] / 1000 : null;
+    const forecastApGoods = isForecastMonth && wcForecastByKey['wc_ap_goods'] != null ? wcForecastByKey['wc_ap_goods'] / 1000 : null;
+    const arDealer = forecastArDealer ?? HARDCODED_WC_MONTHLY_K.wc_ar_dealer[monthIndex] ?? TAG_COST_RATIO_BRANDS.reduce<number | null>((sum, brand) => {
       const shipmentK = toDisplayK(shipmentMonthlyByBrand[brand][monthIndex]);
       const ratio = tagCostRatio[brand];
       if (shipmentK == null || shipmentK === 0 || ratio == null) return sum;
@@ -1082,6 +1105,7 @@ export default function PLCashFlowTab() {
       return (sum ?? 0) + planned;
     }, null);
     const apHq =
+      forecastApHq ??
       HARDCODED_WC_MONTHLY_K.wc_ap_hq[monthIndex] ??
       TAG_COST_RATIO_BRANDS.reduce<number | null>((sum, brand) => {
         const purchaseK = toDisplayK(purchaseMonthlyByBrand[brand][monthIndex]);
@@ -1090,8 +1114,8 @@ export default function PLCashFlowTab() {
         const planned = -((purchaseK / 1.13) * ratio);
         return (sum ?? 0) + planned;
       }, null);
-    const arDirect = HARDCODED_WC_MONTHLY_K.wc_ar_direct[monthIndex] ?? (arDealer == null ? null : arDealer * WC_AR_DIRECT_SHARE_OF_DEALER_AR);
-    const apGoods = HARDCODED_WC_MONTHLY_K.wc_ap_goods[monthIndex] ?? (apHq == null ? null : apHq * WC_AP_GOODS_SHARE_OF_HQ_AP);
+    const arDirect = forecastArDirect ?? HARDCODED_WC_MONTHLY_K.wc_ar_direct[monthIndex] ?? (arDealer == null ? null : arDealer * WC_AR_DIRECT_SHARE_OF_DEALER_AR);
+    const apGoods = forecastApGoods ?? HARDCODED_WC_MONTHLY_K.wc_ap_goods[monthIndex] ?? (apHq == null ? null : apHq * WC_AP_GOODS_SHARE_OF_HQ_AP);
     const arTotal = [arDirect, arDealer].reduce<number | null>((sum, value) => {
       if (value == null) return sum;
       return (sum ?? 0) + value;
