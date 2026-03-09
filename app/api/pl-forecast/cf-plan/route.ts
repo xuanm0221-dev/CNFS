@@ -60,7 +60,8 @@ export async function GET() {
       const compositeKey = `${l1}|${l2}|${l3}`;
       const internalKey = KEY_MAP[compositeKey];
       if (internalKey) {
-        data[internalKey] = toNumber(row['합계']);
+        const valueCol = Object.keys(row).find((k) => k.trim() === '합계');
+        data[internalKey] = toNumber(valueCol ? row[valueCol] : undefined);
       }
     }
 
