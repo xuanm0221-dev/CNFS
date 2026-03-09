@@ -86,7 +86,7 @@ const DISCOVERY_OTB_HARDCODE: Record<OtbSeason, number> = {
 
 /**
  * 2026년 기준 5개 시즌 × 3개 브랜드 OTB 합계(retail_amt)를 병렬 조회.
- * MLB 브랜드는 하드코딩 값 사용, MLB KIDS / DISCOVERY는 Snowflake 조회.
+ * MLB, DISCOVERY 브랜드는 하드코딩 값 사용, MLB KIDS는 Snowflake 조회.
  * 반환값 단위: CNY (원본) — 호출측에서 ÷1000으로 CNY K 변환.
  */
 export async function fetchOtbData(): Promise<OtbData> {
