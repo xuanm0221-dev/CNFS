@@ -890,10 +890,10 @@ export default function InventoryDashboard() {
     '기타': 30,
   } as Record<AccKey, number>;
 
-  // ?? 湲곗〈 ??fetch ??
+  // 재고 데이터 fetch 함수
   const fetchData = useCallback(async () => {
-    // 2025/2026 ?ш퀬?먯궛 ???곷떒 ?붿빟?쒕뒗 ?붾퀎/由ы뀒??異쒓퀬/留ㅼ엯 議고빀?쇰줈留??뚮뜑?쒕떎.
-    // (湲곗〈 /api/inventory fallback???곕㈃ 珥덇린 ?섎뱶肄붾뵫 ?レ옄 源쒕묀?꾩씠 諛쒖깮)
+    // 2025/2026 재고자산 데이터는 탭별로 월별/출하/출고/매입 각각으로 나뉘어 로드됩니다.
+    // (기존 /api/inventory fallback이 있어도 초기 데이터타입 불일치가 발생)
     if (year === 2025 || year === 2026) {
       setLoading(false);
       setError(null);
@@ -909,7 +909,7 @@ export default function InventoryDashboard() {
         brand,
       });
       const res = await fetch(`/api/inventory?${params}`);
-      if (!res.ok) throw new Error('?곗씠??濡쒕뱶 ?ㅽ뙣');
+      if (!res.ok) throw new Error('데이터 로드 실패');
       setData(await res.json());
     } catch (e) {
       setError(String(e));
@@ -938,7 +938,7 @@ export default function InventoryDashboard() {
         setMonthlyData(aggregateMonthlyStock(jsons));
       } else {
         const res = await fetch(inventoryUrl('monthly-stock', year, brand));
-        if (!res.ok) throw new Error('?붾퀎 ?곗씠??濡쒕뱶 ?ㅽ뙣');
+        if (!res.ok) throw new Error('월별 데이터 로드 실패');
         const json: MonthlyStockResponse = await res.json();
         if ((json as { error?: string }).error) throw new Error((json as { error?: string }).error);
         monthlyByBrandRef.current[brand as LeafBrand] = json;
@@ -974,7 +974,7 @@ export default function InventoryDashboard() {
       } else {
         const brandKey = brand as AnnualPlanBrand;
         const res = await fetch(inventoryUrl('retail-sales', year, brand, year !== 2025 ? { growthRate: String(growthRateByBrand[brandKey] ?? growthRate), growthRateHq: String(growthRateHqByBrand[brandKey] ?? growthRateHq) } : {}));
-        if (!res.ok) throw new Error('由ы뀒??留ㅼ텧 ?곗씠??濡쒕뱶 ?ㅽ뙣');
+        if (!res.ok) throw new Error('출하매출 데이터 로드 실패');
         const json: RetailSalesResponse = await res.json();
         if ((json as { error?: string }).error) throw new Error((json as { error?: string }).error);
         if (json.retail2025) retail2025Ref.current = json.retail2025;
@@ -1000,7 +1000,7 @@ export default function InventoryDashboard() {
           ),
         );
         const jsons: ShipmentSalesResponse[] = await Promise.all(ress.map((r) => r.json()));
-        for (const j of jsons) if ((j as { error?: string }).error) throw new Error((j as { error?: string }).error ?? '異쒓퀬留ㅼ텧 ?곗씠??濡쒕뱶 ?ㅽ뙣');
+        for (const j of jsons) if ((j as { error?: string }).error) throw new Error((j as { error?: string }).error ?? '출고매출 데이터 로드 실패');
         BRANDS_TO_AGGREGATE.forEach((b, i) => {
           shipmentByBrandRef.current[b] = jsons[i];
         });
@@ -1009,7 +1009,7 @@ export default function InventoryDashboard() {
       } else {
         const res = await fetch(inventoryUrl('shipment-sales', year, brand));
         const json: ShipmentSalesResponse = await res.json();
-        if (!res.ok || (json as { error?: string }).error) throw new Error((json as { error?: string }).error ?? '異쒓퀬留ㅼ텧 ?곗씠??濡쒕뱶 ?ㅽ뙣');
+        if (!res.ok || (json as { error?: string }).error) throw new Error((json as { error?: string }).error ?? '출고매출 데이터 로드 실패');
         shipmentByBrandRef.current[brand as LeafBrand] = json;
         setShipmentData(json);
       }
@@ -1032,7 +1032,7 @@ export default function InventoryDashboard() {
           ),
         );
         const jsons: PurchaseResponse[] = await Promise.all(ress.map((r) => r.json()));
-        for (const j of jsons) if ((j as { error?: string }).error) throw new Error((j as { error?: string }).error ?? '留ㅼ엯?곹뭹 ?곗씠??濡쒕뱶 ?ㅽ뙣');
+        for (const j of jsons) if ((j as { error?: string }).error) throw new Error((j as { error?: string }).error ?? '매입상품 데이터 로드 실패');
         BRANDS_TO_AGGREGATE.forEach((b, i) => {
           purchaseByBrandRef.current[b] = jsons[i];
         });
@@ -1041,7 +1041,7 @@ export default function InventoryDashboard() {
       } else {
         const res = await fetch(inventoryUrl('purchase', year, brand));
         const json: PurchaseResponse = await res.json();
-        if (!res.ok || (json as { error?: string }).error) throw new Error((json as { error?: string }).error ?? '留ㅼ엯?곹뭹 ?곗씠??濡쒕뱶 ?ㅽ뙣');
+        if (!res.ok || (json as { error?: string }).error) throw new Error((json as { error?: string }).error ?? '매입상품 데이터 로드 실패');
         purchaseByBrandRef.current[brand as LeafBrand] = json;
         setPurchaseData(json);
       }

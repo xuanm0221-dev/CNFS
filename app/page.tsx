@@ -58,12 +58,12 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
-  // 鍮꾧퀬 ?곗씠??愿由?
+  // 비고 데이터 타입
   const [bsRemarks, setBsRemarks] = useState<Map<string, string>>(new Map());
   const [wcRemarks, setWcRemarks] = useState<Map<string, string>>(new Map());
   const [wcRemarksAuto, setWcRemarksAuto] = useState<{ [key: string]: string } | null>(null);
 
-  // 鍮꾧퀬 ?곗씠??濡쒕뱶 (?щТ?곹깭????吏꾩엯 ??諛?珥덇린媛믪쑝濡?由ъ뀑 ???몄텧)
+  // 비고 데이터 로드 (초기상태 진입 시 API에서 로드)
   const loadRemarks = async (type: 'bs' | 'wc') => {
     try {
       const response = await fetch(`/api/remarks?type=${type}`);
@@ -79,7 +79,7 @@ export default function Home() {
         }
       }
     } catch (error) {
-      console.error('鍮꾧퀬 濡쒕뱶 ?ㅽ뙣:', error);
+      console.error('비고 로드 실패:', error);
     }
   };
 
@@ -103,7 +103,7 @@ export default function Home() {
     }
   }, [activeTab]);
 
-  // 鍮꾧퀬 ????⑥닔 (?붾컮?댁뒪)
+  // 비고 저장 함수 (디바운스)
   const saveRemarkDebounced = useMemo(() => {
     const timeouts: { [key: string]: NodeJS.Timeout } = {};
     
@@ -124,19 +124,19 @@ export default function Home() {
           const data = await response.json();
           
           if (!data.success) {
-            console.error('鍮꾧퀬 ????ㅽ뙣:', data.error || 'Unknown error');
-            // ?먮윭媛 諛쒖깮?대룄 ?ъ슜??寃쏀뿕???꾪빐 議곗슜???ㅽ뙣 (肄섏넄?먮쭔 濡쒓렇)
+            console.error('비고 저장 실패:', data.error || 'Unknown error');
+            // 오류가 발생해도 사용자 경험을 위해 무시 (디바운스 로그)
           } else {
-            console.log('鍮꾧퀬 ????깃났:', account);
+            console.log('비고 저장 성공:', account);
           }
         } catch (error) {
-          console.error('鍮꾧퀬 ????ㅽ뙣:', error);
+          console.error('비고 저장 실패:', error);
         }
-      }, 1000); // 1珥??붾컮?댁뒪
+      }, 1000); // 1초 디바운스
     };
   }, []);
 
-  // 鍮꾧퀬 珥덇린媛믪쑝濡?由ъ뀑 (KV 鍮꾩슦怨??ㅼ떆 濡쒕뱶)
+  // 비고 초기상태로 저장 (KV 키값과 함께 로드)
   const resetRemarksData = async () => {
     try {
       setError(null);
@@ -167,7 +167,7 @@ export default function Home() {
     }
   };
 
-  // 鍮꾧퀬 ?쇨큵 ???
+  // 비고 삭제 기능
   const saveRemarksToServer = async () => {
     try {
       setError(null);
@@ -189,7 +189,7 @@ export default function Home() {
         setError('비고 저장에 실패했습니다.');
         return;
       }
-      alert('??λ릺?덉뒿?덈떎.');
+      alert('저장됩니다.');
     } catch (err) {
       console.error(err);
       setError('비고 저장에 실패했습니다.');
@@ -216,7 +216,7 @@ export default function Home() {
   );
   const tabTypes: TabType[] = ['SUMMARY', 'PL', 'BS', 'CF', 'CREDIT', 'INVENTORY', 'PL', 'PL_CF'];
 
-  // ?곗씠??濡쒕뵫
+  // 데이터 로딩
   const loadData = async (type: TabType, year?: number, month?: number, brand?: string | null) => {
     setLoading(true);
     setError(null);
@@ -248,7 +248,7 @@ export default function Home() {
 
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error('?곗씠?곕? 遺덈윭?????놁뒿?덈떎.');
+        throw new Error('데이터를 불러올 수 없습니다.');
       }
 
       const result = await response.json();
@@ -261,7 +261,7 @@ export default function Home() {
         setWcRemarksAuto(result.wcRemarksAuto || null);
         setBsPlanMonth(result.planMonth ?? null);
         
-        // ?꾨뀈???곗씠??濡쒕뱶 (2025, 2026?꾩씪 寃쎌슦)
+        // 전년도 데이터 로드 (2025, 2026년인 경우)
         if (year === 2025 || year === 2026) {
           const prevYear = year - 1;
           try {
@@ -271,7 +271,7 @@ export default function Home() {
               setPreviousBsData(prevResult.rows);
             }
           } catch (err) {
-            console.error('?꾨뀈??BS ?곗씠??濡쒕뱶 ?ㅽ뙣:', err);
+          console.error('전년도 BS 데이터 로드 실패:', err);
             setPreviousBsData(null);
           }
         } else {
@@ -290,13 +290,13 @@ export default function Home() {
     }
   };
 
-  // 寃쎌쁺?붿빟 ?곗씠??濡쒕뱶 (??λ맂 KV 1?쒖쐞 ??fs/summary ??localStorage ???뚯씪)
+  // 경영요약 데이터 로드 (캐시 KV 1단계 후 fs/summary 또는 localStorage 또는 파일)
   const loadSummaryData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // 1?쒖쐞: ??λ맂 寃쎌쁺?붿빟 (GET /api/executive-summary) ???곗륫 5媛??뱀뀡???덉뼱???ъ슜
+      // 1단계: 캐시 경영요약 (GET /api/executive-summary) 또는 최근 5개 캐시에서 사용
       try {
         const response = await fetch('/api/executive-summary');
         if (response.ok) {
@@ -315,10 +315,10 @@ export default function Home() {
           }
         }
       } catch (apiErr) {
-        console.log('寃쎌쁺?붿빟 ???API ?ㅽ뙣, ?ㅼ쓬 ?뚯뒪 ?쒕룄:', apiErr);
+        console.log('경영요약 캐시 API 실패, 다음 단계 시도:', apiErr);
       }
 
-      // 2?쒖쐞: API?먯꽌 ?앹꽦 (2026??湲곕쭚 湲곗?)
+      // 2단계: API에서 생성 (2026년 기준 계획)
       try {
         const response = await fetch('/api/fs/summary');
         if (response.ok) {
@@ -331,13 +331,13 @@ export default function Home() {
           }
         } else {
           const errBody = await response.json().catch(() => ({}));
-          console.error('寃쎌쁺?붿빟 API ?ㅽ뙣:', response.status, errBody);
+          console.error('경영요약 API 실패:', response.status, errBody);
         }
       } catch (apiErr) {
-        console.log('寃쎌쁺?붿빟 API ?ㅽ뙣, 罹먯떆/?뚯씪?먯꽌 濡쒕뱶 ?쒕룄:', apiErr);
+        console.log('경영요약 API 실패, 캐시/파일에서 로드 시도:', apiErr);
       }
 
-      // 3?쒖쐞: localStorage?먯꽌 ?뺤씤
+      // 3단계: localStorage에서 확인
       const savedData = localStorage.getItem('executive-summary');
       if (savedData) {
         try {
@@ -346,11 +346,11 @@ export default function Home() {
           setLoading(false);
           return;
         } catch (parseErr) {
-          console.error('localStorage ?뚯떛 ?ㅽ뙣:', parseErr);
+          console.error('localStorage 파싱 실패:', parseErr);
         }
       }
 
-      // 4?쒖쐞: ?꾨줈?앺듃 湲곕낯 ?뚯씪?먯꽌 遺덈윭?ㅺ린
+      // 4단계: 프로젝트 기본 파일에서 불러오기
       try {
         const fileResponse = await fetch('/data/executive-summary.json');
         if (fileResponse.ok) {
@@ -373,22 +373,22 @@ export default function Home() {
     }
   };
 
-  // 寃쎌쁺?붿빟 珥덇린媛믪쑝濡?由ъ뀑
+  // 경영요약 초기상태로 저장
   const resetSummaryData = async () => {
     try {
-      // localStorage 珥덇린??
+      // localStorage 초기화
       localStorage.removeItem('executive-summary');
       
-      // API?먯꽌 ?덈줈 遺덈윭?ㅺ린
+      // API에서 다시 불러오기
       setSummaryData(null);
       setLoading(true);
       const response = await fetch('/api/fs/summary');
       if (!response.ok) {
-        throw new Error('寃쎌쁺?붿빟 ?곗씠?곕? 遺덈윭?????놁뒿?덈떎.');
+        throw new Error('경영요약 데이터를 불러올 수 없습니다.');
       }
       const result = await response.json();
       setSummaryData(result);
-      // localStorage?먮룄 ???
+      // localStorage에도 저장
       localStorage.setItem('executive-summary', JSON.stringify(result));
       alert('초기값으로 리셋했습니다.');
     } catch (err) {
@@ -399,7 +399,7 @@ export default function Home() {
     }
   };
 
-  // ??蹂寃????곗씠??濡쒕뱶
+  // CF 변경사항 데이터 로드
   useEffect(() => {
     const currentType = tabTypes[activeTab];
     
@@ -428,7 +428,7 @@ export default function Home() {
     }
   }, [activeTab]);
 
-  // ?곕룄 蹂寃????곗씠??由щ줈??
+  // 계도 변경사항 데이터 요청
   useEffect(() => {
     if (tabTypes[activeTab] === 'PL') {
       if (plBrand === null) {
@@ -493,7 +493,7 @@ export default function Home() {
     }
   }, [cfYear, activeTab]);
 
-  // 湲곗???蹂寃????곗씠??由щ줈??(PL 2025쨌2026??
+  // 특정년도 변경사항 데이터 요청(PL 2025/2026년)
   useEffect(() => {
     if (tabTypes[activeTab] === 'PL' && (plYear === 2025 || plYear === 2026)) {
       if (plBrand === null) {
@@ -504,11 +504,11 @@ export default function Home() {
     }
   }, [baseMonth]);
 
-  // 釉뚮옖??蹂寃????곗씠??由щ줈??
+  // 대리상 변경사항 데이터 요청
   useEffect(() => {
     if (tabTypes[activeTab] === 'PL') {
       if (plBrand === null) {
-        // 踰뺤씤 ?좏깮 ????긽 釉뚮옖?쒕퀎 ?먯씡 ?곗씠??濡쒕뱶
+        // 빠른 응답 위해 대리상별 데이터 로드
         loadBrandBreakdownData();
       } else {
         loadData('PL', plYear, baseMonth, plBrand);
@@ -516,7 +516,7 @@ export default function Home() {
     }
   }, [plBrand]);
 
-  // 釉뚮옖?쒕퀎 ?먯씡 蹂닿린 ?곗씠??濡쒕뱶
+  // 대리상별 잔액 데이터 로드
   const loadBrandBreakdownData = async () => {
     setLoading(true);
     setError(null);
@@ -529,8 +529,8 @@ export default function Home() {
 
       const response = await fetch(url);
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: '?곗씠?곕? 遺덈윭?????놁뒿?덈떎.' }));
-        throw new Error(errorData.error || '?곗씠?곕? 遺덈윭?????놁뒿?덈떎.');
+        const errorData = await response.json().catch(() => ({ error: '데이터를 불러올 수 없습니다.' }));
+        throw new Error(errorData.error || '데이터를 불러올 수 없습니다.');
       }
 
       const result = await response.json();
@@ -555,9 +555,9 @@ export default function Home() {
       {/* ?곷떒 ??*/}
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} groups={tabGroups} />
 
-      {/* ?댁슜 - ?곷떒 ???믪씠留뚰겮 ?⑤뵫 異붽? */}
+      {/* 탭 콘텐츠 - 탭 높이로 스크롤 영역 추가 */}
       <div className="p-0 pt-16">
-        {/* 寃쎌쁺?붿빟 */}
+        {/* 경영요약 */}
         {activeTab === 0 && (
           <ExecutiveSummary 
             data={summaryData}
