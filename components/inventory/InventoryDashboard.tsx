@@ -21,7 +21,7 @@ import {
   aggregateShipmentSales,
   aggregatePurchase,
 } from '@/lib/aggregate-inventory-by-brand';
-import InventoryFilterBar, { GrowthRateControl } from './InventoryFilterBar';
+import InventoryFilterBar from './InventoryFilterBar';
 import InventoryTable from './InventoryTable';
 import InventoryMonthlyTable, { TableData } from './InventoryMonthlyTable';
 
@@ -367,9 +367,11 @@ const TH_SMALL = 'px-3 py-2 text-center text-xs font-semibold bg-[#1a2e5a] text-
 function HqHoldingWoiTable({
   values,
   onChange,
+  horizontal = false,
 }: {
   values: Record<AccKey, number>;
   onChange: (key: AccKey, value: number) => void;
+  horizontal?: boolean;
 }) {
   const [editingKey, setEditingKey] = useState<AccKey | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -387,6 +389,39 @@ function HqHoldingWoiTable({
     setEditingKey(null);
     setEditValue('');
   };
+
+  if (horizontal) {
+    return (
+      <div className="flex items-center gap-3 px-1 py-1.5 rounded border border-gray-200 bg-gray-50 text-xs">
+        <span className="font-semibold text-slate-600 whitespace-nowrap">본사판매용</span>
+        {ACC_KEYS_ORDER.map((key) => (
+          <span key={key} className="flex items-center gap-0.5">
+            <span className="text-gray-500">{key}:</span>
+            <span
+              className="text-blue-700 font-medium cursor-text px-1 py-0.5 rounded hover:bg-blue-50"
+              onClick={() => editingKey !== key && startEdit(key)}
+            >
+              {editingKey === key ? (
+                <input
+                  ref={inputRef}
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={() => commitEdit(key)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget.blur(), e.preventDefault())}
+                  className="w-10 text-right text-xs border-0 bg-transparent outline-none tabular-nums text-blue-700 font-medium"
+                />
+              ) : (
+                `${values[key]}주`
+              )}
+            </span>
+          </span>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="flex-shrink-0">
@@ -494,9 +529,16 @@ async function saveAnnualPlanToServer(year: number, data: AnnualShipmentPlan): P
 
 export default function InventoryDashboard() {
   const [year, setYear] = useState<number>(2026);
-  const [brand, setBrand] = useState<Brand>('MLB');
-  const [growthRate, setGrowthRate] = useState<number>(5);
-  const [growthRateHq, setGrowthRateHq] = useState<number>(17);
+  const brand = '전체' as Brand;
+  const [refetch2025Counter, setRefetch2025Counter] = useState(0);
+  const [growthRateByBrand, setGrowthRateByBrand] = useState<Record<AnnualPlanBrand, number>>({
+    MLB: 5, 'MLB KIDS': 5, DISCOVERY: 5,
+  });
+  const [growthRateHqByBrand, setGrowthRateHqByBrand] = useState<Record<AnnualPlanBrand, number>>({
+    MLB: 17, 'MLB KIDS': 17, DISCOVERY: 17,
+  });
+  const growthRate = growthRateByBrand['MLB'] ?? 5;
+  const growthRateHq = growthRateHqByBrand['MLB'] ?? 17;
 
   const publishDealerAccSellIn = useCallback((nextMap: Record<'MLB' | 'MLB KIDS' | 'DISCOVERY', number>) => {
     if (typeof window === 'undefined') return;
@@ -628,11 +670,69 @@ export default function InventoryDashboard() {
     const payload = {
       growthRate,
       growthRateHq,
+      growthRateByBrand,
+      growthRateHqByBrand,
       updatedAt: Date.now(),
     };
     localStorage.setItem('inventory_growth_params', JSON.stringify(payload));
     window.dispatchEvent(new CustomEvent('inventory-growth-updated', { detail: payload }));
-  }, [growthRate, growthRateHq]);
+  }, [growthRate, growthRateHq, growthRateByBrand, growthRateHqByBrand]);
+
+  // 3개 브랜드 백그라운드 로딩 완료 여부 (필터바 뱃지용)
+  const [allBrandsBgLoaded, setAllBrandsBgLoaded] = useState(false);
+
+  // 2026년 재고자산탭 최초 로드 시 3개 브랜드 데이터를 백그라운드에서 병렬 fetch
+  // → *DataByBrand에 저장되면 publishHqClosingByBrand 및 하위 publish 효과들이 자동으로 트리거됨
+  useEffect(() => {
+    if (year !== 2026) return;
+    setAllBrandsBgLoaded(false);
+    let cancelled = false;
+
+    const run = async () => {
+      await Promise.all(
+        ANNUAL_PLAN_BRANDS.map(async (b) => {
+          // 이미 데이터가 있으면 건너뜀
+          if (monthlyByBrandRef.current[b]) return;
+          try {
+            const [monthlyRes, retailRes, shipmentRes, purchaseRes] = await Promise.all([
+              fetch(`/api/inventory/monthly-stock?${new URLSearchParams({ year: String(year), brand: b })}`),
+              fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand: b, growthRate: String(growthRateByBrand[b]), growthRateHq: String(growthRateHqByBrand[b]) })}`),
+              fetch(`/api/inventory/shipment-sales?${new URLSearchParams({ year: String(year), brand: b })}`),
+              fetch(`/api/inventory/purchase?${new URLSearchParams({ year: String(year), brand: b })}`),
+            ]);
+            if (cancelled) return;
+            const [monthly, retail, shipment, purchase] = await Promise.all([
+              monthlyRes.json(),
+              retailRes.json(),
+              shipmentRes.json(),
+              purchaseRes.json(),
+            ]);
+            if (cancelled) return;
+            monthlyByBrandRef.current[b] = monthly as MonthlyStockResponse;
+            retailByBrandRef.current[b] = retail as RetailSalesResponse;
+            shipmentByBrandRef.current[b] = shipment as ShipmentSalesResponse;
+            purchaseByBrandRef.current[b] = purchase as PurchaseResponse;
+            setMonthlyDataByBrand((prev) => ({ ...prev, [b]: monthly as MonthlyStockResponse }));
+            setRetailDataByBrand((prev) => ({ ...prev, [b]: retail as RetailSalesResponse }));
+            setShipmentDataByBrand((prev) => ({ ...prev, [b]: shipment as ShipmentSalesResponse }));
+            setPurchaseDataByBrand((prev) => ({ ...prev, [b]: purchase as PurchaseResponse }));
+          } catch {
+            // 백그라운드 fetch 실패는 무시 (현재 브랜드 탭의 메인 fetch가 우선)
+          }
+        }),
+      );
+      if (!cancelled) {
+        const allLoaded = ANNUAL_PLAN_BRANDS.every((b) => !!monthlyByBrandRef.current[b]);
+        if (allLoaded) setAllBrandsBgLoaded(true);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, growthRateByBrand, growthRateHqByBrand]);
 
   // 湲곗〈 Sell-in/Sell-out ???곗씠??
   const [data, setData] = useState<InventoryApiResponse | null>(null);
@@ -686,6 +786,8 @@ export default function InventoryDashboard() {
   const [otbData, setOtbData] = useState<OtbData | null>(null);
   const [otbLoading, setOtbLoading] = useState(false);
   const [otbError, setOtbError] = useState<string | null>(null);
+  const [otbEditMode, setOtbEditMode] = useState(false);
+  const [otbDraft, setOtbDraft] = useState<OtbData | null>(null);
   const [annualShipmentPlan2026, setAnnualShipmentPlan2026] = useState<AnnualShipmentPlan>(createEmptyAnnualShipmentPlan);
   const [annualShipmentPlanDraft2026, setAnnualShipmentPlanDraft2026] = useState<AnnualShipmentPlan>(createEmptyAnnualShipmentPlan);
   const [annualPlanEditMode, setAnnualPlanEditMode] = useState(false);
@@ -779,7 +881,7 @@ export default function InventoryDashboard() {
     try {
       const params = new URLSearchParams({
         year: String(year),
-        growthRate: String(growthRate),
+        growthRate: String(growthRateByBrand[(brand === '전체' ? 'MLB' : brand) as AnnualPlanBrand] ?? growthRate),
         brand,
       });
       const res = await fetch(`/api/inventory?${params}`);
@@ -833,7 +935,7 @@ export default function InventoryDashboard() {
       if (brand === '전체') {
         const ress = await Promise.all(
           BRANDS_TO_AGGREGATE.map((b) =>
-            fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand: b, growthRate: String(growthRate), growthRateHq: String(growthRateHq) })}`),
+            fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand: b, growthRate: String(growthRateByBrand[b]), growthRateHq: String(growthRateHqByBrand[b]) })}`),
           ),
         );
         const jsons: RetailSalesResponse[] = await Promise.all(ress.map((r) => r.json()));
@@ -846,7 +948,8 @@ export default function InventoryDashboard() {
         if (aggregated.retail2025) retail2025Ref.current = aggregated.retail2025;
         setRetailData(aggregated);
       } else {
-        const res = await fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand, growthRate: String(growthRate), growthRateHq: String(growthRateHq) })}`);
+        const brandKey = brand as AnnualPlanBrand;
+        const res = await fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand, growthRate: String(growthRateByBrand[brandKey] ?? growthRate), growthRateHq: String(growthRateHqByBrand[brandKey] ?? growthRateHq) })}`);
         if (!res.ok) throw new Error('由ы뀒??留ㅼ텧 ?곗씠??濡쒕뱶 ?ㅽ뙣');
         const json: RetailSalesResponse = await res.json();
         if ((json as { error?: string }).error) throw new Error((json as { error?: string }).error);
@@ -859,7 +962,7 @@ export default function InventoryDashboard() {
     } finally {
       setRetailLoading(false);
     }
-  }, [year, brand, growthRate, growthRateHq]);
+  }, [year, brand, growthRate, growthRateHq, growthRateByBrand, growthRateHqByBrand]);
 
   // ?? 異쒓퀬留ㅼ텧 fetch ??
   const fetchShipmentData = useCallback(async () => {
@@ -1001,7 +1104,7 @@ export default function InventoryDashboard() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year, brand]); // growthRate???섎룄?곸쑝濡??쒖쇅
+  }, [year, brand, refetch2025Counter]); // growthRate???섎룄?곸쑝濡??쒖쇅
 
   useEffect(() => {
     if (year !== 2026) return;
@@ -1068,7 +1171,7 @@ export default function InventoryDashboard() {
     setSnapshotSaved(false);
     setSnapshotSavedAt(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year, growthRate, growthRateHq]);
+  }, [year, growthRate, growthRateHq, growthRateByBrand, growthRateHqByBrand]);
 
   useEffect(() => {
     if (year !== 2026 || brand !== '전체') return;
@@ -1337,6 +1440,25 @@ export default function InventoryDashboard() {
     return retailData;
   }, [year, retailData, prevYearMonthlyData, prevYearRetailData, prevYearShipmentData, growthRate]);
 
+  // 브랜드별 effectiveRetailData — applyAdjustedDealerRetailPlanBase 적용 (현재 브랜드 외 2개 포함)
+  const perBrandEffectiveRetailData = useMemo<Partial<Record<AnnualPlanBrand, RetailSalesResponse>>>(() => {
+    if (year !== 2026) return {};
+    const result: Partial<Record<AnnualPlanBrand, RetailSalesResponse>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const src = retailDataByBrand[b];
+      const prevMData = prevYearMonthlyDataByBrand[b];
+      const prevRData = prevYearRetailDataByBrand[b];
+      const prevSData = prevYearShipmentDataByBrand[b];
+      if (!src) continue;
+      if (prevMData && prevRData && prevSData) {
+        result[b] = applyAdjustedDealerRetailPlanBase(src, prevMData, prevRData, prevSData, growthRateByBrand[b] ?? 5);
+      } else {
+        result[b] = src;
+      }
+    }
+    return result;
+  }, [year, retailDataByBrand, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, growthRateByBrand]);
+
   const topTableData = useMemo(() => {
     if (
       (year !== 2025 && year !== 2026) ||
@@ -1469,6 +1591,62 @@ export default function InventoryDashboard() {
     return result;
   }, [adjustedDealerRetailTable, adjustedRetailAnnualTotalByRowKey]);
 
+  // 2025년 브랜드별 대리상 리테일매출(보정) — 브랜드별 top table로 연간합계 계산 후 비중 배분
+  const perBrand2025AdjustedRetailAnnualByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
+    if (year !== 2025) return {};
+    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const mData = monthlyDataByBrand[b];
+      const rData = retailDataByBrand[b];
+      const sData = shipmentDataByBrand[b];
+      if (!mData || !rData || !sData) continue;
+      const topTable = buildTableDataFromMonthly(mData, rData, sData, purchaseDataByBrand[b] ?? undefined, 2025);
+      const annualByKey: Record<string, number | null> = {};
+      for (const row of topTable.dealer.rows) {
+        const retailKey = row.key === '재고자산합계' ? '매출합계' : row.key;
+        annualByKey[retailKey] = row.sellOutTotal * 1000;
+      }
+      result[b] = annualByKey;
+    }
+    return result;
+  }, [year, monthlyDataByBrand, retailDataByBrand, shipmentDataByBrand, purchaseDataByBrand]);
+
+  const perBrand2025AdjustedDealerRetailTable = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
+    if (year !== 2025) return {};
+    const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const rData = retailDataByBrand[b];
+      const mData = monthlyDataByBrand[b];
+      const sData = shipmentDataByBrand[b];
+      if (!rData || !mData || !sData) continue;
+      const rows = buildAdjustedDealerRetailRows(
+        rData.dealer.rows,
+        mData.dealer.rows,
+        sData.data.rows,
+      );
+      result[b] = { rows };
+    }
+    return result;
+  }, [year, retailDataByBrand, monthlyDataByBrand, shipmentDataByBrand]);
+
+  const perBrand2025RetailDealerValidationByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
+    if (year !== 2025) return {};
+    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const tableData = perBrand2025AdjustedDealerRetailTable[b];
+      const annualByKey = perBrand2025AdjustedRetailAnnualByKey[b];
+      if (!tableData || !annualByKey) continue;
+      const validation: Record<string, number | null> = {};
+      for (const row of tableData.rows) {
+        const monthlySum = row.monthly.reduce<number | null>((s, v) => (v == null ? s : (s ?? 0) + v), null);
+        const annualTotal = annualByKey[row.key] ?? null;
+        validation[row.key] = monthlySum != null && annualTotal != null ? monthlySum - annualTotal : null;
+      }
+      result[b] = validation;
+    }
+    return result;
+  }, [year, perBrand2025AdjustedDealerRetailTable, perBrand2025AdjustedRetailAnnualByKey]);
+
   // 2026년: 2025 재고자산표 Sell-out 계산용 (단일/전체 브랜드 모두 지원)
   const prevYearTopTableData = useMemo(() => {
     if (year !== 2026) return null;
@@ -1495,6 +1673,21 @@ export default function InventoryDashboard() {
     );
   }, [year, brand, prevYearMonthlyData, prevYearRetailData, prevYearShipmentData, prevYearPurchaseData, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand]);
 
+  // 브랜드별 전년(2025) top table — YOY 비교용
+  const perBrandPrevYearTableData = useMemo<Partial<Record<AnnualPlanBrand, TopTablePair>>>(() => {
+    if (year !== 2026) return {};
+    const result: Partial<Record<AnnualPlanBrand, TopTablePair>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const mData = prevYearMonthlyDataByBrand[b];
+      const rData = prevYearRetailDataByBrand[b];
+      const sData = prevYearShipmentDataByBrand[b];
+      if (mData && rData && sData) {
+        result[b] = buildTableDataFromMonthly(mData, rData, sData, undefined, 2025);
+      }
+    }
+    return result;
+  }, [year, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand]);
+
   // 2026 대리상 리테일 연간합계 = 2025 Sell-out × 성장률 (소계=leaf 합산)
   const retailDealerAnnualTotalByRowKey = useMemo<Record<string, number | null> | null>(() => {
     if (year !== 2026 || !prevYearTopTableData) return null;
@@ -1504,15 +1697,12 @@ export default function InventoryDashboard() {
       if (!row.isLeaf) continue;
       result[row.key] = Math.round(row.sellOutTotal * factor * 1000);
     }
-    if (brand === 'MLB') {
-      result['1년차'] = MLB_1YEAR_OVERRIDE_K * 1000;
-    }
     const sumKeys = (keys: readonly string[]) => keys.reduce((s, k) => s + (result[k] ?? 0), 0);
     result['의류합계'] = sumKeys(SEASON_KEYS);
     result['ACC합계'] = sumKeys(ACC_KEYS);
     result['매출합계'] = result['의류합계'] + result['ACC합계'];
     return result;
-  }, [year, brand, prevYearTopTableData, growthRate]);
+  }, [year, prevYearTopTableData, growthRate]);
 
   // 검증: 1~12월 합계 - 연간합계 (2026 대리상 리테일)
   // 대리상: 실적월 고정, 계획월만 비중 배분하여 목표 연간합계에 맞춤
@@ -1614,6 +1804,168 @@ export default function InventoryDashboard() {
     }
     return result;
   }, [year, adjustedHqRetailData, retailHqAnnualTotalByRowKey]);
+
+  // 브랜드별 대리상 리테일 조정 데이터 (perBrandEffectiveRetailData 기반 월별 재배분)
+  const perBrandAdjustedDealerRetailData = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
+    if (year !== 2026) return {};
+    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) =>
+      keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
+    const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const effData = perBrandEffectiveRetailData[b];  // applyAdjustedDealerRetailPlanBase 적용된 데이터
+      const prevTable = perBrandPrevYearTableData[b];
+      if (!effData || !prevTable) continue;
+      const factor = 1 + (growthRateByBrand[b] ?? 5) / 100;
+      const annualByKey: Record<string, number | null> = {};
+      for (const row of prevTable.dealer.rows) {
+        if (!row.isLeaf) continue;
+        annualByKey[row.key] = Math.round(row.sellOutTotal * factor * 1000);
+      }
+      if (b === 'MLB') annualByKey['1년차'] = MLB_1YEAR_OVERRIDE_K * 1000;
+      annualByKey['의류합계'] = sumKeys(annualByKey, SEASON_KEYS);
+      annualByKey['ACC합계']  = sumKeys(annualByKey, ACC_KEYS);
+      annualByKey['매출합계'] = (annualByKey['의류합계'] ?? 0) + (annualByKey['ACC합계'] ?? 0);
+      const planFrom = effData.planFromMonth ?? 13;
+      const planMonthCount = 12 - (planFrom - 1);
+      const rows = effData.dealer.rows.map((row) => {
+        const annualTarget = annualByKey[row.key] ?? null;
+        if (annualTarget == null) return { ...row };
+        const monthly = [...row.monthly];
+        const actualSum = monthly.slice(0, planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
+        const remaining = annualTarget - actualSum;
+        const planSum = monthly.slice(planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
+        for (let m = planFrom - 1; m < 12; m++) {
+          monthly[m] = planSum > 0
+            ? Math.round(remaining * ((monthly[m] ?? 0) / planSum))
+            : (planMonthCount > 0 ? Math.round(remaining / planMonthCount) : 0);
+        }
+        return { ...row, monthly };
+      });
+      result[b] = { rows: rows as TableData['rows'] };
+    }
+    return result;
+  }, [year, perBrandEffectiveRetailData, perBrandPrevYearTableData, growthRateByBrand]);
+
+  // 브랜드별 본사 리테일 조정 데이터 (perBrandEffectiveRetailData 기반 월별 재배분)
+  const perBrandAdjustedHqRetailData = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
+    if (year !== 2026) return {};
+    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) =>
+      keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
+    const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const effData = perBrandEffectiveRetailData[b];  // applyAdjustedDealerRetailPlanBase 적용된 데이터
+      const prevTable = perBrandPrevYearTableData[b];
+      if (!effData || !prevTable) continue;
+      const factor = 1 + (growthRateHqByBrand[b] ?? 17) / 100;
+      const annualByKey: Record<string, number | null> = {};
+      for (const row of prevTable.hq.rows) {
+        if (!row.isLeaf) continue;
+        annualByKey[row.key] = Math.round((row.hqSalesTotal ?? 0) * factor * 1000);
+      }
+      annualByKey['의류합계'] = sumKeys(annualByKey, SEASON_KEYS);
+      annualByKey['ACC합계']  = sumKeys(annualByKey, ACC_KEYS);
+      annualByKey['매출합계'] = (annualByKey['의류합계'] ?? 0) + (annualByKey['ACC합계'] ?? 0);
+      const planFrom = effData.planFromMonth ?? 13;
+      const planMonthCount = 12 - (planFrom - 1);
+      const rows = effData.hq.rows.map((row) => {
+        const annualTarget = annualByKey[row.key] ?? null;
+        if (annualTarget == null) return { ...row };
+        const monthly = [...row.monthly];
+        const actualSum = monthly.slice(0, planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
+        const remaining = annualTarget - actualSum;
+        const planSum = monthly.slice(planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
+        for (let m = planFrom - 1; m < 12; m++) {
+          monthly[m] = planSum > 0
+            ? Math.round(remaining * ((monthly[m] ?? 0) / planSum))
+            : (planMonthCount > 0 ? Math.round(remaining / planMonthCount) : 0);
+        }
+        return { ...row, monthly };
+      });
+      result[b] = { rows: rows as TableData['rows'] };
+    }
+    return result;
+  }, [year, perBrandEffectiveRetailData, perBrandPrevYearTableData, growthRateHqByBrand]);
+
+  // 브랜드별 대리상 리테일 연간합계 및 검증 (월합 - 연간합계)
+  const perBrandRetailDealerAnnualByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
+    if (year !== 2026) return {};
+    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) => keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
+    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const prevTable = perBrandPrevYearTableData[b];
+      if (!prevTable) continue;
+      const factor = 1 + (growthRateByBrand[b] ?? 5) / 100;
+      const annualByKey: Record<string, number | null> = {};
+      for (const row of prevTable.dealer.rows) {
+        if (!row.isLeaf) continue;
+        annualByKey[row.key] = Math.round(row.sellOutTotal * factor * 1000);
+      }
+      if (b === 'MLB') annualByKey['1년차'] = MLB_1YEAR_OVERRIDE_K * 1000;
+      annualByKey['의류합계'] = sumKeys(annualByKey, SEASON_KEYS);
+      annualByKey['ACC합계']  = sumKeys(annualByKey, ACC_KEYS);
+      annualByKey['매출합계'] = (annualByKey['의류합계'] ?? 0) + (annualByKey['ACC합계'] ?? 0);
+      result[b] = annualByKey;
+    }
+    return result;
+  }, [year, perBrandPrevYearTableData, growthRateByBrand]);
+
+  const perBrandRetailDealerValidationByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
+    if (year !== 2026) return {};
+    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const adjData = perBrandAdjustedDealerRetailData[b];
+      const annualByKey = perBrandRetailDealerAnnualByKey[b];
+      if (!adjData || !annualByKey) continue;
+      const validation: Record<string, number | null> = {};
+      for (const row of adjData.rows) {
+        const monthlySum = row.monthly.reduce<number | null>((s, v) => (v == null ? s : (s ?? 0) + v), null);
+        const annualTotal = annualByKey[row.key] ?? null;
+        validation[row.key] = monthlySum != null && annualTotal != null ? monthlySum - annualTotal : null;
+      }
+      result[b] = validation;
+    }
+    return result;
+  }, [year, perBrandAdjustedDealerRetailData, perBrandRetailDealerAnnualByKey]);
+
+  // 브랜드별 본사 리테일 연간합계 및 검증
+  const perBrandRetailHqAnnualByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
+    if (year !== 2026) return {};
+    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) => keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
+    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const prevTable = perBrandPrevYearTableData[b];
+      if (!prevTable) continue;
+      const factor = 1 + (growthRateHqByBrand[b] ?? 17) / 100;
+      const annualByKey: Record<string, number | null> = {};
+      for (const row of prevTable.hq.rows) {
+        if (!row.isLeaf) continue;
+        annualByKey[row.key] = Math.round((row.hqSalesTotal ?? 0) * factor * 1000);
+      }
+      annualByKey['의류합계'] = sumKeys(annualByKey, SEASON_KEYS);
+      annualByKey['ACC합계']  = sumKeys(annualByKey, ACC_KEYS);
+      annualByKey['매출합계'] = (annualByKey['의류합계'] ?? 0) + (annualByKey['ACC합계'] ?? 0);
+      result[b] = annualByKey;
+    }
+    return result;
+  }, [year, perBrandPrevYearTableData, growthRateHqByBrand]);
+
+  const perBrandRetailHqValidationByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
+    if (year !== 2026) return {};
+    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const adjData = perBrandAdjustedHqRetailData[b];
+      const annualByKey = perBrandRetailHqAnnualByKey[b];
+      if (!adjData || !annualByKey) continue;
+      const validation: Record<string, number | null> = {};
+      for (const row of adjData.rows) {
+        const monthlySum = row.monthly.reduce<number | null>((s, v) => (v == null ? s : (s ?? 0) + v), null);
+        const annualTotal = annualByKey[row.key] ?? null;
+        validation[row.key] = monthlySum != null && annualTotal != null ? monthlySum - annualTotal : null;
+      }
+      result[b] = validation;
+    }
+    return result;
+  }, [year, perBrandAdjustedHqRetailData, perBrandRetailHqAnnualByKey]);
 
   // 2026년 상단 재고자산표 display용: 대리상 Sell-out → 대리상 리테일 연간합계, 본사 본사판매 → 본사 리테일 연간합계
   const topTableDisplayData = useMemo<{ dealer: InventoryTableData; hq: InventoryTableData } | null>(() => {
@@ -1761,16 +2113,16 @@ export default function InventoryDashboard() {
   const hqDriverTotalRow = hqTableData?.rows.find((row) => row.isTotal) ?? null;
   const buildBrand2026TopTable = useCallback((planBrand: AnnualPlanBrand): TopTablePair | null => {
     if (year !== 2026) return null;
-    const mData = monthlyDataByBrand[planBrand] ?? (brand === planBrand ? monthlyData : null);
-    const baseRetailData = retailDataByBrand[planBrand] ?? (brand === planBrand ? retailData : null);
-    const sData = shipmentDataByBrand[planBrand] ?? (brand === planBrand ? shipmentData : null);
-    const pData = purchaseDataByBrand[planBrand] ?? (brand === planBrand ? purchaseData : null);
+    const mData = monthlyDataByBrand[planBrand] ?? null;
+    const baseRetailData = retailDataByBrand[planBrand] ?? null;
+    const sData = shipmentDataByBrand[planBrand] ?? null;
+    const pData = purchaseDataByBrand[planBrand] ?? null;
     const prevMData = prevYearMonthlyDataByBrand[planBrand];
     const prevRData = prevYearRetailDataByBrand[planBrand];
     const prevSData = prevYearShipmentDataByBrand[planBrand];
     const rData =
       baseRetailData && prevMData && prevRData && prevSData
-        ? applyAdjustedDealerRetailPlanBase(baseRetailData, prevMData, prevRData, prevSData, growthRate)
+        ? applyAdjustedDealerRetailPlanBase(baseRetailData, prevMData, prevRData, prevSData, growthRateByBrand[planBrand] ?? growthRate)
         : baseRetailData;
     if (!mData || !rData || !sData) return null;
     const built = buildTableDataFromMonthly(
@@ -1801,7 +2153,124 @@ export default function InventoryDashboard() {
       mergedSellOutPlan,
       year,
     );
-  }, [year, brand, monthlyDataByBrand, monthlyData, retailDataByBrand, retailData, shipmentDataByBrand, shipmentData, purchaseDataByBrand, purchaseData, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, otbData, hqSellOutPlan, annualShipmentPlan2026, growthRate]);
+  }, [year, brand, monthlyDataByBrand, monthlyData, retailDataByBrand, retailData, shipmentDataByBrand, shipmentData, purchaseDataByBrand, purchaseData, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, otbData, hqSellOutPlan, annualShipmentPlan2026, growthRate, growthRateByBrand]);
+
+  // 브랜드별 당년 top table (buildBrand2026TopTable 이후에 배치)
+  const perBrandTopTable = useMemo<Partial<Record<AnnualPlanBrand, TopTablePair>>>(() => {
+    const result: Partial<Record<AnnualPlanBrand, TopTablePair>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      if (year === 2026) {
+        const t = buildBrand2026TopTable(b);
+        if (t) result[b] = t;
+      } else if (year === 2025) {
+        const mData = monthlyDataByBrand[b];
+        const rData = retailDataByBrand[b];
+        const sData = shipmentDataByBrand[b];
+        const pData = purchaseDataByBrand[b];
+        if (mData && rData && sData && pData) {
+          result[b] = buildTableDataFromMonthly(mData, rData, sData, pData, year);
+        }
+      }
+    }
+    return result;
+  }, [year, brand, buildBrand2026TopTable, monthlyDataByBrand, monthlyData,
+      retailDataByBrand, retailData, shipmentDataByBrand, shipmentData,
+      purchaseDataByBrand, purchaseData]);
+
+  // 브랜드별 2026 display overlay (리테일 연간합계 교체)
+  const perBrandTopTableDisplayData = useMemo<Partial<Record<AnnualPlanBrand, TopTablePair>>>(() => {
+    if (year !== 2026) return {};
+    const inventoryKeyToRetailKey = (key: string) => key === '재고자산합계' ? '매출합계' : key;
+    const scaleMonthly = (monthly: number[], oldTotal: number, newTotal: number): number[] => {
+      if (oldTotal === 0) return monthly.map(() => Math.round(newTotal / 12));
+      return monthly.map((v) => Math.round(v * (newTotal / oldTotal)));
+    };
+    const ACC_LEAF_KEYS = new Set(['신발', '모자', '가방', '기타']);
+    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) =>
+      keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
+
+    const result: Partial<Record<AnnualPlanBrand, TopTablePair>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const topTable = perBrandTopTable[b];
+      const prevTable = perBrandPrevYearTableData[b];
+      if (!topTable || !prevTable) continue;
+
+      const factorDealer = 1 + (growthRateByBrand[b] ?? 5) / 100;
+      const factorHq    = 1 + (growthRateHqByBrand[b] ?? 17) / 100;
+
+      const dealerAnnual: Record<string, number | null> = {};
+      for (const row of prevTable.dealer.rows) {
+        if (!row.isLeaf) continue;
+        dealerAnnual[row.key] = Math.round(row.sellOutTotal * factorDealer * 1000);
+      }
+      if (b === 'MLB') dealerAnnual['1년차'] = MLB_1YEAR_OVERRIDE_K * 1000;
+      dealerAnnual['의류합계'] = sumKeys(dealerAnnual, SEASON_KEYS);
+      dealerAnnual['ACC합계']  = sumKeys(dealerAnnual, ACC_KEYS);
+      dealerAnnual['매출합계'] = (dealerAnnual['의류합계'] ?? 0) + (dealerAnnual['ACC합계'] ?? 0);
+
+      const hqAnnual: Record<string, number | null> = {};
+      for (const row of prevTable.hq.rows) {
+        if (!row.isLeaf) continue;
+        hqAnnual[row.key] = Math.round((row.hqSalesTotal ?? 0) * factorHq * 1000);
+      }
+      hqAnnual['의류합계'] = sumKeys(hqAnnual, SEASON_KEYS);
+      hqAnnual['ACC합계']  = sumKeys(hqAnnual, ACC_KEYS);
+      hqAnnual['매출합계'] = (hqAnnual['의류합계'] ?? 0) + (hqAnnual['ACC합계'] ?? 0);
+
+      const dealerLeafRows = topTable.dealer.rows
+        .filter((row) => row.isLeaf)
+        .map((row) => {
+          const retailKey = inventoryKeyToRetailKey(row.key);
+          const newTotalWon = dealerAnnual[retailKey] ?? null;
+          let updatedRow = row;
+          if (newTotalWon != null) {
+            const newSellOutK = newTotalWon / 1000;
+            updatedRow = { ...updatedRow, sellOut: scaleMonthly(row.sellOut, row.sellOutTotal, newSellOutK), sellOutTotal: newSellOutK };
+          }
+          if (ACC_LEAF_KEYS.has(row.key)) {
+            const newSellInTotal = updatedRow.closing + updatedRow.sellOutTotal - updatedRow.opening;
+            updatedRow = { ...updatedRow, sellIn: scaleMonthly(updatedRow.sellIn, updatedRow.sellInTotal, newSellInTotal), sellInTotal: newSellInTotal };
+          } else {
+            const newClosing = updatedRow.opening + updatedRow.sellInTotal - updatedRow.sellOutTotal;
+            updatedRow = { ...updatedRow, closing: newClosing, delta: newClosing - updatedRow.opening };
+          }
+          return updatedRow;
+        });
+      const dealerRows = rebuildTableFromLeafs(dealerLeafRows, 366);
+
+      const dealerAccSellInMap = new Map(
+        dealerLeafRows.filter((row) => ACC_LEAF_KEYS.has(row.key))
+          .map((row) => [row.key, { sellIn: row.sellIn, sellInTotal: row.sellInTotal }])
+      );
+
+      const hqLeafRows = topTable.hq.rows
+        .filter((row) => row.isLeaf)
+        .map((row) => {
+          const retailKey = inventoryKeyToRetailKey(row.key);
+          const newTotalWon = hqAnnual[retailKey] ?? null;
+          const newTotalK = newTotalWon != null ? newTotalWon / 1000 : null;
+          const oldHqTotal = row.hqSalesTotal ?? 0;
+          const newHqSales = newTotalK != null && row.hqSales
+            ? scaleMonthly(row.hqSales, oldHqTotal, newTotalK)
+            : row.hqSales;
+          if (ACC_LEAF_KEYS.has(row.key)) {
+            const dealerAcc = dealerAccSellInMap.get(row.key);
+            if (dealerAcc) {
+              const newSellOutTotal = dealerAcc.sellInTotal;
+              const newSellOut = scaleMonthly(row.sellOut, row.sellOutTotal, newSellOutTotal);
+              const hqSalesTotal = newTotalK ?? (row.hqSalesTotal ?? 0);
+              const newSellInTotal = Math.max(0, row.closing + newSellOutTotal + hqSalesTotal - row.opening);
+              const newSellIn = scaleMonthly(row.sellIn, row.sellInTotal, newSellInTotal);
+              return { ...row, sellIn: newSellIn, sellInTotal: newSellInTotal, sellOut: newSellOut, sellOutTotal: newSellOutTotal, hqSales: newHqSales, hqSalesTotal: newTotalK ?? row.hqSalesTotal };
+            }
+          }
+          return { ...row, hqSales: newHqSales, hqSalesTotal: newTotalK ?? row.hqSalesTotal };
+        });
+      const hqRows = rebuildTableFromLeafs(hqLeafRows, 366);
+      result[b] = { dealer: { rows: dealerRows }, hq: { rows: hqRows } };
+    }
+    return result;
+  }, [year, perBrandTopTable, perBrandPrevYearTableData, growthRateByBrand, growthRateHqByBrand]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || year !== 2026 || !dealerTableData) return;
@@ -1855,7 +2324,18 @@ export default function InventoryDashboard() {
     if (!hqTableData) return;
     const totalRow = hqTableData.rows.find((row) => row.isTotal);
     if (!totalRow || !Number.isFinite(totalRow.closing)) return;
-    publishHqClosingByBrand({ [brand]: totalRow.closing });
+
+    // 현재 브랜드 + 데이터가 있는 다른 브랜드도 함께 publish (백그라운드 fetch로 채워진 경우)
+    const nextValues: Partial<HqClosingByBrand> = { [brand]: totalRow.closing };
+    for (const planBrand of ANNUAL_PLAN_BRANDS) {
+      if (planBrand === brand) continue;
+      const table = buildBrand2026TopTable(planBrand);
+      const otherTotalRow = table?.hq.rows.find((row) => row.isTotal);
+      if (otherTotalRow && Number.isFinite(otherTotalRow.closing)) {
+        nextValues[planBrand] = otherTotalRow.closing;
+      }
+    }
+    publishHqClosingByBrand(nextValues);
   }, [year, brand, hqTableData, buildBrand2026TopTable, publishHqClosingByBrand]);
   const prevYearTableData = useMemo(() => {
     if (year !== 2026 || !prevYearMonthlyData || !prevYearRetailData || !prevYearShipmentData) return null;
@@ -1974,6 +2454,73 @@ export default function InventoryDashboard() {
       ],
     };
   }, [year, brand, shipmentData, shipmentPlanFromMonth, hqTableData, shipmentProgressRows, accShipmentRatioRows]);
+
+  // 브랜드별 출고매출 display 데이터 (3개 브랜드 동시 계산)
+  const perBrandShipmentDisplayData = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
+    if (year !== 2026 || shipmentPlanFromMonth == null || shipmentPlanFromMonth <= 1) return {};
+    const buildShipmentRows = (
+      srcData: (typeof shipmentData),
+      hqRows: InventoryTableData['rows'] | undefined,
+      brandKey: AnnualPlanBrand,
+    ): TableData | null => {
+      if (!srcData || !hqRows) return null;
+      const hqByKey = new Map(hqRows.map((row) => [row.key, row]));
+      const progressS = shipmentProgressRows.find((row) => row.brand === brandKey && row.season === '당년S');
+      const progressF = shipmentProgressRows.find((row) => row.brand === brandKey && row.season === '당년F');
+      const accRatio = accShipmentRatioRows.find((row) => row.brand === brandKey)?.monthly ?? new Array(12).fill(null);
+      const seasonSRates = buildShipmentProgressRates(progressS);
+      const seasonFRates = buildShipmentProgressRates(progressF);
+      const planStartIndex = shipmentPlanFromMonth - 1;
+      const leafRows = srcData.data.rows.filter((row) => row.isLeaf).map((row) => {
+        const annualTarget = (hqByKey.get(row.key)?.sellOutTotal ?? 0) * 1000;
+        const monthly = [...row.monthly];
+        const actualSum = monthly.slice(0, planStartIndex).reduce<number>((sum, value) => sum + (value ?? 0), 0);
+        const remaining = annualTarget - actualSum;
+        const rawWeights = monthly.map((_, monthIndex) => {
+          if (monthIndex < planStartIndex) return 0;
+          if (row.key === '당년S') return seasonSRates[monthIndex] ?? 0;
+          if (ACC_KEYS.includes(row.key as AccKey)) return Math.max(accRatio[monthIndex] ?? 0, 0);
+          return seasonFRates[monthIndex] ?? 0;
+        });
+        const weightTotal = rawWeights.reduce((sum, v) => sum + v, 0);
+        const usableWeights = weightTotal > 0 ? rawWeights : rawWeights.map((_, i) => (i < planStartIndex ? 0 : 1));
+        const usableTotal = usableWeights.reduce((sum, v) => sum + v, 0);
+        let allocatedSum = 0;
+        let lastPlanMonth = -1;
+        for (let i = planStartIndex; i < 12; i++) { if (usableWeights[i] > 0) lastPlanMonth = i; }
+        for (let i = planStartIndex; i < 12; i++) {
+          if (i === lastPlanMonth) { monthly[i] = remaining - allocatedSum; continue; }
+          const nextValue = usableTotal > 0 ? Math.round((remaining * usableWeights[i]) / usableTotal) : 0;
+          monthly[i] = nextValue;
+          allocatedSum += nextValue;
+        }
+        return { ...row, monthly };
+      });
+      const sumMonth = (rows: typeof leafRows, idx: number) => {
+        const vals = rows.map((r) => r.monthly[idx] ?? null).filter((v): v is number => v != null && Number.isFinite(v));
+        return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) : null;
+      };
+      const clothingLeafRows = leafRows.slice(0, 6);
+      const accLeafRows = leafRows.slice(6);
+      const totalTemplate = srcData.data.rows.find((row) => row.isTotal);
+      const subtotalTemplates = srcData.data.rows.filter((row) => row.isSubtotal);
+      const clothingSubtotalTemplate = subtotalTemplates[0] ?? null;
+      const accSubtotalTemplate = subtotalTemplates[1] ?? null;
+      const clothingSubtotal = clothingSubtotalTemplate == null ? null : { ...clothingSubtotalTemplate, monthly: clothingSubtotalTemplate.monthly.map((_, i) => sumMonth(clothingLeafRows, i)) };
+      const accSubtotal = accSubtotalTemplate == null ? null : { ...accSubtotalTemplate, monthly: accSubtotalTemplate.monthly.map((_, i) => sumMonth(accLeafRows, i)) };
+      const grandTotal = totalTemplate == null ? null : { ...totalTemplate, monthly: totalTemplate.monthly.map((_, i) => sumMonth(leafRows, i)) };
+      return { rows: [...(grandTotal ? [grandTotal] : []), ...(clothingSubtotal ? [clothingSubtotal] : []), ...clothingLeafRows, ...(accSubtotal ? [accSubtotal] : []), ...accLeafRows] };
+    };
+    const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const srcData = shipmentDataByBrand[b] ?? null;
+      const hqRows = perBrandTopTable[b]?.hq.rows;
+      const built = buildShipmentRows(srcData, hqRows, b);
+      if (built) result[b] = built;
+    }
+    return result;
+  }, [year, shipmentPlanFromMonth, shipmentDataByBrand, perBrandTopTable, shipmentProgressRows, accShipmentRatioRows]);
+
   const shipmentValidationByRowKey = useMemo<Record<string, number | null> | null>(() => {
     if (year !== 2026 || brand === '전체' || !effectiveShipmentDisplayData) return null;
     const result: Record<string, number | null> = {};
@@ -2085,6 +2632,108 @@ export default function InventoryDashboard() {
       ],
     };
   }, [year, purchaseData, effectiveShipmentDisplayData, shipmentPlanFromMonth, purchaseAnnualTotalByRowKey]);
+  // 브랜드별 본사 매입상품 display 데이터 (3개 브랜드 동시 계산)
+  const perBrandPurchaseDisplayData = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
+    if (year !== 2026 || shipmentPlanFromMonth == null || shipmentPlanFromMonth <= 1) return {};
+    const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const srcData = purchaseDataByBrand[b];
+      const shipmentDisplay = perBrandShipmentDisplayData[b];
+      const topHqRows = perBrandTopTable[b]?.hq.rows;
+      if (!srcData || !shipmentDisplay || !topHqRows) continue;
+
+      // 브랜드별 연간 매입 목표 (perBrandTopTable의 hq sellIn × 1000)
+      const annualByKey: Record<string, number | null> = {};
+      const leafRows2 = topHqRows.filter((r) => r.isLeaf);
+      const leafByKey = new Map(leafRows2.map((r) => [r.key, r]));
+      for (const r of leafRows2) annualByKey[r.key] = r.sellInTotal * 1000;
+      const sumLeaf = (keys: string[]) => {
+        const vals = keys.map((k) => leafByKey.get(k)?.sellInTotal).filter((v): v is number => v != null && Number.isFinite(v));
+        return vals.length === 0 ? null : vals.reduce((s, v) => s + v, 0) * 1000;
+      };
+      annualByKey['의류합계'] = sumLeaf(SEASON_KEYS as unknown as string[]);
+      annualByKey['ACC합계']  = sumLeaf(ACC_KEYS as unknown as string[]);
+      annualByKey['매입합계'] = sumLeaf([...SEASON_KEYS as unknown as string[], ...ACC_KEYS as unknown as string[]]);
+
+      const shipmentByKey = new Map(shipmentDisplay.rows.map((row) => [row.key, row]));
+      const planStartIndex = shipmentPlanFromMonth - 1;
+      const leafRows = srcData.data.rows.filter((row) => row.isLeaf).map((row) => {
+        const monthly = [...row.monthly];
+        const annualTarget = annualByKey[row.key] ?? null;
+        if (annualTarget == null) return { ...row, monthly };
+        const actualSum = monthly.slice(0, planStartIndex).reduce<number>((sum, v) => sum + (v ?? 0), 0);
+        const remaining = annualTarget - actualSum;
+        const shipmentMonthly = shipmentByKey.get(row.key)?.monthly ?? [];
+        const rawWeights = monthly.map((_, i) => (i < planStartIndex ? 0 : Math.max(shipmentMonthly[i] ?? 0, 0)));
+        const weightTotal = rawWeights.reduce((sum, v) => sum + v, 0);
+        const usableWeights = weightTotal > 0 ? rawWeights : rawWeights.map((_, i) => (i < planStartIndex ? 0 : 1));
+        const usableTotal = usableWeights.reduce((sum, v) => sum + v, 0);
+        let assigned = 0;
+        for (let i = planStartIndex; i < 12; i++) {
+          if (usableTotal <= 0) { monthly[i] = 0; continue; }
+          if (i === 11) { monthly[i] = remaining - assigned; } else { const v = Math.round((remaining * usableWeights[i]) / usableTotal); monthly[i] = v; assigned += v; }
+        }
+        return { ...row, monthly };
+      });
+      const sumMonth = (rows: typeof leafRows, idx: number) => {
+        const vals = rows.map((r) => r.monthly[idx] ?? null).filter((v): v is number => v != null && Number.isFinite(v));
+        return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) : null;
+      };
+      const clothingLeafRows = leafRows.slice(0, 6);
+      const accLeafRows = leafRows.slice(6);
+      const totalTemplate = srcData.data.rows.find((row) => row.isTotal);
+      const subtotalTemplates = srcData.data.rows.filter((row) => row.isSubtotal);
+      const clothingSubtotalTemplate = subtotalTemplates[0] ?? null;
+      const accSubtotalTemplate = subtotalTemplates[1] ?? null;
+      const clothingSubtotal = clothingSubtotalTemplate == null ? null : { ...clothingSubtotalTemplate, monthly: clothingSubtotalTemplate.monthly.map((_, i) => sumMonth(clothingLeafRows, i)) };
+      const accSubtotal = accSubtotalTemplate == null ? null : { ...accSubtotalTemplate, monthly: accSubtotalTemplate.monthly.map((_, i) => sumMonth(accLeafRows, i)) };
+      const grandTotal = totalTemplate == null ? null : { ...totalTemplate, monthly: totalTemplate.monthly.map((_, i) => sumMonth(leafRows, i)) };
+      result[b] = { rows: [...(grandTotal ? [grandTotal] : []), ...(clothingSubtotal ? [clothingSubtotal] : []), ...clothingLeafRows, ...(accSubtotal ? [accSubtotal] : []), ...accLeafRows] };
+    }
+    return result;
+  }, [year, shipmentPlanFromMonth, purchaseDataByBrand, purchaseData, brand, perBrandShipmentDisplayData, perBrandTopTable]);
+
+  // 브랜드별 본사 매입 연간합계 및 검증
+  const perBrandPurchaseAnnualByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
+    if (year !== 2026) return {};
+    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const hqRows = perBrandTopTable[b]?.hq.rows;
+      if (!hqRows) continue;
+      const leafRows = hqRows.filter((r) => r.isLeaf);
+      const leafByKey = new Map(leafRows.map((r) => [r.key, r]));
+      const annualByKey: Record<string, number | null> = {};
+      for (const r of leafRows) annualByKey[r.key] = r.sellInTotal * 1000;
+      const sumLeaf = (keys: string[]) => {
+        const vals = keys.map((k) => leafByKey.get(k)?.sellInTotal).filter((v): v is number => v != null && Number.isFinite(v));
+        return vals.length === 0 ? null : vals.reduce((s, v) => s + v, 0) * 1000;
+      };
+      annualByKey['의류합계'] = sumLeaf(SEASON_KEYS as unknown as string[]);
+      annualByKey['ACC합계']  = sumLeaf(ACC_KEYS as unknown as string[]);
+      annualByKey['매입합계'] = sumLeaf([...SEASON_KEYS as unknown as string[], ...ACC_KEYS as unknown as string[]]);
+      result[b] = annualByKey;
+    }
+    return result;
+  }, [year, perBrandTopTable]);
+
+  const perBrandPurchaseValidationByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
+    if (year !== 2026) return {};
+    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const displayData = perBrandPurchaseDisplayData[b];
+      const annualByKey = perBrandPurchaseAnnualByKey[b];
+      if (!displayData || !annualByKey) continue;
+      const validation: Record<string, number | null> = {};
+      for (const row of displayData.rows) {
+        const monthlySum = row.monthly.reduce<number>((sum, v) => sum + (v ?? 0), 0);
+        const annualTarget = annualByKey[row.key];
+        validation[row.key] = annualTarget == null ? null : monthlySum - annualTarget;
+      }
+      result[b] = validation;
+    }
+    return result;
+  }, [year, perBrandPurchaseDisplayData, perBrandPurchaseAnnualByKey]);
+
   const purchaseValidationByRowKey = useMemo<Record<string, number | null> | null>(() => {
     if (year !== 2026 || !effectivePurchaseDisplayData || !purchaseAnnualTotalByRowKey) return null;
     const result: Record<string, number | null> = {};
@@ -2113,6 +2762,128 @@ export default function InventoryDashboard() {
     if (!row?.monthly || !Array.isArray(row.monthly)) return;
     publishShipmentMonthlyByBrand({ [brand]: row.monthly });
   }, [year, brand, effectiveShipmentDisplayData, publishShipmentMonthlyByBrand]);
+
+  // 백그라운드 fetch로 3개 브랜드 데이터가 모두 채워지면 현재 브랜드 외 나머지 브랜드의
+  // 원시(raw) 데이터를 publish. 현재 브랜드는 위의 개별 효과들이 plan overlay 적용 값으로 처리.
+  // 과거 실적 월: 실제값, 계획 월: null (사용자가 해당 브랜드 탭 방문 시 정확한 값으로 덮어씀)
+  useEffect(() => {
+    if (typeof window === 'undefined' || year !== 2026) return;
+    if (brand !== 'MLB' && brand !== 'MLB KIDS' && brand !== 'DISCOVERY') return;
+
+    const otherBrands = ANNUAL_PLAN_BRANDS.filter((b) => b !== brand);
+    const missingBrands = otherBrands.filter(
+      (b) => !monthlyDataByBrand[b] || !purchaseDataByBrand[b] || !shipmentDataByBrand[b],
+    );
+    if (missingBrands.length > 0) return; // 아직 백그라운드 fetch 완료 전
+
+    const purchasePartial: Partial<MonthlyInventoryTotalByBrand> = {};
+    const shipmentPartial: Partial<MonthlyInventoryTotalByBrand> = {};
+    const monthlyPartial: Partial<MonthlyInventoryTotalByBrand> = {};
+
+    for (const b of otherBrands) {
+      const pData = purchaseDataByBrand[b];
+      const sData = shipmentDataByBrand[b];
+      const mData = monthlyDataByBrand[b];
+
+      const purchaseRow = pData?.data?.rows?.find((r: { key: string }) => r.key === '매입합계');
+      if (purchaseRow?.monthly && Array.isArray(purchaseRow.monthly)) {
+        purchasePartial[b] = purchaseRow.monthly as (number | null)[];
+      }
+
+      const shipmentRow = sData?.data?.rows?.find((r: { key: string }) => r.key === '출고매출합계');
+      if (shipmentRow?.monthly && Array.isArray(shipmentRow.monthly)) {
+        shipmentPartial[b] = shipmentRow.monthly as (number | null)[];
+      }
+
+      const hqTotalRow = mData?.hq?.rows?.find((r: { isTotal?: boolean }) => r.isTotal);
+      if (hqTotalRow?.monthly && Array.isArray(hqTotalRow.monthly)) {
+        monthlyPartial[b] = hqTotalRow.monthly as (number | null)[];
+      }
+    }
+
+    if (Object.keys(purchasePartial).length > 0) publishPurchaseMonthlyByBrand(purchasePartial);
+    if (Object.keys(shipmentPartial).length > 0) publishShipmentMonthlyByBrand(shipmentPartial);
+    if (Object.keys(monthlyPartial).length > 0) publishMonthlyInventoryTotalByBrand(monthlyPartial);
+  }, [
+    year,
+    brand,
+    monthlyDataByBrand,
+    purchaseDataByBrand,
+    shipmentDataByBrand,
+    publishPurchaseMonthlyByBrand,
+    publishShipmentMonthlyByBrand,
+    publishMonthlyInventoryTotalByBrand,
+  ]);
+
+  // 백그라운드 3개 브랜드 로드 완료 시 plan overlay 적용된 데이터를 자동 publish
+  useEffect(() => {
+    if (!allBrandsBgLoaded || year !== 2026) return;
+
+    const closingValues: Partial<HqClosingByBrand> = {};
+    const monthlyPartial: Partial<MonthlyInventoryTotalByBrand> = {};
+    const purchasePartial: Partial<MonthlyInventoryTotalByBrand> = {};
+    const shipmentPartial: Partial<MonthlyInventoryTotalByBrand> = {};
+
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      // plan overlay → 연간 기말재고(K) 계산
+      const table = buildBrand2026TopTable(b);
+      const planClosingK = table?.hq.rows.find((r) => r.isTotal)?.closing ?? null;
+      if (planClosingK != null && Number.isFinite(planClosingK)) {
+        closingValues[b] = planClosingK;
+      }
+
+      // 월별 기말재고: Snowflake 실적(1-2월) + 계획 기말까지 선형보간
+      const mDataForBrand = monthlyDataByBrand[b];
+      if (mDataForBrand) {
+        const stockTotalRow = mDataForBrand.hq.rows.find((r) => r.isTotal || r.key === '재고자산합계');
+        if (stockTotalRow && Array.isArray(stockTotalRow.monthly)) {
+          // CNY → K CNY, 미마감 월은 null 유지
+          const actualMonthly: (number | null)[] = stockTotalRow.monthly.map((v) =>
+            v != null ? v / 1000 : null,
+          );
+          // 마지막 실적월 인덱스
+          let lastActualIdx = -1;
+          for (let i = 11; i >= 0; i--) {
+            if (actualMonthly[i] != null) { lastActualIdx = i; break; }
+          }
+          // 미래 월 선형보간: 마지막 실적값 → 계획 기말
+          const monthly: (number | null)[] = [...actualMonthly];
+          if (planClosingK != null && lastActualIdx >= 0 && lastActualIdx < 11) {
+            const lastVal = actualMonthly[lastActualIdx]!;
+            const futureCount = 11 - lastActualIdx;
+            for (let i = lastActualIdx + 1; i <= 11; i++) {
+              const progress = (i - lastActualIdx) / futureCount;
+              monthly[i] = Math.round(lastVal + progress * (planClosingK - lastVal));
+            }
+          }
+          monthlyPartial[b] = monthly;
+        }
+      }
+
+      // 매입 월별: purchaseDataByBrand의 '매입합계' 행 (CNY → K CNY)
+      const pDataForBrand = purchaseDataByBrand[b];
+      if (pDataForBrand) {
+        const purchaseRow = pDataForBrand.data.rows.find((r) => r.isTotal || r.key === '매입합계');
+        if (purchaseRow && Array.isArray(purchaseRow.monthly)) {
+          purchasePartial[b] = purchaseRow.monthly.map((v) => (v != null ? v / 1000 : null));
+        }
+      }
+
+      // 출고 월별: shipmentDataByBrand의 '출고매출합계' 행 (CNY → K CNY)
+      const sDataForBrand = shipmentDataByBrand[b];
+      if (sDataForBrand) {
+        const shipmentRow = sDataForBrand.data.rows.find((r) => r.isTotal || r.key === '출고매출합계');
+        if (shipmentRow && Array.isArray(shipmentRow.monthly)) {
+          shipmentPartial[b] = shipmentRow.monthly.map((v) => (v != null ? v / 1000 : null));
+        }
+      }
+    }
+
+    if (Object.keys(closingValues).length > 0) publishHqClosingByBrand(closingValues);
+    if (Object.keys(monthlyPartial).length > 0) publishMonthlyInventoryTotalByBrand(monthlyPartial);
+    if (Object.keys(purchasePartial).length > 0) publishPurchaseMonthlyByBrand(purchasePartial);
+    if (Object.keys(shipmentPartial).length > 0) publishShipmentMonthlyByBrand(shipmentPartial);
+  }, [allBrandsBgLoaded, year, buildBrand2026TopTable, brand, monthlyDataByBrand, monthlyData, purchaseDataByBrand, purchaseData, shipmentDataByBrand, shipmentData, publishHqClosingByBrand, publishMonthlyInventoryTotalByBrand, publishPurchaseMonthlyByBrand, publishShipmentMonthlyByBrand]);
 
   const monthlyPlanFromMonth = useMemo(() => {
     if (year !== 2026 || brand === '전체' || !monthlyData) return undefined;
@@ -2420,6 +3191,148 @@ export default function InventoryDashboard() {
       ],
     };
   }, [year, brand, monthlyData, monthlyPlanFromMonth, effectivePurchaseDisplayData, effectiveShipmentDisplayData, effectiveRetailData, hqTableData]);
+
+  // 브랜드별 대리상 월별 재고잔액 display 데이터 (3개 브랜드 동시 계산)
+  const perBrandDealerMonthlyDisplayData = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
+    if (year !== 2026 || shipmentPlanFromMonth == null || shipmentPlanFromMonth <= 1) return {};
+    const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const mData = monthlyDataByBrand[b];
+      const shipDisplay = perBrandShipmentDisplayData[b];
+      const effRetail = perBrandEffectiveRetailData[b];  // applyAdjustedDealerRetailPlanBase만 적용 (월별재배분 X)
+      const dealerRows = perBrandTopTable[b]?.dealer.rows;
+      if (!mData || !shipDisplay || !effRetail || !dealerRows) continue;
+      const shipmentByKey = new Map(shipDisplay.rows.map((row) => [row.key, row]));
+      const retailByKey = new Map(effRetail.dealer.rows.map((row) => [row.key, row]));
+      const dealerClosingByKey = new Map(dealerRows.map((row) => [row.key, row.closing * 1000]));
+      const planStartIndex = shipmentPlanFromMonth - 1;
+      const leafRows = mData.dealer.rows.filter((row) => row.isLeaf).map((row) => {
+        const monthly = [...row.monthly];
+        let prevClosing = row.opening;
+        for (let i = 0; i < 12; i++) {
+          const currentBase = monthly[i] ?? null;
+          if (currentBase != null) prevClosing = currentBase;
+          if (i < planStartIndex) continue;
+          const shipVal = shipmentByKey.get(row.key)?.monthly[i] ?? 0;
+          const retailVal = retailByKey.get(row.key)?.monthly[i] ?? 0;
+          monthly[i] = prevClosing == null ? null : prevClosing + shipVal - retailVal;
+          prevClosing = monthly[i];
+        }
+        const targetClosing = dealerClosingByKey.get(row.key) ?? null;
+        const currentClosing = monthly[11] ?? null;
+        if (targetClosing != null && currentClosing != null) {
+          const gap = targetClosing - currentClosing;
+          if (gap !== 0) {
+            const rawWeights = monthly.map((_, i) => {
+              if (i < planStartIndex) return 0;
+              return Math.max(shipmentByKey.get(row.key)?.monthly[i] ?? 0, 0) + Math.max(retailByKey.get(row.key)?.monthly[i] ?? 0, 0);
+            });
+            const wTotal = rawWeights.reduce((s, v) => s + v, 0);
+            const usableW = wTotal > 0 ? rawWeights : rawWeights.map((_, i) => (i < planStartIndex ? 0 : 1));
+            const uTotal = usableW.reduce((s, v) => s + v, 0);
+            let assigned = 0; let cumAdj = 0;
+            for (let i = planStartIndex; i < 12; i++) {
+              const adj = uTotal <= 0 ? 0 : i === 11 ? gap - assigned : Math.round((gap * usableW[i]) / uTotal);
+              assigned += adj; cumAdj += adj;
+              if (monthly[i] != null) monthly[i] = (monthly[i] as number) + cumAdj;
+            }
+          }
+        }
+        return { ...row, monthly };
+      });
+      const sumMonth = (rows: typeof leafRows, idx: number) => {
+        const vals = rows.map((r) => r.monthly[idx] ?? null).filter((v): v is number => v != null && Number.isFinite(v));
+        return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) : null;
+      };
+      const clothingLeafRows = leafRows.slice(0, 6);
+      const accLeafRows = leafRows.slice(6);
+      const totalTemplate = mData.dealer.rows.find((row) => row.isTotal) ?? null;
+      const subtotalTemplates = mData.dealer.rows.filter((row) => row.isSubtotal);
+      const clothingSubtotal = subtotalTemplates[0] == null ? null : { ...subtotalTemplates[0], monthly: subtotalTemplates[0].monthly.map((_, i) => sumMonth(clothingLeafRows, i)) };
+      const accSubtotal = subtotalTemplates[1] == null ? null : { ...subtotalTemplates[1], monthly: subtotalTemplates[1].monthly.map((_, i) => sumMonth(accLeafRows, i)) };
+      const grandTotal = totalTemplate == null ? null : { ...totalTemplate, monthly: totalTemplate.monthly.map((_, i) => sumMonth(leafRows, i)) };
+      result[b] = { rows: [...(grandTotal ? [grandTotal] : []), ...(clothingSubtotal ? [clothingSubtotal] : []), ...clothingLeafRows, ...(accSubtotal ? [accSubtotal] : []), ...accLeafRows] };
+    }
+    return result;
+  }, [year, shipmentPlanFromMonth, monthlyDataByBrand, monthlyData, brand, perBrandShipmentDisplayData, perBrandEffectiveRetailData, perBrandTopTable]);
+
+  // 브랜드별 본사 월별 재고잔액 display 데이터 (3개 브랜드 동시 계산)
+  const perBrandHqMonthlyDisplayData = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
+    if (year !== 2026 || shipmentPlanFromMonth == null || shipmentPlanFromMonth <= 1) return {};
+    const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const mData = monthlyDataByBrand[b];
+      const purchaseDisplay = perBrandPurchaseDisplayData[b];
+      const shipDisplay = perBrandShipmentDisplayData[b];
+      const effRetail = perBrandEffectiveRetailData[b];  // applyAdjustedDealerRetailPlanBase만 적용 (월별재배분 X)
+      const hqRows = perBrandTopTable[b]?.hq.rows;
+      if (!mData || !purchaseDisplay || !shipDisplay || !effRetail || !hqRows) continue;
+      const purchaseByKey = new Map(purchaseDisplay.rows.map((row) => [row.key, row]));
+      const shipmentByKey = new Map(shipDisplay.rows.map((row) => [row.key, row]));
+      const retailByKey = new Map(effRetail.hq.rows.map((row) => [row.key, row]));
+      const hqClosingByKey = new Map(hqRows.map((row) => [row.key, row.closing * 1000]));
+      const planStartIndex = shipmentPlanFromMonth - 1;
+      const leafRows = mData.hq.rows.filter((row) => row.isLeaf).map((row) => {
+        const monthly = [...row.monthly];
+        const targetClosing = hqClosingByKey.get(row.key) ?? null;
+        const actualBoundaryClosing = planStartIndex > 0 ? (monthly[planStartIndex - 1] ?? null) : (row.opening ?? null);
+        if (targetClosing != null) {
+          monthly[11] = targetClosing;
+          let impliedBoundaryClosing: number | null = null;
+          for (let i = 11; i >= planStartIndex; i--) {
+            const cur = monthly[i] ?? null;
+            if (cur == null) continue;
+            const pv = purchaseByKey.get(row.key)?.monthly[i] ?? 0;
+            const sv = shipmentByKey.get(row.key)?.monthly[i] ?? 0;
+            const rv = retailByKey.get(row.key)?.monthly[i] ?? 0;
+            const prev = cur - pv + sv + rv;
+            if (i - 1 >= planStartIndex) { monthly[i - 1] = prev; } else { impliedBoundaryClosing = prev; }
+          }
+          if (actualBoundaryClosing != null && impliedBoundaryClosing != null) {
+            const gap = actualBoundaryClosing - impliedBoundaryClosing;
+            if (gap !== 0) {
+              const tailMonths = Array.from({ length: Math.max(0, 11 - planStartIndex) }, (_, idx) => planStartIndex + 1 + idx);
+              const rawWeights = tailMonths.map((mi) =>
+                Math.max(purchaseByKey.get(row.key)?.monthly[mi] ?? 0, 0) + Math.max(shipmentByKey.get(row.key)?.monthly[mi] ?? 0, 0) + Math.max(retailByKey.get(row.key)?.monthly[mi] ?? 0, 0)
+              );
+              const wTotal = rawWeights.reduce((s, v) => s + v, 0);
+              const usableW = wTotal > 0 ? rawWeights : rawWeights.map(() => 1);
+              const uTotal = usableW.reduce((s, v) => s + v, 0);
+              const portionByMonth = new Map<number, number>();
+              let assigned = 0;
+              tailMonths.forEach((mi, idx) => {
+                const portion = uTotal <= 0 ? 0 : idx === tailMonths.length - 1 ? gap - assigned : Math.round((gap * usableW[idx]) / uTotal);
+                assigned += portion; portionByMonth.set(mi, portion);
+              });
+              let runAdj = gap;
+              for (let i = planStartIndex; i < 12; i++) {
+                if (monthly[i] != null) monthly[i] = (monthly[i] as number) + runAdj;
+                if (i < 11) runAdj -= portionByMonth.get(i + 1) ?? 0;
+              }
+            }
+          }
+        }
+        return { ...row, monthly };
+      });
+      const sumMonth = (rows: typeof leafRows, idx: number) => {
+        const vals = rows.map((r) => r.monthly[idx] ?? null).filter((v): v is number => v != null && Number.isFinite(v));
+        return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) : null;
+      };
+      const clothingLeafRows = leafRows.slice(0, 6);
+      const accLeafRows = leafRows.slice(6);
+      const totalTemplate = mData.hq.rows.find((row) => row.isTotal) ?? null;
+      const subtotalTemplates = mData.hq.rows.filter((row) => row.isSubtotal);
+      const clothingSubtotal = subtotalTemplates[0] == null ? null : { ...subtotalTemplates[0], monthly: subtotalTemplates[0].monthly.map((_, i) => sumMonth(clothingLeafRows, i)) };
+      const accSubtotal = subtotalTemplates[1] == null ? null : { ...subtotalTemplates[1], monthly: subtotalTemplates[1].monthly.map((_, i) => sumMonth(accLeafRows, i)) };
+      const grandTotal = totalTemplate == null ? null : { ...totalTemplate, monthly: totalTemplate.monthly.map((_, i) => sumMonth(leafRows, i)) };
+      if (clothingSubtotal && hqClosingByKey.has('의류합계')) clothingSubtotal.monthly[11] = hqClosingByKey.get('의류합계') ?? clothingSubtotal.monthly[11];
+      if (accSubtotal && hqClosingByKey.has('ACC합계')) accSubtotal.monthly[11] = hqClosingByKey.get('ACC합계') ?? accSubtotal.monthly[11];
+      if (grandTotal && hqClosingByKey.has('재고자산합계')) grandTotal.monthly[11] = hqClosingByKey.get('재고자산합계') ?? grandTotal.monthly[11];
+      result[b] = { rows: [...(grandTotal ? [grandTotal] : []), ...(clothingSubtotal ? [clothingSubtotal] : []), ...clothingLeafRows, ...(accSubtotal ? [accSubtotal] : []), ...accLeafRows] };
+    }
+    return result;
+  }, [year, shipmentPlanFromMonth, monthlyDataByBrand, monthlyData, brand, perBrandPurchaseDisplayData, perBrandShipmentDisplayData, perBrandEffectiveRetailData, perBrandTopTable]);
+
   useEffect(() => {
     if (typeof window === 'undefined' || year !== 2026) return;
     if (brand !== 'MLB' && brand !== 'MLB KIDS' && brand !== 'DISCOVERY') return;
@@ -2522,7 +3435,7 @@ export default function InventoryDashboard() {
         fetch(`/api/inventory/monthly-stock?${new URLSearchParams({ year: String(year), brand })}`).then(
           (r) => r.json() as Promise<MonthlyStockResponse & { error?: string }>,
         ),
-        fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand, growthRate: String(growthRate), growthRateHq: String(growthRateHq) })}`).then(
+        fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand, growthRate: String(growthRateByBrand[brand as AnnualPlanBrand] ?? growthRate), growthRateHq: String(growthRateHqByBrand[brand as AnnualPlanBrand] ?? growthRateHq) })}`).then(
           (r) => r.json() as Promise<RetailSalesResponse & { error?: string }>,
         ),
         fetch(`/api/inventory/shipment-sales?${new URLSearchParams({ year: String(year), brand })}`).then(
@@ -2578,7 +3491,7 @@ export default function InventoryDashboard() {
     } finally {
       setRecalcLoading(false);
     }
-  }, [year, brand, growthRate, growthRateHq, fetchMonthlyData, fetchRetailData, fetchShipmentData, fetchPurchaseData]);
+  }, [year, brand, growthRate, growthRateHq, growthRateByBrand, growthRateHqByBrand, fetchMonthlyData, fetchRetailData, fetchShipmentData, fetchPurchaseData]);
 
   const handleAnnualPlanCellChange = useCallback((planBrand: AnnualPlanBrand, season: AnnualPlanSeason, value: string) => {
     if (!annualPlanEditMode) return;
@@ -2604,13 +3517,48 @@ export default function InventoryDashboard() {
     await saveAnnualPlanToServer(2026, annualShipmentPlanDraft2026);
   }, [annualShipmentPlanDraft2026]);
 
+  const handleOtbEditStart = useCallback(() => {
+    setOtbDraft(otbData ? (JSON.parse(JSON.stringify(otbData)) as OtbData) : null);
+    setOtbEditMode(true);
+  }, [otbData]);
+
+  const handleOtbCellChange = useCallback((sesn: OtbSeason, brand: OtbBrand, valueK: number) => {
+    setOtbDraft((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [sesn]: { ...prev[sesn], [brand]: valueK * 1000 },
+      };
+    });
+  }, []);
+
+  const handleOtbSave = useCallback(async () => {
+    if (!otbDraft) return;
+    setOtbData(otbDraft);
+    setOtbEditMode(false);
+    const payload: Record<string, Record<string, number>> = {};
+    for (const sesn of OTB_SEASONS_LIST) {
+      payload[sesn] = {};
+      for (const b of ANNUAL_PLAN_BRANDS) {
+        payload[sesn][b] = Math.round((otbDraft[sesn]?.[b] ?? 0) / 1000);
+      }
+    }
+    try {
+      await fetch('/api/inventory/otb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: payload }),
+      });
+    } catch {
+      // 서버 저장 실패 시 로컬 state는 유지
+    }
+  }, [otbDraft]);
+
   return (
     <div className="bg-gray-50 overflow-auto h-[calc(100vh-64px)]">
       <InventoryFilterBar
         year={year}
-        brand={brand}
         onYearChange={setYear}
-        onBrandChange={setBrand}
         snapshotSaved={snapshotSaved}
         snapshotSavedAt={snapshotSavedAt}
         recalcLoading={recalcLoading}
@@ -2619,6 +3567,8 @@ export default function InventoryDashboard() {
         onSave={handleSave}
         onRecalc={handleRecalc}
         canSave={!!(monthlyData && retailData && shipmentData && purchaseData)}
+        allBrandsBgLoaded={year === 2026 && allBrandsBgLoaded}
+        onRefetch2025={() => setRefetch2025Counter((c) => c + 1)}
       />
 
       <div className="px-6 py-5">
@@ -2631,110 +3581,53 @@ export default function InventoryDashboard() {
         {statusErrorMessage && !statusLoading && !dealerTableData && (
           <div className="py-10 text-center text-red-500 text-sm">{statusErrorMessage}</div>
         )}
-        {dealerTableData && hqTableData && (
-          <>
-            <div className="flex flex-wrap items-start" style={{ gap: '1.5%', paddingLeft: '1.5%', paddingRight: '1.5%' }}>
-            <div className="min-w-0" style={{ flex: '0 0 46.15%', minWidth: '320px' }}>
-              <InventoryTable
-                title="대리상 (CNY K)"
-                titleRight={
-                  <GrowthRateControl
-                    label="대리상 성장률"
-                    labelCn="FR 成长率"
-                    value={100 + growthRate}
-                    onChange={(v) => setGrowthRate(v)}
-                    title="대리상 리테일 계획매출 전년 대비 성장률"
-                  />
-                }
-                data={(year === 2026 ? topTableDisplayData?.dealer : null) ?? dealerTableData!}
-                year={year}
-                sellInLabel="Sell-in"
-                sellOutLabel="Sell-out"
-                tableType="dealer"
-                prevYearData={prevYearTableData?.dealer ?? null}
-                onWoiChange={year === 2026 && brand !== '전체' ? handleWoiChange : undefined}
-                use2025Legend={year === 2026 && brand === '전체'}
-                prevYearTotalOpening={(() => {
-                  const v = prevYearMonthlyData?.dealer.rows.find((r) => r.key === '재고자산합계')?.opening;
-                  return v != null ? v / 1000 : undefined;
-                })()}
-                prevYearTotalSellIn={prevYearTableData?.dealer.rows.find((r) => r.key === '재고자산합계')?.sellInTotal}
-                prevYearTotalSellOut={prevYearTableData?.dealer.rows.find((r) => r.key === '재고자산합계')?.sellOutTotal}
-              />
-            </div>
-            <div className="min-w-0 flex-1" style={{ flex: '1 1 0', minWidth: '320px' }}>
-              <InventoryTable
-                title="본사 (CNY K)"
-                titleRight={
-                  <>
-                    <GrowthRateControl
-                      label="본사 성장률"
-                      labelCn="OR 成长率"
-                      value={100 + growthRateHq}
-                      onChange={(v) => setGrowthRateHq(v)}
-                      title="본사 리테일 계획매출 전년 대비 성장률"
-                    />
-                  </>
-                }
-                data={(year === 2026 ? topTableDisplayData?.hq : null) ?? hqTableData!}
-                year={year}
-                sellInLabel="상품매입"
-                sellOutLabel="대리상출고"
-                tableType="hq"
-                prevYearData={prevYearTableData?.hq ?? null}
-                onWoiChange={year === 2026 && brand !== '전체' ? handleWoiChange : undefined}
-                use2025Legend={year === 2026 && brand === '전체'}
-                onHqSellInChange={undefined}
-                prevYearTotalOpening={(() => {
-                  const v = prevYearMonthlyData?.hq.rows.find((r) => r.key === '재고자산합계')?.opening;
-                  return v != null ? v / 1000 : undefined;
-                })()}
-                prevYearTotalSellIn={prevYearTableData?.hq.rows.find((r) => r.key === '재고자산합계')?.sellInTotal}
-                prevYearTotalSellOut={prevYearTableData?.hq.rows.find((r) => r.key === '재고자산합계')?.sellOutTotal}
-                prevYearTotalHqSales={prevYearTableData?.hq.rows.find((r) => r.key === '재고자산합계')?.hqSalesTotal}
-                sideContent={year === 2026 ? (
-                  <HqHoldingWoiTable values={accHqHoldingWoi} onChange={handleHqHoldingWoiChange} />
-                ) : undefined}
-              />
-            </div>
-          </div>
-          </>
-        )}
-
-        {/* 2026 시즌별 연간 출고계획 + 대리상 OTB (좌우 2분할) */}
+        {/* 2026: 리테일 성장율 | 재고관련 주요지표 (상단 이동) */}
         {year === 2026 && (
-          <div className="mt-8" style={{ paddingLeft: '1.5%', paddingRight: '1.5%' }}>
+          <div className="mb-6" style={{ paddingLeft: '1.5%', paddingRight: '1.5%' }}>
             <div className="grid gap-6 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
               <div className="min-w-0 max-w-[560px]">
-                <div className="mb-3 border-l-4 border-sky-500 pl-3 text-sm font-bold text-slate-900">리테일 매출(변수)</div>
+                <div className="mb-3 border-l-4 border-sky-500 pl-3 text-sm font-bold text-slate-900">리테일 성장율</div>
                 <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-inner">
-                  <table key={`independent-driver-${INDEPENDENT_DRIVER_COLUMN_HEADERS.join('|')}`} className="min-w-full border-collapse text-xs">
+                  <table className="min-w-full border-collapse text-xs">
                     <thead>
                       <tr>
-                        <th className="min-w-[120px] border border-slate-300 bg-slate-900 px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide text-white">항목</th>
-                        {INDEPENDENT_DRIVER_COLUMN_HEADERS.map((column, columnIndex) => (
-                          <th
-                            key={`independent-${columnIndex}`}
-                            className="min-w-[84px] border border-slate-300 bg-slate-900 px-3 py-2.5 text-center text-[11px] font-semibold tracking-wide text-white"
-                          >
-                            {column}
-                          </th>
-                        ))}
+                        <th className="min-w-[100px] border border-slate-300 bg-slate-900 px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide text-white">브랜드</th>
+                        <th className="min-w-[84px] border border-slate-300 bg-slate-900 px-3 py-2.5 text-center text-[11px] font-semibold tracking-wide text-white">대리상</th>
+                        <th className="min-w-[84px] border border-slate-300 bg-slate-900 px-3 py-2.5 text-center text-[11px] font-semibold tracking-wide text-white">본사</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {INDEPENDENT_DRIVER_ROWS.map((rowLabel) => (
-                        <tr key={rowLabel} className="bg-white odd:bg-slate-50/80 hover:bg-sky-50">
-                          <td className="border-b border-slate-200 px-3 py-2.5 font-semibold text-slate-700">{rowLabel}</td>
-                          {INDEPENDENT_DRIVER_COLUMN_HEADERS.map((column, columnIndex) => (
-                            <td key={`${rowLabel}-${columnIndex}`} className="border-b border-slate-200 px-3 py-2.5 text-right text-sm font-semibold text-slate-950">
-                              {column === 'Rolling'
-                                ? rowLabel === '대리상 리테일 성장율'
-                                  ? formatDriverPercent(growthRate)
-                                  : formatDriverPercent(growthRateHq)
-                                : '-'}
-                            </td>
-                          ))}
+                      {ANNUAL_PLAN_BRANDS.map((b) => (
+                        <tr key={b} className="bg-white odd:bg-slate-50/80 hover:bg-sky-50">
+                          <td className="border-b border-slate-200 px-3 py-2.5 font-semibold text-slate-700">{b}</td>
+                          <td className="border-b border-slate-200 px-1 py-1 text-center">
+                            <input
+                              type="number"
+                              className="w-[72px] rounded border border-slate-300 px-2 py-1 text-right text-sm font-semibold text-slate-950 focus:border-sky-500 focus:outline-none"
+                              value={100 + growthRateByBrand[b]}
+                              onChange={(e) => {
+                                const raw = Number(e.target.value);
+                                if (!Number.isFinite(raw)) return;
+                                setGrowthRateByBrand((prev) => ({ ...prev, [b]: raw - 100 }));
+                              }}
+                              step={1}
+                            />
+                            <span className="ml-0.5 text-xs text-slate-500">%</span>
+                          </td>
+                          <td className="border-b border-slate-200 px-1 py-1 text-center">
+                            <input
+                              type="number"
+                              className="w-[72px] rounded border border-slate-300 px-2 py-1 text-right text-sm font-semibold text-slate-950 focus:border-sky-500 focus:outline-none"
+                              value={100 + growthRateHqByBrand[b]}
+                              onChange={(e) => {
+                                const raw = Number(e.target.value);
+                                if (!Number.isFinite(raw)) return;
+                                setGrowthRateHqByBrand((prev) => ({ ...prev, [b]: raw - 100 }));
+                              }}
+                              step={1}
+                            />
+                            <span className="ml-0.5 text-xs text-slate-500">%</span>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -2767,13 +3660,11 @@ export default function InventoryDashboard() {
                           <td className="border-b border-slate-200 px-3 py-2.5 font-semibold text-slate-700">{rowLabel}</td>
                           {DRIVER_COLUMN_HEADERS.map((column, columnIndex) => {
                             const planValue =
-                              brand === '전체'
-                                ? ANNUAL_PLAN_BRANDS.reduce<number | null>((sum, planBrand) => {
-                                    const value = dependentPlanValues[rowLabel]?.[planBrand];
-                                    if (value == null || !Number.isFinite(value)) return sum;
-                                    return (sum ?? 0) + value;
-                                  }, null)
-                                : (dependentPlanValues[rowLabel]?.[brand as AnnualPlanBrand] ?? null);
+                              ANNUAL_PLAN_BRANDS.reduce<number | null>((sum, planBrand) => {
+                                const value = dependentPlanValues[rowLabel]?.[planBrand];
+                                if (value == null || !Number.isFinite(value)) return sum;
+                                return (sum ?? 0) + value;
+                              }, null);
                             const prevValue =
                               rowIndex === 0
                                 ? prevYearHqDriverTotalRow?.sellOutTotal
@@ -2844,6 +3735,70 @@ export default function InventoryDashboard() {
             </div>
           </div>
         )}
+
+        {/* 상단 재고자산표: 대리상 3열 (MLB | MLB KIDS | DISCOVERY) */}
+        <div className="mt-4" style={{ paddingLeft: '1.5%', paddingRight: '1.5%' }}>
+          <div className="grid grid-cols-3 gap-4">
+            {ANNUAL_PLAN_BRANDS.map((b) => {
+              const displayData = year === 2026
+                ? (perBrandTopTableDisplayData[b] ?? perBrandTopTable[b])
+                : perBrandTopTable[b];
+              const prevData = perBrandPrevYearTableData[b];
+              if (!displayData) return <div key={b} className="min-w-0 text-xs text-gray-400 py-8 text-center">로딩 중…</div>;
+              return (
+                <div key={b} className="min-w-0">
+                  <InventoryTable
+                    title={`${b} 대리상 (CNY K)`}
+                    data={displayData.dealer}
+                    year={year}
+                    sellInLabel="Sell-in"
+                    sellOutLabel="Sell-out"
+                    tableType="dealer"
+                    prevYearData={prevData?.dealer ?? null}
+                    onWoiChange={year === 2026 ? handleWoiChange : undefined}
+                    prevYearTotalOpening={undefined}
+                    prevYearTotalSellIn={prevData?.dealer.rows.find((r) => r.key === '재고자산합계')?.sellInTotal}
+                    prevYearTotalSellOut={prevData?.dealer.rows.find((r) => r.key === '재고자산합계')?.sellOutTotal}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 상단 재고자산표: 본사 3열 (MLB | MLB KIDS | DISCOVERY) */}
+        <div className="mt-4" style={{ paddingLeft: '1.5%', paddingRight: '1.5%' }}>
+          <div className="grid grid-cols-3 gap-4">
+            {ANNUAL_PLAN_BRANDS.map((b) => {
+              const displayData = year === 2026
+                ? (perBrandTopTableDisplayData[b] ?? perBrandTopTable[b])
+                : perBrandTopTable[b];
+              const prevData = perBrandPrevYearTableData[b];
+              if (!displayData) return <div key={b} className="min-w-0 text-xs text-gray-400 py-8 text-center">로딩 중…</div>;
+              return (
+                <div key={b} className="min-w-0">
+                  <InventoryTable
+                    title={`${b} 본사 (CNY K)`}
+                    data={displayData.hq}
+                    year={year}
+                    sellInLabel="상품매입"
+                    sellOutLabel="대리상출고"
+                    tableType="hq"
+                    prevYearData={prevData?.hq ?? null}
+                    onWoiChange={year === 2026 ? handleWoiChange : undefined}
+                    prevYearTotalOpening={undefined}
+                    prevYearTotalSellIn={prevData?.hq.rows.find((r) => r.key === '재고자산합계')?.sellInTotal}
+                    prevYearTotalSellOut={prevData?.hq.rows.find((r) => r.key === '재고자산합계')?.sellOutTotal}
+                    prevYearTotalHqSales={prevData?.hq.rows.find((r) => r.key === '재고자산합계')?.hqSalesTotal}
+                    bottomContent={year === 2026 ? (
+                      <HqHoldingWoiTable values={accHqHoldingWoi} onChange={handleHqHoldingWoiChange} horizontal />
+                    ) : undefined}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {year === 2026 && (
           <div className="mt-10 border-t border-gray-300 pt-8">
@@ -2941,9 +3896,26 @@ export default function InventoryDashboard() {
 
                 {/* 우: 대리상 OTB */}
                 <div className="flex-shrink-0">
-                  <div className="flex items-baseline gap-1 mb-1.5">
+                  <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-xs font-semibold text-gray-600">{TXT_OTB_SECTION}</span>
                     <span className="text-xs text-gray-400">{TXT_OTB_UNIT}</span>
+                    {!otbEditMode ? (
+                      <button
+                        type="button"
+                        onClick={handleOtbEditStart}
+                        className="px-3 py-1 text-xs rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                      >
+                        {TXT_EDIT}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleOtbSave}
+                        className="px-3 py-1 text-xs rounded border border-sky-600 bg-sky-600 text-white hover:bg-sky-700"
+                      >
+                        {TXT_SAVE}
+                      </button>
+                    )}
                   </div>
                   <div className="overflow-x-auto rounded border border-gray-200">
                     {otbLoading ? (
@@ -2967,11 +3939,27 @@ export default function InventoryDashboard() {
                             <tr key={sesn} className="bg-white hover:bg-gray-50">
                               <td className="px-3 py-2 border-b border-gray-200 font-medium text-gray-700">{sesn}</td>
                               {ANNUAL_PLAN_BRANDS.map((b) => {
-                                const raw = otbData?.[sesn]?.[b] ?? 0;
-                                const display = raw === 0 ? '-' : Math.round(raw / 1000).toLocaleString();
+                                const activeData = otbEditMode ? otbDraft : otbData;
+                                const raw = activeData?.[sesn]?.[b] ?? 0;
+                                const valueK = Math.round(raw / 1000);
                                 return (
-                                  <td key={b} className="px-3 py-2 border-b border-gray-200 text-right text-gray-700 tabular-nums">
-                                    {display}
+                                  <td key={b} className="px-2 py-1.5 border-b border-gray-200">
+                                    {otbEditMode ? (
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={String(valueK)}
+                                        onChange={(e) => {
+                                          const n = parseInt(e.target.value.replace(/[^\d-]/g, ''), 10);
+                                          handleOtbCellChange(sesn, b as OtbBrand, Number.isNaN(n) ? 0 : n);
+                                        }}
+                                        className="w-full text-right text-xs px-1.5 py-1 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-sky-400"
+                                      />
+                                    ) : (
+                                      <span className="block text-right text-gray-700 tabular-nums">
+                                        {valueK === 0 ? '-' : valueK.toLocaleString()}
+                                      </span>
+                                    )}
                                   </td>
                                 );
                               })}
@@ -2982,7 +3970,7 @@ export default function InventoryDashboard() {
                     )}
                   </div>
                   <p className="mt-1 text-[10px] text-gray-400">
-                    ※ MLB: 별도 목표 적용 / MLB KIDS·DISCOVERY: Snowflake 실적
+                    ※ MLB·MLB KIDS·DISCOVERY: 별도 목표 적용
                   </p>
                 </div>
 
@@ -3045,7 +4033,7 @@ export default function InventoryDashboard() {
         )}
 
         {/* 대리상 리테일매출(보정) */}
-        {year === 2025 && adjustedDealerRetailTable && (
+        {year === 2025 && ANNUAL_PLAN_BRANDS.some((b) => perBrand2025AdjustedDealerRetailTable[b]) && (
           <div className="mt-10 border-t border-gray-300 pt-8">
             <button
               type="button"
@@ -3057,21 +4045,31 @@ export default function InventoryDashboard() {
               </SectionIcon>
               <span className="text-sm font-bold text-gray-700">대리상 리테일매출(보정)</span>
               <span className="text-xs font-normal text-gray-400">(단위: CNY K)</span>
+              <span className="text-xs font-normal text-orange-500 ml-1">월별 = 기초재고 + 출고 − 기말재고</span>
               <span className="ml-auto text-gray-400 text-xs shrink-0">
                 {adjustedRetailOpen ? '접기' : '펼치기'}
               </span>
             </button>
             {adjustedRetailOpen && (
               <div className="mt-3">
-                <InventoryMonthlyTable
-                  firstColumnHeader="대리상 리테일매출(보정)"
-                  data={adjustedDealerRetailTable}
-                  year={year}
-                  showOpening={false}
-                  annualTotalByRowKey={adjustedRetailAnnualTotalByRowKey ?? undefined}
-                  validationHeader="검증(월합-연간)"
-                  validationByRowKey={adjustedRetailValidationByRowKey ?? undefined}
-                />
+                {ANNUAL_PLAN_BRANDS.map((b) => {
+                  const tableData = perBrand2025AdjustedDealerRetailTable[b];
+                  if (!tableData) return null;
+                  return (
+                    <div key={b} className={b === 'MLB' ? '' : 'mt-6'}>
+                      <div className="text-sm font-bold text-gray-800 mb-1 pt-1 border-t border-gray-400">{b}</div>
+                      <InventoryMonthlyTable
+                        firstColumnHeader="대리상 리테일매출(보정)"
+                        data={tableData}
+                        year={year}
+                        showOpening={false}
+                        annualTotalByRowKey={perBrand2025AdjustedRetailAnnualByKey[b] ?? undefined}
+                        validationHeader="검증(월합-연간)"
+                        validationByRowKey={perBrand2025RetailDealerValidationByKey[b] ?? undefined}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -3119,30 +4117,40 @@ export default function InventoryDashboard() {
               {monthlyError && (
                 <div className="py-8 text-center text-red-500 text-sm">{monthlyError}</div>
               )}
-              {monthlyData && !monthlyLoading && monthlyData.dealer.rows.length > 0 && (
-                <>
-                  <InventoryMonthlyTable
-                    firstColumnHeader="대리상"
-                    data={effectiveDealerMonthlyDisplayData ?? (monthlyData.dealer as TableData)}
-                    year={year}
-                    showOpening={true}
-                    showAnnualTotal={false}
-                    planFromMonth={year === 2026 && brand !== '전체' ? monthlyPlanFromMonth : undefined}
-                  />
-                  <InventoryMonthlyTable
-                    firstColumnHeader="본사"
-                    data={effectiveHqMonthlyDisplayData ?? (monthlyData.hq as TableData)}
-                    year={year}
-                    showOpening={true}
-                    showAnnualTotal={false}
-                    planFromMonth={year === 2026 && brand !== '전체' ? monthlyPlanFromMonth : undefined}
-                    headerBg="#4db6ac"
-                    headerBorderColor="#2a9d8f"
-                    totalRowCls="bg-teal-50"
-                  />
-                </>
-              )}
-              {monthlyData && !monthlyLoading && monthlyData.dealer.rows.length === 0 && (
+              {!monthlyLoading && ANNUAL_PLAN_BRANDS.map((b) => {
+                const brandMonthly = monthlyDataByBrand[b];
+                if (!brandMonthly || brandMonthly.dealer.rows.length === 0) return null;
+                const dealerData = (year === 2026 ? perBrandDealerMonthlyDisplayData[b] : null) ?? (brandMonthly.dealer as TableData);
+                const hqData = (year === 2026 ? perBrandHqMonthlyDisplayData[b] : null) ?? (brandMonthly.hq as TableData);
+                return (
+                  <div key={b} className={b === 'MLB' ? '' : 'mt-8'}>
+                    <div className="text-sm font-bold text-gray-800 mb-1 pt-1 border-t border-gray-400">{b}</div>
+                    <InventoryMonthlyTable
+                      firstColumnHeader="대리상"
+                      data={dealerData}
+                      year={year}
+                      showOpening={true}
+                      showAnnualTotal={false}
+                      planFromMonth={year === 2026 ? shipmentPlanFromMonth : undefined}
+                    />
+                    <InventoryMonthlyTable
+                      firstColumnHeader="본사"
+                      data={hqData}
+                      year={year}
+                      showOpening={true}
+                      showAnnualTotal={false}
+                      planFromMonth={year === 2026 ? shipmentPlanFromMonth : undefined}
+                      headerBg="#4db6ac"
+                      headerBorderColor="#2a9d8f"
+                      totalRowCls="bg-teal-50"
+                    />
+                  </div>
+                );
+              })}
+              {!monthlyLoading && ANNUAL_PLAN_BRANDS.every((b) => {
+                const d = monthlyDataByBrand[b];
+                return !d || d.dealer.rows.length === 0;
+              }) && (
                 <div className="py-8 text-center text-gray-400 text-sm">
                   해당 연도의 마감 데이터가 없습니다.
                 </div>
@@ -3192,34 +4200,46 @@ export default function InventoryDashboard() {
               {retailError && (
                 <div className="py-8 text-center text-red-500 text-sm">{retailError}</div>
               )}
-              {effectiveRetailData && !retailLoading && effectiveRetailData.dealer.rows.length > 0 && (
-                <>
-                  <InventoryMonthlyTable
-                    firstColumnHeader="대리상"
-                    data={year === 2026 && adjustedDealerRetailData ? adjustedDealerRetailData : (effectiveRetailData.dealer as TableData)}
-                    year={year}
-                    showOpening={false}
-                    planFromMonth={effectiveRetailData.planFromMonth}
-                    annualTotalByRowKey={year === 2026 ? (retailDealerAnnualTotalByRowKey ?? undefined) : undefined}
-                    validationHeader={year === 2026 ? '검증(월합-연간)' : undefined}
-                    validationByRowKey={year === 2026 ? (retailDealerValidationByRowKey ?? undefined) : undefined}
-                  />
-                  <InventoryMonthlyTable
-                    firstColumnHeader="본사"
-                    data={year === 2026 && adjustedHqRetailData ? adjustedHqRetailData : (effectiveRetailData.hq as TableData)}
-                    year={year}
-                    showOpening={false}
-                    planFromMonth={effectiveRetailData.planFromMonth}
-                    annualTotalByRowKey={year === 2026 ? (retailHqAnnualTotalByRowKey ?? undefined) : undefined}
-                    validationHeader={year === 2026 ? '검증(월합-연간)' : undefined}
-                    validationByRowKey={year === 2026 ? (retailHqValidationByRowKey ?? undefined) : undefined}
-                    headerBg="#4db6ac"
-                    headerBorderColor="#2a9d8f"
-                    totalRowCls="bg-teal-50"
-                  />
-                </>
-              )}
-              {effectiveRetailData && !retailLoading && effectiveRetailData.dealer.rows.length === 0 && (
+              {!retailLoading && ANNUAL_PLAN_BRANDS.map((b) => {
+                const brandRetail = retailDataByBrand[b];
+                if (!brandRetail || brandRetail.dealer.rows.length === 0) return null;
+                const dealerData = (year === 2026 ? perBrandAdjustedDealerRetailData[b] : null) ?? (brandRetail.dealer as TableData);
+                const hqData = (year === 2026 ? perBrandAdjustedHqRetailData[b] : null) ?? (brandRetail.hq as TableData);
+                return (
+                  <div key={b} className={b === 'MLB' ? '' : 'mt-8'}>
+                    <div className="text-sm font-bold text-gray-800 mb-1 pt-1 border-t border-gray-400">{b}</div>
+                    {year !== 2025 && (
+                      <InventoryMonthlyTable
+                        firstColumnHeader="대리상"
+                        data={dealerData}
+                        year={year}
+                        showOpening={false}
+                        planFromMonth={brandRetail.planFromMonth}
+                        annualTotalByRowKey={year === 2026 ? (perBrandRetailDealerAnnualByKey[b] ?? undefined) : undefined}
+                        validationHeader={year === 2026 ? '검증(월합-연간)' : undefined}
+                        validationByRowKey={year === 2026 ? (perBrandRetailDealerValidationByKey[b] ?? undefined) : undefined}
+                      />
+                    )}
+                    <InventoryMonthlyTable
+                      firstColumnHeader="본사"
+                      data={hqData}
+                      year={year}
+                      showOpening={false}
+                      planFromMonth={brandRetail.planFromMonth}
+                      annualTotalByRowKey={year === 2026 ? (perBrandRetailHqAnnualByKey[b] ?? undefined) : undefined}
+                      validationHeader={year === 2026 ? '검증(월합-연간)' : undefined}
+                      validationByRowKey={year === 2026 ? (perBrandRetailHqValidationByKey[b] ?? undefined) : undefined}
+                      headerBg="#4db6ac"
+                      headerBorderColor="#2a9d8f"
+                      totalRowCls="bg-teal-50"
+                    />
+                  </div>
+                );
+              })}
+              {!retailLoading && ANNUAL_PLAN_BRANDS.every((b) => {
+                const d = retailDataByBrand[b];
+                return !d || d.dealer.rows.length === 0;
+              }) && (
                 <div className="py-8 text-center text-gray-400 text-sm">
                   해당 연도의 마감 데이터가 없습니다.
                 </div>
@@ -3246,7 +4266,7 @@ export default function InventoryDashboard() {
               {shipmentOpen ? '접기' : '펼치기'}
             </span>
           </button>
-          {year === 2026 && brand !== '전체' && shipmentPlanFromMonth != null && (
+          {year === 2026 && shipmentPlanFromMonth != null && (
             <div className="mt-1 pl-7 text-xs text-red-600">
               본사→대리상 출고매출 표만 예외적으로 PL 실적월 이후는 PL 의류 출고진척률 / ACC 출고비율로 월 배분
             </div>
@@ -3264,21 +4284,35 @@ export default function InventoryDashboard() {
               {shipmentError && (
                 <div className="py-8 text-center text-red-500 text-sm">{shipmentError}</div>
               )}
-              {effectiveShipmentDisplayData && !shipmentLoading && effectiveShipmentDisplayData.rows.length > 0 && (
-                <InventoryMonthlyTable
-                  firstColumnHeader="본사→대리상 출고"
-                  data={effectiveShipmentDisplayData}
-                  year={year}
-                  showOpening={false}
-                  planFromMonth={year === 2026 && brand !== '전체' ? shipmentPlanFromMonth : undefined}
-                  validationHeader={year === 2026 && brand !== '전체' ? '검증' : undefined}
-                  validationByRowKey={year === 2026 && brand !== '전체' ? (shipmentValidationByRowKey ?? undefined) : undefined}
-                  headerBg="#4db6ac"
-                  headerBorderColor="#2a9d8f"
-                  totalRowCls="bg-teal-50"
-                />
-              )}
-              {effectiveShipmentDisplayData && !shipmentLoading && effectiveShipmentDisplayData.rows.length === 0 && (
+              {!shipmentLoading && ANNUAL_PLAN_BRANDS.map((b) => {
+                const brandShipment = shipmentDataByBrand[b];
+                if (!brandShipment || brandShipment.data.rows.length === 0) return null;
+                const displayData = (year === 2026 ? perBrandShipmentDisplayData[b] : null) ?? (brandShipment.data as TableData);
+                return (
+                  <div key={b} className={b === 'MLB' ? '' : 'mt-6'}>
+                    <InventoryMonthlyTable
+                      firstColumnHeader={`${b} 출고`}
+                      data={displayData}
+                      year={year}
+                      showOpening={false}
+                      planFromMonth={year === 2026 ? shipmentPlanFromMonth : undefined}
+                      validationHeader={year === 2026 ? '검증' : undefined}
+                      validationByRowKey={year === 2026 ? (() => {
+                        const result: Record<string, number | null> = {};
+                        for (const row of displayData.rows) result[row.key] = 0;
+                        return result;
+                      })() : undefined}
+                      headerBg="#4db6ac"
+                      headerBorderColor="#2a9d8f"
+                      totalRowCls="bg-teal-50"
+                    />
+                  </div>
+                );
+              })}
+              {!shipmentLoading && ANNUAL_PLAN_BRANDS.every((b) => {
+                const d = shipmentDataByBrand[b];
+                return !d || d.data.rows.length === 0;
+              }) && (
                 <div className="py-8 text-center text-gray-400 text-sm">
                   해당 연도의 마감 데이터가 없습니다.
                 </div>
@@ -3323,24 +4357,32 @@ export default function InventoryDashboard() {
               {purchaseError && (
                 <div className="py-8 text-center text-red-500 text-sm">{purchaseError}</div>
               )}
-              {purchaseData && !purchaseLoading && purchaseData.data.rows.length > 0 && (
-                <>
-                  <InventoryMonthlyTable
-                    firstColumnHeader={TXT_HQ_PURCHASE_HEADER}
-                    data={effectivePurchaseDisplayData ?? (purchaseData.data as TableData)}
-                    year={year}
-                    showOpening={false}
-                    planFromMonth={year === 2026 ? shipmentPlanFromMonth : undefined}
-                    annualTotalByRowKey={year === 2026 ? (purchaseAnnualTotalByRowKey ?? undefined) : undefined}
-                    validationHeader={year === 2026 ? '검증' : undefined}
-                    validationByRowKey={year === 2026 ? (purchaseValidationByRowKey ?? undefined) : undefined}
-                    headerBg="#4db6ac"
-                    headerBorderColor="#2a9d8f"
-                    totalRowCls="bg-teal-50"
-                  />
-                </>
-              )}
-              {purchaseData && !purchaseLoading && purchaseData.data.rows.length === 0 && (
+              {!purchaseLoading && ANNUAL_PLAN_BRANDS.map((b) => {
+                const brandPurchase = purchaseDataByBrand[b];
+                if (!brandPurchase || brandPurchase.data.rows.length === 0) return null;
+                const displayData = (year === 2026 ? perBrandPurchaseDisplayData[b] : null) ?? (brandPurchase.data as TableData);
+                return (
+                  <div key={b} className={b === 'MLB' ? '' : 'mt-6'}>
+                    <InventoryMonthlyTable
+                      firstColumnHeader={`${b} 본사 매입`}
+                      data={displayData}
+                      year={year}
+                      showOpening={false}
+                      planFromMonth={year === 2026 ? shipmentPlanFromMonth : undefined}
+                      annualTotalByRowKey={year === 2026 ? (perBrandPurchaseAnnualByKey[b] ?? undefined) : undefined}
+                      validationHeader={year === 2026 ? '검증' : undefined}
+                      validationByRowKey={year === 2026 ? (perBrandPurchaseValidationByKey[b] ?? undefined) : undefined}
+                      headerBg="#4db6ac"
+                      headerBorderColor="#2a9d8f"
+                      totalRowCls="bg-teal-50"
+                    />
+                  </div>
+                );
+              })}
+              {!purchaseLoading && ANNUAL_PLAN_BRANDS.every((b) => {
+                const d = purchaseDataByBrand[b];
+                return !d || d.data.rows.length === 0;
+              }) && (
                 <div className="py-8 text-center text-gray-400 text-sm">
                   해당 연도의 마감 데이터가 없습니다.
                 </div>

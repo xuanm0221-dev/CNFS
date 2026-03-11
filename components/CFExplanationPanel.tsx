@@ -8,6 +8,7 @@ import { generateCFExplanationContent } from '@/lib/cf-explanation-generator';
 interface CFExplanationPanelProps {
   year?: number;
   rollingNumbers?: CFExplanationNumbers;
+  storeKey?: string;
 }
 
 const SECTION_KEYS: (keyof CFExplanationContent)[] = [
@@ -24,7 +25,7 @@ const SECTION_LABELS: Record<keyof CFExplanationContent, { title: string; border
   managementPoints: { title: '관리 포인트', border: 'border-orange-500', titleClass: 'text-orange-900' },
 };
 
-export default function CFExplanationPanel({ year = 2026, rollingNumbers }: CFExplanationPanelProps) {
+export default function CFExplanationPanel({ year = 2026, rollingNumbers, storeKey = 'cf-explanation' }: CFExplanationPanelProps) {
   // KV에 저장된 사용자 편집 내용 (없으면 null)
   const [kvContent, setKvContent] = useState<CFExplanationContent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,13 +44,13 @@ export default function CFExplanationPanel({ year = 2026, rollingNumbers }: CFEx
     [rollingNumbers],
   );
 
-  // 최종 표시 내용: KV 사용자 편집 우선, 없으면 Rolling 자동 생성
-  const content = kvContent ?? rollingContent;
+  // 최종 표시 내용: rollingNumbers가 있으면 rolling 우선(CF 탭), 없으면 서버 fetch 우선(현금흐름표 탭)
+  const content = rollingNumbers ? (rollingContent ?? kvContent) : (kvContent ?? rollingContent);
 
   const loadKvContent = () => {
     setLoading(true);
     setLoadError(null);
-    fetch('/api/cf-explanation')
+    fetch(`/api/cf-explanation?key=${storeKey}`)
       .then((res) => res.json())
       .then((data) => {
         setRequirePassword(!!data.requirePassword);
@@ -72,7 +73,7 @@ export default function CFExplanationPanel({ year = 2026, rollingNumbers }: CFEx
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/cf-explanation')
+    fetch(`/api/cf-explanation?key=${storeKey}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -91,7 +92,7 @@ export default function CFExplanationPanel({ year = 2026, rollingNumbers }: CFEx
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [storeKey]);
 
   const handleEdit = () => {
     if (requirePassword) {
@@ -99,10 +100,10 @@ export default function CFExplanationPanel({ year = 2026, rollingNumbers }: CFEx
         setError('비밀번호를 입력하세요.');
         return;
       }
-      fetch('/api/cf-explanation', {
+      fetch(`/api/cf-explanation?key=${storeKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: passwordInput }),
+        body: JSON.stringify({ password: passwordInput, key: storeKey }),
       }).then((res) => {
         if (res.ok) {
           passwordRef.current = passwordInput;
@@ -123,9 +124,9 @@ export default function CFExplanationPanel({ year = 2026, rollingNumbers }: CFEx
     if (!editContent) return;
     setSaving(true);
     setError(null);
-    const body: { password?: string; content: CFExplanationContent } = { content: editContent };
+    const body: { password?: string; content: CFExplanationContent; key: string } = { content: editContent, key: storeKey };
     if (requirePassword && passwordRef.current) body.password = passwordRef.current;
-    fetch('/api/cf-explanation', {
+    fetch(`/api/cf-explanation?key=${storeKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -205,7 +206,7 @@ export default function CFExplanationPanel({ year = 2026, rollingNumbers }: CFEx
                 } else {
                   // Rolling 데이터 없을 때 서버에서 재생성
                   setLoading(true);
-                  fetch('/api/cf-explanation?refresh=1')
+                  fetch(`/api/cf-explanation?refresh=1&key=${storeKey}`)
                     .then((res) => res.json())
                     .then((data) => {
                       if (data.content) setKvContent(data.content);

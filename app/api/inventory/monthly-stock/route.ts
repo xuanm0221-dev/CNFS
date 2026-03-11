@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CLOSED_THROUGH, fetchMonthlyStock } from '@/lib/inventory-db';
 import { MonthlyStockResponse, MonthlyStockRow } from '@/lib/inventory-monthly-types';
+import { get2025Cache, set2025Cache } from '@/lib/inventory-2025-cache';
 
 function toYYMM(year: number, month: number): string {
   return `${year}${String(month).padStart(2, '0')}`;
@@ -41,6 +42,12 @@ export async function GET(request: NextRequest) {
   const onlyLatest = searchParams.get('onlyLatest') === 'true';
   const includeFuture = searchParams.get('includeFuture') === 'true';
 
+  // 2025년 캐시 확인 (onlyLatest/includeFuture 옵션 없는 일반 요청만 캐시)
+  if (year === 2025 && !onlyLatest && !includeFuture) {
+    const cached = await get2025Cache<MonthlyStockResponse>('monthly-stock', brand);
+    if (cached) return NextResponse.json(cached);
+  }
+
   const { all: allYymms, queryable: allQueryable } = buildYyymmList(year);
   const baseQueryable = includeFuture ? allYymms : allQueryable;
   const queryable = onlyLatest ? baseQueryable.slice(-1) : baseQueryable;
@@ -65,6 +72,11 @@ export async function GET(request: NextRequest) {
       dealer: { rows: padRows(dealer.rows, allYymms, queryable, includeFuture) },
       hq: { rows: padRows(hq.rows, allYymms, queryable, includeFuture) },
     };
+
+    // 2025년 일반 요청 결과 캐시에 저장
+    if (year === 2025 && !onlyLatest && !includeFuture) {
+      await set2025Cache('monthly-stock', brand, response);
+    }
 
     return NextResponse.json(response);
   } catch (err) {

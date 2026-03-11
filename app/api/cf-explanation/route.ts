@@ -10,11 +10,12 @@ export async function GET(request: NextRequest) {
   const requirePassword = process.env.VERCEL === '1';
   const isDeploy = process.env.VERCEL === '1';
   const refresh = request.nextUrl.searchParams.get('refresh') === '1';
+  const kvKey = request.nextUrl.searchParams.get('key') ?? 'cf-explanation';
 
   try {
     let stored: CFExplanationContent | null = null;
     if (!refresh && isDeploy) {
-      stored = (await kv.get('cf-explanation')) as CFExplanationContent | null;
+      stored = (await kv.get(kvKey)) as CFExplanationContent | null;
     }
     if (stored != null) {
       return NextResponse.json({ content: stored, requirePassword });
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json().catch(() => ({})) as { password?: string; content?: CFExplanationContent };
+    const body = await request.json().catch(() => ({})) as { password?: string; content?: CFExplanationContent; key?: string };
     const requirePassword = process.env.VERCEL === '1';
     if (requirePassword && body.password !== '1234') {
       return NextResponse.json(
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest) {
       );
     }
     if (body.content) {
-      await kv.set('cf-explanation', body.content);
+      const kvKey = body.key ?? 'cf-explanation';
+      await kv.set(kvKey, body.content);
     }
     return NextResponse.json({ success: true });
   } catch (error) {

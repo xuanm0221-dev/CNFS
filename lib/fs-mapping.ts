@@ -457,6 +457,7 @@ export function calculateBS(data: FinancialData[]): TableRow[] {
   const 유무형자산 = getAccountValues(map, '유,무형자산');
   const 본사AP = getAccountValues(map, '본사 AP');
   const 제품AP = getAccountValues(map, '제품 AP');
+  const 미착품BS = getAccountValues(map, '미착품');
   const 차입금 = getAccountValues(map, '차입금');
   const 대리상선수금 = getAccountValues(map, '대리상선수금');
   const 대리상지원금 = getAccountValues(map, '대리상지원금');
@@ -474,7 +475,7 @@ export function calculateBS(data: FinancialData[]): TableRow[] {
   const 비유동자산 = 사용권자산.map((v, i) => v + 이연법인세자산[i] + 유무형자산[i]);
   const 자산 = 유동자산.map((v, i) => v + 비유동자산[i]);
   
-  const 외상매입금 = 본사AP.map((v, i) => v + 제품AP[i]);
+  const 외상매입금 = 본사AP.map((v, i) => v + 제품AP[i] + 미착품BS[i]);
   const 유동부채 = 외상매입금.map((v, i) => 
     v + 차입금[i] + 대리상선수금[i] + 대리상지원금[i] + 기타유동부채[i]
   );
@@ -571,6 +572,7 @@ export function calculateBS(data: FinancialData[]): TableRow[] {
     },
     { account: '본사 AP', level: 3, isGroup: false, isCalculated: false, values: 본사AP, format: 'number' },
     { account: '제품 AP', level: 3, isGroup: false, isCalculated: false, values: 제품AP, format: 'number' },
+    { account: '미착품', level: 3, isGroup: false, isCalculated: false, values: 미착품BS, format: 'number' },
     { account: '차입금', level: 2, isGroup: false, isCalculated: false, values: 차입금, format: 'number' },
     { account: '대리상선수금', level: 2, isGroup: false, isCalculated: false, values: 대리상선수금, format: 'number' },
     { account: '대리상지원금', level: 2, isGroup: false, isCalculated: false, values: 대리상지원금, format: 'number' },
@@ -621,6 +623,7 @@ export function calculateWorkingCapital(data: FinancialData[]): TableRow[] {
   const 선급금본사 = getAccountValues(map, '선급금(본사)');
   const 본사AP = getAccountValues(map, '본사 AP');
   const 제품AP = getAccountValues(map, '제품 AP');
+  const 미착품WC = getAccountValues(map, '미착품');
   const 대리상선수금 = getAccountValues(map, '대리상선수금');
   const 대리상지원금 = getAccountValues(map, '대리상지원금');
   const 현금및현금성자산 = getAccountValues(map, '현금 및 현금성자산');
@@ -638,7 +641,7 @@ export function calculateWorkingCapital(data: FinancialData[]): TableRow[] {
   
   // 계산
   const 외상매출금 = 직영AR.map((v, i) => v + 대리상AR[i]);
-  const 외상매입금 = 본사AP.map((v, i) => -(v + 제품AP[i])); // 마이너스
+  const 외상매입금 = 본사AP.map((v, i) => -(v + 제품AP[i] + 미착품WC[i])); // 마이너스
   const 운전자본 = 외상매출금.map((v, i) => v + 재고자산[i] + 선급금본사[i] + 외상매입금[i]);
   
   const from대리상 = 대리상선수금.map((v, i) => -(v + 대리상지원금[i])); // 마이너스
@@ -698,6 +701,7 @@ export function calculateWorkingCapital(data: FinancialData[]): TableRow[] {
     },
     { account: '본사AP', level: 2, isGroup: false, isCalculated: false, values: 본사AP.map(v => -v), format: 'number' },
     { account: '제품AP', level: 2, isGroup: false, isCalculated: false, values: 제품AP.map(v => -v), format: 'number' },
+    { account: '미착품', level: 2, isGroup: false, isCalculated: false, values: 미착품WC.map(v => -v), format: 'number' },
     {
       account: 'from대리상',
       level: 0,

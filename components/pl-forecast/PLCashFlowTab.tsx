@@ -1072,50 +1072,6 @@ export default function PLCashFlowTab() {
     return current - actualK;
   };
 
-  const cfExplanationNumbers = useMemo<CFExplanationNumbers>(() => {
-    const staticCfRow = (key: string) => STATIC_CF_ROWS.find((r) => r.key === key)?.actual2025 ?? 0;
-    const staticWcRowRaw = (key: string) => STATIC_WORKING_CAPITAL_ROWS.find((r) => r.key === key)?.actual2025 ?? 0;
-    const wcK = (key: string) => workingCapital2026(key) ?? 0;
-    const wcYoyK = (key: string) => {
-      const curr = workingCapital2026(key);
-      const prevK = toDisplayK(staticWcRowRaw(key));
-      if (curr == null || prevK == null) return 0;
-      return curr - prevK;
-    };
-    const opening = cashBorrowingOpening('borrowing');
-    const end2026 = cashBorrowing2026('borrowing');
-    return {
-      영업활동_25: staticCfRow('operating'),
-      영업활동_26: cf2026('operating') ?? 0,
-      영업활동_yoy: (cf2026('operating') ?? 0) - staticCfRow('operating'),
-      자산성지출_26: cf2026('capex') ?? 0,
-      자산성지출_yoy: (cf2026('capex') ?? 0) - staticCfRow('capex'),
-      기타수익_26: cf2026('other_income') ?? 0,
-      기타수익_yoy: (cf2026('other_income') ?? 0) - staticCfRow('other_income'),
-      차입금_26: cf2026('borrowings') ?? 0,
-      차입금_yoy: (cf2026('borrowings') ?? 0) - staticCfRow('borrowings'),
-      netCash_26: cf2026('net_cash') ?? 0,
-      netCash_yoy: (cf2026('net_cash') ?? 0) - staticCfRow('net_cash'),
-      차입금_기말_25: opening ?? 0,
-      차입금_기말_26: end2026 ?? 0,
-      차입금_기말_yoy: (end2026 ?? 0) - (opening ?? 0),
-      운전자본_25: staticWcRowRaw('wc_total'),
-      운전자본_26: wcK('wc_total') * 1000,
-      운전자본_yoy: wcYoyK('wc_total') * 1000,
-      매출채권_25: staticWcRowRaw('wc_ar'),
-      매출채권_26: wcK('wc_ar') * 1000,
-      매출채권_yoy: wcYoyK('wc_ar') * 1000,
-      재고자산_25: staticWcRowRaw('wc_inventory'),
-      재고자산_26: wcK('wc_inventory') * 1000,
-      재고자산_yoy: wcYoyK('wc_inventory') * 1000,
-      매입채무_25: staticWcRowRaw('wc_ap'),
-      매입채무_26: wcK('wc_ap') * 1000,
-      매입채무_yoy: wcYoyK('wc_ap') * 1000,
-      대리상AR_26: wcK('wc_ar_dealer') * 1000,
-      대리상AR_yoy: wcYoyK('wc_ar_dealer') * 1000,
-    };
-  }, [cfValuesByKey, cashBorrowingData, inventoryHqClosing, tagCostRatio, shipmentMonthlyByBrand, purchaseMonthlyByBrand, wcForecastByKey]);
-
   const workingCapitalMonthly = (rowKey: string, monthIndex: number): number | null => {
     const valuationMultiplier = (brand: keyof typeof VALUATION_REDUCTION_RATE) => (monthIndex >= 2 ? 1 - VALUATION_REDUCTION_RATE[brand] : 1);
     const mlbTag = toDisplayK(inventoryMonthlyTotals.MLB[monthIndex] ?? null);
@@ -1201,6 +1157,52 @@ export default function PLCashFlowTab() {
     return null;
   };
 
+  const cfExplanationNumbers = useMemo<CFExplanationNumbers>(() => {
+    const staticCfRow = (key: string) => STATIC_CF_ROWS.find((r) => r.key === key)?.actual2025 ?? 0;
+    const staticWcRowRaw = (key: string) => STATIC_WORKING_CAPITAL_ROWS.find((r) => r.key === key)?.actual2025 ?? 0;
+    const wcK = (key: string) => workingCapital2026(key) ?? 0;
+    const wcYoyK = (key: string) => {
+      const curr = workingCapital2026(key);
+      const prevK = toDisplayK(staticWcRowRaw(key));
+      if (curr == null || prevK == null) return 0;
+      return curr - prevK;
+    };
+    const opening = cashBorrowingOpening('borrowing');
+    const end2026 = cashBorrowing2026('borrowing');
+    return {
+      영업활동_25: staticCfRow('operating'),
+      영업활동_26: cf2026('operating') ?? 0,
+      영업활동_yoy: (cf2026('operating') ?? 0) - staticCfRow('operating'),
+      매출수금_yoy: (cf2026('operating_receipts') ?? 0) - staticCfRow('operating_receipts'),
+      물품대_yoy: (cf2026('operating_payments') ?? 0) - staticCfRow('operating_payments'),
+      자산성지출_26: cf2026('capex') ?? 0,
+      자산성지출_yoy: (cf2026('capex') ?? 0) - staticCfRow('capex'),
+      기타수익_26: cf2026('other_income') ?? 0,
+      기타수익_yoy: (cf2026('other_income') ?? 0) - staticCfRow('other_income'),
+      차입금_26: cf2026('borrowings') ?? 0,
+      차입금_yoy: (cf2026('borrowings') ?? 0) - staticCfRow('borrowings'),
+      netCash_26: cf2026('net_cash') ?? 0,
+      netCash_yoy: (cf2026('net_cash') ?? 0) - staticCfRow('net_cash'),
+      차입금_기말_25: opening ?? 0,
+      차입금_기말_26: end2026 ?? 0,
+      차입금_기말_yoy: (end2026 ?? 0) - (opening ?? 0),
+      운전자본_25: staticWcRowRaw('wc_total'),
+      운전자본_26: wcK('wc_total') * 1000,
+      운전자본_yoy: wcYoyK('wc_total') * 1000,
+      매출채권_25: staticWcRowRaw('wc_ar'),
+      매출채권_26: wcK('wc_ar') * 1000,
+      매출채권_yoy: wcYoyK('wc_ar') * 1000,
+      재고자산_25: staticWcRowRaw('wc_inventory'),
+      재고자산_26: wcK('wc_inventory') * 1000,
+      재고자산_yoy: wcYoyK('wc_inventory') * 1000,
+      매입채무_25: staticWcRowRaw('wc_ap'),
+      매입채무_26: wcK('wc_ap') * 1000,
+      매입채무_yoy: wcYoyK('wc_ap') * 1000,
+      대리상AR_26: wcK('wc_ar_dealer') * 1000,
+      대리상AR_yoy: wcYoyK('wc_ar_dealer') * 1000,
+    };
+  }, [cfValuesByKey, cashBorrowingData, inventoryHqClosing, tagCostRatio, shipmentMonthlyByBrand, purchaseMonthlyByBrand, wcForecastByKey]);
+
   const cfInputsLoaded =
     tagCostRatioLoaded &&
     inventoryHqLoaded &&
@@ -1237,6 +1239,9 @@ export default function PLCashFlowTab() {
             {monthsCollapsed ? '월별 펼치기' : '월별 접기'}
           </button>
           <span className={`px-3 py-1 text-xs font-medium rounded-full ${loadStatusClassName}`}>{loadStatusLabel}</span>
+          <span className="font-bold text-red-600" style={{ fontSize: '1.125rem' }}>
+            ※ 성장률 변경 시 재고자산탭 방문 후 CF를 새로고침하세요
+          </span>
         </div>
       </div>
 
@@ -1746,7 +1751,7 @@ export default function PLCashFlowTab() {
 
           {monthsCollapsed && (
             <div className="w-1/2 min-w-0 overflow-auto p-6 border-l border-gray-200">
-              <CFExplanationPanel year={2026} rollingNumbers={cfExplanationNumbers} />
+              <CFExplanationPanel year={2026} rollingNumbers={cfExplanationNumbers} storeKey="pl-cf-explanation" />
             </div>
           )}
         </div>

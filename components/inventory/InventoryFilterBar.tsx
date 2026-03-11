@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Brand } from '@/lib/inventory-types';
-
-const BRANDS: Brand[] = ['전체', 'MLB', 'MLB KIDS', 'DISCOVERY'];
 const YEARS = [2025, 2026];
 
 /** 성장률 입력 컨트롤 — 표 제목 우측용 */
@@ -66,9 +63,7 @@ export function GrowthRateControl({ label, labelCn, value, onChange, title }: Gr
 
 interface Props {
   year: number;
-  brand: Brand;
   onYearChange: (y: number) => void;
-  onBrandChange: (b: Brand) => void;
   snapshotSaved: boolean;
   snapshotSavedAt: string | null;
   recalcLoading: boolean;
@@ -77,13 +72,13 @@ interface Props {
   canSave: boolean;
   onSave: () => void;
   onRecalc: (mode: 'current' | 'annual') => void;
+  allBrandsBgLoaded?: boolean;
+  onRefetch2025?: () => void;
 }
 
 export default function InventoryFilterBar({
   year,
-  brand,
   onYearChange,
-  onBrandChange,
   snapshotSaved,
   snapshotSavedAt,
   recalcLoading,
@@ -92,9 +87,23 @@ export default function InventoryFilterBar({
   canSave,
   onSave,
   onRecalc,
+  allBrandsBgLoaded = false,
+  onRefetch2025,
 }: Props) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [refetching, setRefetching] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  async function handleRefetch2025() {
+    if (!onRefetch2025 || refetching) return;
+    setRefetching(true);
+    try {
+      await fetch('/api/inventory/cache-clear', { method: 'POST' });
+      onRefetch2025();
+    } finally {
+      setRefetching(false);
+    }
+  }
 
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
@@ -128,38 +137,34 @@ export default function InventoryFilterBar({
           ))}
         </div>
 
-        <div className="h-6 w-px bg-gray-300 flex-shrink-0" />
+        <div className="h-4 w-px bg-gray-300 flex-shrink-0" />
 
-        {/* 브랜드 — iOS 스타일 세그먼트 컨트롤 */}
-        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-100/80 p-0.5 overflow-hidden">
-          {BRANDS.map((b, i) => (
-            <button
-              key={b}
-              type="button"
-              onClick={() => onBrandChange(b)}
-              className={`
-                relative min-w-0 px-4 py-2 text-xs font-medium transition-colors
-                ${i < BRANDS.length - 1
-                  ? brand === b
-                    ? 'border-r border-white/40'
-                    : 'border-r border-gray-200'
-                  : ''
-                }
-                ${brand === b
-                  ? 'bg-[#8b7bb8] text-white shadow-sm'
-                  : 'bg-transparent text-gray-700 hover:text-gray-900'
-                }
-                ${brand === b && i === 0 ? 'rounded-l-md' : ''}
-                ${brand === b && i === BRANDS.length - 1 ? 'rounded-r-md' : ''}
-                ${brand === b && i > 0 && i < BRANDS.length - 1 ? 'rounded-none' : ''}
-              `}
-            >
-              {b}
-            </button>
-          ))}
-        </div>
-
-        <div className="h-4 w-px bg-gray-300" />
+        {/* 2025년 재조회 버튼 — 캐시 초기화 후 Snowflake 재조회 */}
+        {year === 2025 && onRefetch2025 && (
+          <button
+            type="button"
+            onClick={handleRefetch2025}
+            disabled={refetching || statusLoading}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors ${
+              refetching || statusLoading
+                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-orange-50 hover:border-orange-400 hover:text-orange-700'
+            }`}
+            title="캐시를 초기화하고 Snowflake에서 2025년 데이터를 다시 조회합니다"
+          >
+            {refetching ? (
+              <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="2" strokeDasharray="8 8" />
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <path d="M10.5 6A4.5 4.5 0 1 1 6 1.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                <path d="M6 1.5L8.5 4H3.5z" />
+              </svg>
+            )}
+            2025 재조회
+          </button>
+        )}
 
         {/* 재고,리테일,출고,입고 저장 / 저장완료+재계산 — 2025년은 확정 실적이므로 미표시 */}
         {year !== 2025 && (
@@ -240,10 +245,18 @@ export default function InventoryFilterBar({
               ? 'border-red-300 bg-red-100 text-red-700'
               : statusError
                 ? 'border-red-200 bg-red-50 text-red-600'
-                : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : allBrandsBgLoaded
+                  ? 'border-emerald-400 bg-emerald-100 text-emerald-800'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700'
           }`}
         >
-          {statusLoading ? '데이터 로딩중' : statusError ? '오류' : '로딩완료'}
+          {statusLoading
+            ? '데이터 로딩중'
+            : statusError
+              ? '오류'
+              : allBrandsBgLoaded
+                ? '3개 브랜드 로딩완료'
+                : '로딩완료'}
         </div>
       </div>
     </div>

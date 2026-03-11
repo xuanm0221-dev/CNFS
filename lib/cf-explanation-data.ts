@@ -26,6 +26,8 @@ export interface CFExplanationNumbers {
   영업활동_25: number;
   영업활동_26: number;
   영업활동_yoy: number;
+  매출수금_yoy: number;
+  물품대_yoy: number;
   자산성지출_26: number;
   자산성지출_yoy: number;
   기타수익_26: number;
@@ -59,6 +61,8 @@ const ZERO: CFExplanationNumbers = {
   영업활동_25: 0,
   영업활동_26: 0,
   영업활동_yoy: 0,
+  매출수금_yoy: 0,
+  물품대_yoy: 0,
   자산성지출_26: 0,
   자산성지출_yoy: 0,
   기타수익_26: 0,
@@ -117,6 +121,18 @@ export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNum
         result.영업활동_25 = prev;
         result.영업활동_26 = curr;
         result.영업활동_yoy = yoy;
+        // 영업활동 중분류별 YoY 집계
+        for (const 중 of ['매출수금', '물품대']) {
+          let cSub = 0, pSub = 0;
+          for (const r of data2026.rows) {
+            if (r.대분류 !== '영업활동' || r.중분류 !== 중) continue;
+            const k = rowKey(r.대분류, r.중분류, r.소분류);
+            cSub += dataCurr.get(k)?.total ?? 0;
+            pSub += dataPrev.get(k)?.total ?? 0;
+          }
+          if (중 === '매출수금') result.매출수금_yoy = cSub - pSub;
+          if (중 === '물품대') result.물품대_yoy = cSub - pSub;
+        }
       } else if (대 === '자산성지출') {
         result.자산성지출_26 = curr;
         result.자산성지출_yoy = yoy;

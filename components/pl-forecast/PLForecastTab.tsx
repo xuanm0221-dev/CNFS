@@ -1151,6 +1151,7 @@ export default function PLForecastTab() {
       })(),
     };
 
+    if (values.MLB == null && values['MLB KIDS'] == null && values.DISCOVERY == null) return;
     const payload = { values };
     window.localStorage.setItem(PL_TAG_COST_RATIO_KEY, JSON.stringify(payload));
     window.dispatchEvent(new CustomEvent('pl-tag-cost-ratio-updated', { detail: payload }));

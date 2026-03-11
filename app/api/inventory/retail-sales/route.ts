@@ -3,6 +3,7 @@ import { CLOSED_THROUGH } from '@/lib/inventory-db';
 import { fetchRetailSales } from '@/lib/retail-sales-db';
 import { RetailSalesResponse, RetailSalesRow } from '@/lib/retail-sales-types';
 import { mergePlanMonths } from '@/lib/retail-plan';
+import { get2025Cache, set2025Cache } from '@/lib/inventory-2025-cache';
 
 /** YYMM 문자열 생성 (예: year=2025, month=1 → '202501') */
 function toYYMM(year: number, month: number): string {
@@ -52,6 +53,12 @@ export async function GET(request: NextRequest) {
   const growthRateHq = parseFloat(searchParams.get('growthRateHq') ?? '10');
   const factorDealer = 1 + growthRate / 100;
   const factorHq = 1 + growthRateHq / 100;
+
+  // 2025년 캐시 확인
+  if (year === 2025) {
+    const cached = await get2025Cache<RetailSalesResponse>('retail-sales', brand);
+    if (cached) return NextResponse.json(cached);
+  }
 
   const { all: allYymms, queryable } = buildYyymmList(year);
 
@@ -128,6 +135,11 @@ export async function GET(request: NextRequest) {
       dealer: { rows: padRows(dealer.rows, allYymms, queryable) },
       hq:     { rows: padRows(hq.rows,     allYymms, queryable) },
     };
+
+    // 2025년 결과 캐시에 저장
+    if (year === 2025) {
+      await set2025Cache('retail-sales', brand, response);
+    }
 
     return NextResponse.json(response);
   } catch (err) {

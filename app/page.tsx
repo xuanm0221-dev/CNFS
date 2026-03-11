@@ -15,6 +15,7 @@ import CreditStatus from '@/components/CreditStatus';
 import BSAnalysis from '@/components/BSAnalysis';
 import ExecutiveSummary from '@/components/ExecutiveSummary';
 import { TableRow, CreditData, CreditRecoveryData, TabType, ExecutiveSummaryData } from '@/lib/types';
+import type { CFExplanationNumbers } from '@/lib/cf-explanation-data';
 import InventoryDashboard from '@/components/inventory/InventoryDashboard';
 import PLForecastTab from '@/components/pl-forecast/PLForecastTab';
 import PLCashFlowTab from '@/components/pl-forecast/PLCashFlowTab';
@@ -26,7 +27,7 @@ export default function Home() {
   const [plBrand, setPlBrand] = useState<string | null>(null); // null=踰뺤씤, 'mlb', 'kids' ??
   const [bsYear, setBsYear] = useState<number>(2026);
   const [cfYear, setCfYear] = useState<number>(2026);
-  const [baseMonth, setBaseMonth] = useState<number>(1); // 湲곗???(湲곕낯 1?? 2026??湲곕낯媛?
+  const [baseMonth, setBaseMonth] = useState<number>(2); // 湲곗???(湲곕낯 1?? 2026??湲곕낯媛?
   const [bsMonthsCollapsed, setBsMonthsCollapsed] = useState<boolean>(true); // ?щТ?곹깭??& ?댁쟾?먮낯 ?붾퀎 ?묎린
   const [cfMonthsCollapsed, setCfMonthsCollapsed] = useState<boolean>(true); // ?꾧툑?먮쫫???붾퀎 ?묎린 (2025??湲곕낯媛? ?묓옒)
   // 釉뚮옖?쒕퀎 ?먯씡 蹂닿린????긽 ?쒖꽦??(踰뺤씤 ?좏깮 ??
@@ -50,6 +51,7 @@ export default function Home() {
   const [cfWorkingCapitalData, setCfWorkingCapitalData] = useState<TableRow[] | null>(null);
   const [creditRecoveryData, setCreditRecoveryData] = useState<CreditRecoveryData | null>(null);
   const [creditData, setCreditData] = useState<CreditData | null>(null);
+  const [cfSummaryNumbers, setCfSummaryNumbers] = useState<CFExplanationNumbers | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -84,6 +86,13 @@ export default function Home() {
       loadRemarks('wc');
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    fetch('/api/cf-explanation/numbers')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setCfSummaryNumbers(data as CFExplanationNumbers); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (activeTab === 5) {
@@ -143,15 +152,15 @@ export default function Home() {
       const dataBs = await resBs.json();
       const dataWc = await resWc.json();
       if (!dataBs.success || !dataWc.success) {
-        setError('鍮꾧퀬 珥덇린媛?遺덈윭?ㅺ린???ㅽ뙣?덉뒿?덈떎.');
+        setError('비고 초기값 불러오기에 실패했습니다.');
         return;
       }
       await loadRemarks('bs');
       await loadRemarks('wc');
-      alert('珥덇린媛믪쑝濡?由ъ뀑?섏뿀?듬땲??');
+      alert('초기값으로 리셋했습니다.');
     } catch (err) {
       console.error(err);
-      setError('鍮꾧퀬 珥덇린媛?遺덈윭?ㅺ린???ㅽ뙣?덉뒿?덈떎.');
+      setError('비고 초기값 불러오기에 실패했습니다.');
     }
   };
 
@@ -174,19 +183,19 @@ export default function Home() {
       const dataBs = await resBs.json();
       const dataWc = await resWc.json();
       if (!dataBs.success || !dataWc.success) {
-        setError('鍮꾧퀬 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.');
+        setError('비고 저장에 실패했습니다.');
         return;
       }
       alert('??λ릺?덉뒿?덈떎.');
     } catch (err) {
       console.error(err);
-      setError('鍮꾧퀬 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.');
+      setError('비고 저장에 실패했습니다.');
     }
   };
 
   // 釉뚮옖??紐⑸줉
   const brands = [
-    { id: null, label: '踰뺤씤' },
+    { id: null, label: '전체' },
     { id: 'mlb', label: 'MLB' },
     { id: 'kids', label: 'KIDS' },
     { id: 'discovery', label: 'DISCOVERY' },
@@ -377,10 +386,10 @@ export default function Home() {
       setSummaryData(result);
       // localStorage?먮룄 ???
       localStorage.setItem('executive-summary', JSON.stringify(result));
-      alert('珥덇린媛믪쑝濡?由ъ뀑?섏뿀?듬땲??');
+      alert('초기값으로 리셋했습니다.');
     } catch (err) {
       console.error(err);
-      setError('珥덇린媛?遺덈윭?ㅺ린???ㅽ뙣?덉뒿?덈떎.');
+      setError('초기값 불러오기에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -523,7 +532,7 @@ export default function Home() {
       setPlData(result.rows);
     } catch (err) {
       console.error(err);
-      const errorMessage = err instanceof Error ? err.message : '釉뚮옖?쒕퀎 ?먯씡 ?곗씠?곕? 遺덈윭?ㅻ뒗???ㅽ뙣?덉뒿?덈떎.';
+      const errorMessage = err instanceof Error ? err.message : '브랜드별 손익 데이터를 불러오는데 실패했습니다.';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -604,18 +613,18 @@ export default function Home() {
                       onClick={saveRemarksToServer}
                       className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
                     >
-                      ??ν븯湲?
+                      저장
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm('鍮꾧퀬瑜?珥덇린媛믪쑝濡??섎룎由ъ떆寃좎뒿?덇퉴?')) {
+                        if (confirm('비고를 초기값으로 초기화하시겠습니까?')) {
                           resetRemarksData();
                         }
                       }}
                       className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-colors shadow-sm"
                     >
-                      珥덇린媛믪쑝濡?
+                      초기값으로
                     </button>
                   </div>
                 )}
@@ -650,7 +659,7 @@ export default function Home() {
                 {workingCapitalData && (
                   <div className="px-6 pb-6">
                     <div className="mb-4 border-t-2 border-gray-400 pt-6">
-                      <h2 className="text-lg font-bold text-gray-800 mb-4">?댁쟾?먮낯 遺꾩꽍</h2>
+                      <h2 className="text-lg font-bold text-gray-800 mb-4">운전자본 분석</h2>
                     </div>
                     <FinancialTable 
                       data={workingCapitalData} 
@@ -674,7 +683,7 @@ export default function Home() {
                   </div>
                 )}
                 
-                {/* ?щТ遺꾩꽍 (2025?? 2026?꾨쭔) */}
+                {/* 비교분석 (2025년 2026년만) */}
                 {workingCapitalData && bsData && (bsYear === 2025 || bsYear === 2026) && (
                   <BSAnalysis 
                     bsData={bsData}
@@ -736,7 +745,7 @@ export default function Home() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 overflow-auto p-6 border-l border-gray-200">
-                    <CFExplanationPanel year={cfYear} />
+                    <CFExplanationPanel year={cfYear} rollingNumbers={cfSummaryNumbers ?? undefined} />
                   </div>
                 </div>
               ) : (
@@ -792,7 +801,7 @@ export default function Home() {
 
         {/* ?ш퀬?먯궛 */}
         {inventoryTabMounted && <div className={activeTab === 5 ? '' : 'hidden'}><InventoryDashboard /></div>}
-        {activeTab === 6 && <PLForecastTab />}
+        <div className={activeTab === 6 ? '' : 'hidden'}><PLForecastTab /></div>
         {activeTab === 7 && <PLCashFlowTab />}
       </div>
     </main>

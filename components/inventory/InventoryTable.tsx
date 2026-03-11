@@ -31,6 +31,8 @@ interface Props {
   prevYearData?: InventoryTableData | null;
   /** 테이블 우측에 나란히 렌더할 콘텐츠 (범례 위, 테이블 하단 정렬) */
   sideContent?: React.ReactNode;
+  /** 테이블 아래, 범례 위에 렌더할 콘텐츠 */
+  bottomContent?: React.ReactNode;
   /** 2026 전체탭: 2025 스타일 범례 표시 (Sell-through·재고주수 기본 공식) */
   use2025Legend?: boolean;
 }
@@ -156,6 +158,7 @@ export default function InventoryTable({
   prevYearTotalHqSales,
   prevYearData,
   sideContent,
+  bottomContent,
   use2025Legend = false,
 }: Props) {
   const isWoiEditable = year === 2026 && !!onWoiChange;
@@ -452,6 +455,8 @@ export default function InventoryTable({
       </div>
       {sideContent ? <div style={{ flex: '0 0 5%', minWidth: 0 }}>{sideContent}</div> : null}
       </div>
+
+      {bottomContent && <div className="mt-2">{bottomContent}</div>}
 
       {/* 범례: 토글 가능 */}
       <div className="mt-2 px-1 text-[11px]">

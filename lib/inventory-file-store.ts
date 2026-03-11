@@ -6,6 +6,7 @@ type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string
 const DATA_DIR = path.join(process.cwd(), 'data', 'inventory');
 const SNAPSHOT_FILE = path.join(DATA_DIR, 'snapshots.json');
 const ANNUAL_PLAN_FILE = path.join(DATA_DIR, 'annual-shipment-plan.json');
+const OTB_PLAN_FILE = path.join(DATA_DIR, 'otb-plan.json');
 
 const DEFAULT_ANNUAL_PLAN = {
   '2026': {
@@ -70,6 +71,14 @@ export async function readAnnualPlanStore(): Promise<Record<string, JsonValue>> 
 
 export async function writeAnnualPlanStore(store: Record<string, JsonValue>): Promise<void> {
   await writeJsonFile(ANNUAL_PLAN_FILE, store);
+}
+
+export async function readOtbStore(): Promise<Record<string, Record<string, number>>> {
+  return readJsonFile<Record<string, Record<string, number>>>(OTB_PLAN_FILE, {});
+}
+
+export async function writeOtbStore(store: Record<string, Record<string, number>>): Promise<void> {
+  await writeJsonFile(OTB_PLAN_FILE, store);
 }
 
 export function snapshotStoreKey(year: number, brand: string): string {

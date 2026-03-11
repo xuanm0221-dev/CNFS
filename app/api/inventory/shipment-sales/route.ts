@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CLOSED_THROUGH } from '@/lib/inventory-db';
 import { fetchShipmentSales } from '@/lib/shipment-sales-db';
 import { RetailSalesTableData, RetailSalesRow } from '@/lib/retail-sales-types';
+import { get2025Cache, set2025Cache } from '@/lib/inventory-2025-cache';
 
 export interface ShipmentSalesResponse {
   year: number;
@@ -43,6 +44,12 @@ export async function GET(request: NextRequest) {
   const onlyLatest = searchParams.get('onlyLatest') === 'true';
   const includeFuture = searchParams.get('includeFuture') === 'true';
 
+  // 2025년 캐시 확인 (onlyLatest/includeFuture 없는 일반 요청만 캐시)
+  if (year === 2025 && !onlyLatest && !includeFuture) {
+    const cached = await get2025Cache<ShipmentSalesResponse>('shipment-sales', brand);
+    if (cached) return NextResponse.json(cached);
+  }
+
   const { all: allYymms, queryable: allQueryable } = buildYyymmList(year);
   const baseQueryable = includeFuture ? allYymms : allQueryable;
   const queryable = onlyLatest ? baseQueryable.slice(-1) : baseQueryable;
@@ -65,6 +72,11 @@ export async function GET(request: NextRequest) {
       closedThrough: CLOSED_THROUGH,
       data: { rows: padRows(tableData.rows, allYymms, queryable, includeFuture) },
     };
+
+    // 2025년 일반 요청 결과 캐시에 저장
+    if (year === 2025 && !onlyLatest && !includeFuture) {
+      await set2025Cache('shipment-sales', brand, response);
+    }
 
     return NextResponse.json(response);
   } catch (err) {
