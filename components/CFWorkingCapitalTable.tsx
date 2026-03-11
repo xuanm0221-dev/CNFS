@@ -22,11 +22,13 @@ interface CFWorkingCapitalTableProps {
   rows: TableRow[];
   monthsCollapsed?: boolean;
   onMonthsToggle?: () => void;
+  planMonth?: number | null;
 }
 
 export default function CFWorkingCapitalTable({
   rows,
   monthsCollapsed = true,
+  planMonth,
 }: CFWorkingCapitalTableProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(['외상매출금', '외상매입금', '재고자산']));
 
@@ -38,6 +40,24 @@ export default function CFWorkingCapitalTable({
     const base = ['2025년(기말)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '2026년(기말)', 'YoY'];
     return base;
   }, []);
+
+  const hasPlan = planMonth != null;
+
+  // collapsed 2026뷰 값: [2025기말, 전월연간계획, 계획-전년, 2026기말, 예상-전년, 계획대비, 계획대비%]
+  const buildPlanValues = (row: TableRow | undefined): (number | null)[] => {
+    if (!row) return new Array(7).fill(null);
+    const prev2025Annual = row.comparisons?.prevYearAnnual ?? null;
+    const curr2026Annual = row.comparisons?.currYearAnnual ?? null;
+    const annualYoY = row.comparisons?.annualYoY ?? null;
+    // 전월 연간 계획 = annualPlan (연간합계(계획) 컬럼)
+    const annualPlan = row.comparisons?.annualPlan ?? null;
+    // 계획-전년: 전월계획 - 2025년기말
+    const planVsPrev = annualPlan != null && prev2025Annual != null ? annualPlan - prev2025Annual : null;
+    // 계획 대비: 당월예상(기말) - 전월계획
+    const nDiff = curr2026Annual != null && annualPlan != null ? curr2026Annual - annualPlan : null;
+    const nPct = nDiff != null && annualPlan != null && annualPlan !== 0 ? (nDiff / Math.abs(annualPlan)) * 100 : null;
+    return [prev2025Annual, annualPlan, planVsPrev, curr2026Annual, annualYoY, nDiff, nPct];
+  };
 
   const buildRowValues = (row: TableRow | undefined): (number | null)[] => {
     if (!row) return columnLabels.map(() => null);
@@ -193,8 +213,12 @@ export default function CFWorkingCapitalTable({
     return list;
   }, [displayRows, collapsed]);
 
-  const formatCell = (value: number | null, index: number) => {
-    if (value === null || value === undefined || (value === 0 && index < 14)) return '-';
+  const formatCell = (value: number | null, index: number, isDiff = false) => {
+    if (value === null || value === undefined || (value === 0 && !isDiff && index < 14)) return '-';
+    if (isDiff) {
+      const sign = value >= 0 ? '+' : '-';
+      return `${sign}${formatNumber(Math.abs(value), false, false)}`;
+    }
     const isYoy = index === 14;
     if (isYoy) {
       const sign = value >= 0 ? '+' : '-';
@@ -217,28 +241,49 @@ export default function CFWorkingCapitalTable({
       <div className="overflow-x-auto border border-gray-300 rounded-lg shadow-sm">
         <table className="w-full border-collapse text-sm">
           <thead className="bg-navy text-white">
-            <tr>
-              <th className="border border-gray-300 py-3 px-4 text-left sticky left-0 z-20 bg-navy min-w-[200px]">
-                계정과목
-              </th>
-              {monthsCollapsed ? (
-                <>
-                  <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">
-                    {columnLabels[0]}
+            {monthsCollapsed && hasPlan ? (
+              <>
+                <tr>
+                  <th rowSpan={2} className="border border-gray-300 py-3 px-4 text-left sticky left-0 z-20 bg-navy min-w-[200px]">
+                    계정과목
                   </th>
-                  <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">
-                    {columnLabels[13]}
-                  </th>
-                  <th className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">{columnLabels[14]}</th>
-                </>
-              ) : (
-                columnLabels.map((col, i) => (
-                  <th key={i} className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">
-                    {col}
-                  </th>
-                ))
-              )}
-            </tr>
+                  <th rowSpan={2} className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2025년(기말)</th>
+                  <th colSpan={2} className="border border-gray-300 py-3 px-4 text-center min-w-[110px] bg-gray-600">전월계획</th>
+                  <th colSpan={4} className="border border-gray-300 py-3 px-4 text-center min-w-[110px]">2026년(예상)</th>
+                </tr>
+                <tr>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px] bg-gray-600">연간계획</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px] bg-gray-600">계획-전년</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px]">2026년(기말)</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[100px]">예상-전년</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px]">계획 대비</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[90px]">계획 대비%</th>
+                </tr>
+              </>
+            ) : (
+              <tr>
+                <th className="border border-gray-300 py-3 px-4 text-left sticky left-0 z-20 bg-navy min-w-[200px]">
+                  계정과목
+                </th>
+                {monthsCollapsed ? (
+                  <>
+                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">
+                      {columnLabels[0]}
+                    </th>
+                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">
+                      {columnLabels[13]}
+                    </th>
+                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">{columnLabels[14]}</th>
+                  </>
+                ) : (
+                  columnLabels.map((col, i) => (
+                    <th key={i} className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">
+                      {col}
+                    </th>
+                  ))
+                )}
+              </tr>
+            )}
           </thead>
           <tbody>
             {visibleRows.map((row, ri) => {
@@ -269,23 +314,40 @@ export default function CFWorkingCapitalTable({
                       row.displayName
                     )}
                   </td>
-                  {monthsCollapsed
-                    ? [
-                        <td key="0" className={`${cellClass(row.values[0])} ${is합계 ? 'bg-yellow-50' : ''}`}>
-                          {formatCell(row.values[0], 0)}
-                        </td>,
-                        <td key="13" className={`${cellClass(row.values[13])} ${is합계 ? 'bg-yellow-50' : ''}`}>
-                          {formatCell(row.values[13], 13)}
-                        </td>,
-                        <td key="14" className={`${cellClass(row.values[14])} ${is합계 ? 'bg-yellow-50' : ''}`}>
-                          {formatCell(row.values[14], 14)}
-                        </td>,
-                      ]
-                    : row.values.map((v, vi) => (
-                        <td key={vi} className={`${cellClass(v)} ${is합계 ? 'bg-yellow-50' : ''}`}>
-                          {formatCell(v, vi)}
-                        </td>
-                      ))}
+                  {monthsCollapsed && hasPlan
+                    ? (() => {
+                        const wcRow2 = filtered.find(r => r.account === row.account);
+                        const pv = buildPlanValues(wcRow2);
+                        const bg = is합계 ? 'bg-yellow-50' : '';
+                        return [
+                          <td key="p0" className={`${cellClass(pv[0])} ${bg}`}>{formatCell(pv[0], 0)}</td>,
+                          <td key="p1" className={`${cellClass(pv[1])} ${bg}`}>{formatCell(pv[1], 0)}</td>,
+                          <td key="p2" className={`${cellClass(pv[2])} ${bg}`}>{formatCell(pv[2], 14, true)}</td>,
+                          <td key="p3" className={`${cellClass(pv[3])} ${bg}`}>{formatCell(pv[3], 0)}</td>,
+                          <td key="p4" className={`${cellClass(pv[4])} ${bg}`}>{formatCell(pv[4], 14, true)}</td>,
+                          <td key="p5" className={`${cellClass(pv[5])} ${bg}`}>{formatCell(pv[5], 14, true)}</td>,
+                          <td key="p6" className={`${cellClass(pv[6])} ${bg} whitespace-nowrap`}>
+                            {pv[6] != null && pv[6] !== 0 ? `${pv[6] >= 0 ? '+' : ''}${pv[6].toFixed(1)}%` : '-'}
+                          </td>,
+                        ];
+                      })()
+                    : monthsCollapsed
+                      ? [
+                          <td key="0" className={`${cellClass(row.values[0])} ${is합계 ? 'bg-yellow-50' : ''}`}>
+                            {formatCell(row.values[0], 0)}
+                          </td>,
+                          <td key="13" className={`${cellClass(row.values[13])} ${is합계 ? 'bg-yellow-50' : ''}`}>
+                            {formatCell(row.values[13], 13)}
+                          </td>,
+                          <td key="14" className={`${cellClass(row.values[14])} ${is합계 ? 'bg-yellow-50' : ''}`}>
+                            {formatCell(row.values[14], 14)}
+                          </td>,
+                        ]
+                      : row.values.map((v, vi) => (
+                          <td key={vi} className={`${cellClass(v)} ${is합계 ? 'bg-yellow-50' : ''}`}>
+                            {formatCell(v, vi)}
+                          </td>
+                        ))}
                 </tr>
               );
             })}

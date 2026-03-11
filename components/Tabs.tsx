@@ -19,13 +19,13 @@ export default function Tabs({ tabs, activeTab, onChange, groups }: TabsProps) {
   const STORAGE_KEY = 'dashboard_tab_hidden_groups_v1';
   const defaultGroups = useMemo<TabGroup[]>(
     () => [
-      { id: 'group1', label: '그룹1', tabIndexes: [0, 1, 2, 3, 4] },
-      { id: 'group2', label: '그룹2', tabIndexes: [5, 6] },
+      { id: 'group1', label: '재무제표', tabIndexes: [0, 1, 2, 3] },
+      { id: 'group2', label: '자금월보', tabIndexes: [5, 6, 7] },
     ],
     []
   );
   const tabGroups = groups && groups.length > 0 ? groups : defaultGroups;
-  const [hiddenGroups, setHiddenGroups] = useState<Record<string, boolean>>({ group1: true });
+  const [hiddenGroups, setHiddenGroups] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
   const hasLoadedPreferenceRef = useRef(false);
 
@@ -48,20 +48,40 @@ export default function Tabs({ tabs, activeTab, onChange, groups }: TabsProps) {
   useEffect(() => {
     if (hasLoadedPreferenceRef.current) return;
     hasLoadedPreferenceRef.current = true;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Record<string, boolean>;
-      const next: Record<string, boolean> = {};
-      tabGroups.forEach((group) => {
-        if (parsed[group.id] === true) {
-          next[group.id] = true;
+    fetch('/data/tab-config.json')
+      .then((r) => r.json())
+      .then((cfg: { hiddenGroups?: Record<string, boolean> }) => {
+        const globalDefault = cfg.hiddenGroups ?? { group1: true };
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw) as Record<string, boolean>;
+            const next: Record<string, boolean> = {};
+            tabGroups.forEach((group) => {
+              if (parsed[group.id] === true) next[group.id] = true;
+            });
+            setHiddenGroups(next);
+          } else {
+            setHiddenGroups(globalDefault);
+          }
+        } catch {
+          setHiddenGroups(globalDefault);
+        }
+      })
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) { setHiddenGroups({ group1: true }); return; }
+          const parsed = JSON.parse(raw) as Record<string, boolean>;
+          const next: Record<string, boolean> = {};
+          tabGroups.forEach((group) => {
+            if (parsed[group.id] === true) next[group.id] = true;
+          });
+          setHiddenGroups(next);
+        } catch {
+          setHiddenGroups({ group1: true });
         }
       });
-      setHiddenGroups(next);
-    } catch {
-      // Ignore invalid localStorage payloads.
-    }
   }, [tabGroups]);
 
   const toggleGroup = (groupId: string) => {
@@ -75,12 +95,17 @@ export default function Tabs({ tabs, activeTab, onChange, groups }: TabsProps) {
     });
   };
 
-  const saveAsDefault = () => {
-    const payload: Record<string, boolean> = {};
+  const saveAsDefault = async () => {
+    const hiddenGroupsPayload: Record<string, boolean> = {};
     tabGroups.forEach((group) => {
-      payload[group.id] = !!hiddenGroups[group.id];
+      hiddenGroupsPayload[group.id] = !!hiddenGroups[group.id];
     });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    await fetch('/api/tab-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hiddenGroups: hiddenGroupsPayload }),
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(hiddenGroupsPayload));
     setSaved(true);
     setTimeout(() => setSaved(false), 1200);
   };
@@ -110,29 +135,31 @@ export default function Tabs({ tabs, activeTab, onChange, groups }: TabsProps) {
             ))}
           </div>
         </div>
-        <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
-          {tabGroups.map((group) => (
+        {process.env.NODE_ENV === 'development' && (
+          <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+            {tabGroups.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => toggleGroup(group.id)}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                  hiddenGroups[group.id]
+                    ? 'bg-white/10 text-blue-100 hover:bg-white/15'
+                    : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                {group.label} {hiddenGroups[group.id] ? '표시' : '숨기기'}
+              </button>
+            ))}
             <button
-              key={group.id}
               type="button"
-              onClick={() => toggleGroup(group.id)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
-                hiddenGroups[group.id]
-                  ? 'bg-white/10 text-blue-100 hover:bg-white/15'
-                  : 'bg-white/20 text-white hover:bg-white/30'
-              }`}
+              onClick={saveAsDefault}
+              className="rounded-lg bg-accent-yellow px-2.5 py-1 text-xs font-semibold text-[#183766] transition-colors hover:brightness-95"
             >
-              {group.label} {hiddenGroups[group.id] ? '표시' : '숨기기'}
+              {saved ? '저장됨' : '기본값으로 저장'}
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={saveAsDefault}
-            className="rounded-lg bg-accent-yellow px-2.5 py-1 text-xs font-semibold text-[#183766] transition-colors hover:brightness-95"
-          >
-            {saved ? '저장됨' : '기본값으로 저장'}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

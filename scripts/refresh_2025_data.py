@@ -17,11 +17,16 @@ data/inventory/2025/*.json 자동 저장
 """
 
 import argparse
+import json
+import os
 import sys
 import time
 import requests
 
 BASE_URL = "http://localhost:3000"
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PUBLIC_CACHE_DIR = os.path.join(SCRIPT_DIR, '..', 'public', 'data', 'inventory', '2025')
 
 ALL_BRANDS = ["MLB", "MLB KIDS", "DISCOVERY"]
 ALL_TYPES = ["monthly-stock", "retail-sales", "shipment-sales", "purchase"]
@@ -47,6 +52,17 @@ def clear_cache():
         print(f"  ⚠ 캐시 초기화 실패: {e}")
 
 
+def save_to_public(endpoint: str, brand: str, data: dict) -> None:
+    """API 응답을 public/data/inventory/2025/ 에 저장 (브라우저 정적 서빙용)"""
+    os.makedirs(PUBLIC_CACHE_DIR, exist_ok=True)
+    safe_brand = brand.replace(' ', '_')
+    filename = f"{endpoint}-{safe_brand}.json"
+    filepath = os.path.join(PUBLIC_CACHE_DIR, filename)
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
+    print(f"  → public 저장: {filename}")
+
+
 def fetch_data(endpoint: str, brand: str) -> bool:
     """단일 엔드포인트 + 브랜드 조회 (캐시 없으면 Snowflake → JSON 저장)"""
     url = f"{BASE_URL}/api/inventory/{endpoint}?year=2025&brand={requests.utils.quote(brand)}"
@@ -59,6 +75,7 @@ def fetch_data(endpoint: str, brand: str) -> bool:
                 return False
             size_kb = len(r.content) / 1024
             print(f"  ✓ {endpoint:<20} {brand:<12} ({size_kb:.1f} KB)")
+            save_to_public(endpoint, brand, data)
             return True
         else:
             print(f"  ✗ {endpoint} / {brand}: HTTP {r.status_code}")
@@ -135,7 +152,7 @@ def main():
     if success == total:
         print("\n✅ 모든 데이터 갱신 완료!")
         print("\n다음 단계:")
-        print("  git add data/inventory/2025/")
+        print("  git add data/inventory/2025/ public/data/inventory/2025/")
         print('  git commit -m "2025 데이터 갱신"')
         print("  git push")
         print("  → Vercel 자동 재배포 후 모든 사람이 확인 가능\n")

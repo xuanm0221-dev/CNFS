@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { readCSV } from '@/lib/csv';
+import { readCSV, readBSPlanData } from '@/lib/csv';
 import { calculateBS, calculateComparisonDataBS, calculateWorkingCapital } from '@/lib/fs-mapping';
-import { TableRow } from '@/lib/types';
+import { TableRow, FinancialData } from '@/lib/types';
 
 // 운전자본 비고 자동 생성 함수
 function generateWCRemarks(
@@ -176,8 +176,52 @@ export async function GET(request: NextRequest) {
       const prevTableRows = calculateBS(prevData);
       const prevWorkingCapitalRows = calculateWorkingCapital(prevData);
       
-      tableRows = calculateComparisonDataBS(tableRows, prevTableRows, year);
-      workingCapitalRows = calculateComparisonDataBS(workingCapitalRows, prevWorkingCapitalRows, year);
+      const rawPlanData = year === 2026 ? readBSPlanData(filePath) : null;
+
+      // planMonthValue/planAnnualValue를 FinancialData[]로 변환 후 calculateBS/WC 통과
+      // → 자산, 유동자산 등 계산행(합계)도 자동 집계됨
+      let aggregatedPlanData: {
+        planMonthValue: Map<string, number>;
+        planAnnualValue: Map<string, number>;
+        planMonth: number;
+      } | null = null;
+
+      if (rawPlanData) {
+        const pm = rawPlanData.planMonth;
+        const planFinancialData: FinancialData[] = [];
+
+        for (const [account, value] of rawPlanData.planMonthValue) {
+          planFinancialData.push({ year, month: pm, account, value });
+        }
+        // planMonth가 12가 아닐 때만 annual을 별도 월(12월)로 추가 (중복 방지)
+        for (const [account, value] of rawPlanData.planAnnualValue) {
+          planFinancialData.push({ year, month: 12, account, value });
+        }
+
+        const planBSRows = calculateBS(planFinancialData);
+        const planWCRows = calculateWorkingCapital(planFinancialData);
+
+        const aggMonth = new Map<string, number>();
+        const aggAnnual = new Map<string, number>();
+
+        for (const row of [...planBSRows, ...planWCRows]) {
+          if (!aggMonth.has(row.account)) {
+            aggMonth.set(row.account, row.values[pm - 1] ?? 0);
+          }
+          if (!aggAnnual.has(row.account)) {
+            aggAnnual.set(row.account, row.values[11] ?? 0);
+          }
+        }
+
+        aggregatedPlanData = {
+          planMonthValue: aggMonth,
+          planAnnualValue: aggAnnual,
+          planMonth: pm,
+        };
+      }
+
+      tableRows = calculateComparisonDataBS(tableRows, prevTableRows, year, aggregatedPlanData);
+      workingCapitalRows = calculateComparisonDataBS(workingCapitalRows, prevWorkingCapitalRows, year, aggregatedPlanData);
       
       // 2026년일 때 운전자본표에 2024년(기말) 부여 (2025년(기말) 전월대비용)
       if (year === 2026) {
@@ -200,12 +244,17 @@ export async function GET(request: NextRequest) {
       wcRemarksAuto = generateWCRemarks(tableRows, prevTableRows, year);
     }
     
+    const planMonth = year === 2026
+      ? (tableRows[0]?.comparisons?.planMonth ?? null)
+      : null;
+
     return NextResponse.json({
       year,
       type: 'BS',
       rows: tableRows,
       workingCapital: workingCapitalRows,
       wcRemarksAuto: wcRemarksAuto,
+      planMonth,
     });
   } catch (error) {
     console.error('BS API 에러:', error);

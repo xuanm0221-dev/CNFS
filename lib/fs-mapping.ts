@@ -781,7 +781,12 @@ export function calculateWorkingCapital(data: FinancialData[]): TableRow[] {
 export function calculateComparisonDataBS(
   currentYearData: TableRow[],
   previousYearData: TableRow[],
-  currentYear: number
+  currentYear: number,
+  planData?: {
+    planMonthValue: Map<string, number>;
+    planAnnualValue: Map<string, number>;
+    planMonth: number;
+  } | null,
 ): TableRow[] {
   const baseMonth = 12; // 고정: 12월
   
@@ -800,7 +805,6 @@ export function calculateComparisonDataBS(
     const prevRow = prevAccountMap.get(row.account);
     
     if (!prevRow) {
-      // 이전 년도에 해당 계정이 없으면 비교 불가
       return {
         ...row,
         comparisons: {
@@ -813,6 +817,11 @@ export function calculateComparisonDataBS(
           prevYearAnnual: null,
           currYearAnnual: null,
           annualYoY: null,
+          currMonthPlan: null,
+          annualPlan: null,
+          monthYoYActual: null,
+          planVsActual: null,
+          planMonth: planData?.planMonth ?? null,
         },
       };
     }
@@ -827,17 +836,31 @@ export function calculateComparisonDataBS(
       const prevYearAnnual = prevValues[11] ?? null; // 25년 12월 (index 11)
       const currYearAnnual = currValues[11] ?? null; // 26년 12월 (index 11)
       const annualYoY = calculateYoY(currYearAnnual, prevYearAnnual);
+
+      // 계획 데이터
+      const pm = planData?.planMonth ?? null;
+      const currMonthActual = pm !== null ? (currValues[pm - 1] ?? null) : null;
+      const currMonthPlan = planData ? (planData.planMonthValue.get(row.account) ?? null) : null;
+      // 당월 계획비 = 실적 - 계획
+      const monthYoYActual = calculateYoY(currMonthActual, currMonthPlan);
+      const annualPlan = planData ? (planData.planAnnualValue.get(row.account) ?? null) : null;
+      const planVsActual = calculateYoY(currYearAnnual, annualPlan);
       
       comparisons = {
-        prevYearMonth: null, // 사용 안 함
-        currYearMonth: null, // 사용 안 함
-        monthYoY: null, // 사용 안 함
+        prevYearMonth: pm !== null ? (prevValues[pm - 1] ?? null) : null, // 전년 N-1월 실적
+        currYearMonth: currMonthActual, // 당월 실적
+        monthYoY: null,
         prevYearYTD: null,
         currYearYTD: null,
         ytdYoY: null,
         prevYearAnnual, // 25년기말
-        currYearAnnual, // 26년기말
+        currYearAnnual, // 26년기말 예상
         annualYoY,
+        currMonthPlan,
+        annualPlan,
+        monthYoYActual,
+        planVsActual,
+        planMonth: pm,
       };
     } else {
       // 2025년: 전년(11월) 당년(11월) + 24년기말 25년기말

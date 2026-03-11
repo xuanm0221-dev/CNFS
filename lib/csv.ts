@@ -288,6 +288,163 @@ export async function readCreditCSV(filePath: string) {
   return dealers;
 }
 
+// CF 계층 계획 데이터 읽기 (대분류|중분류|소분류 → N-1월 계획값)
+// CF 계층 계획 데이터 읽기 ("2026년계획" = 전월 연간 계획)
+export function readCFPlanData(filePath: string): {
+  planData: Map<string, number>; // "대분류|중분류|소분류" → 전월 연간 계획값
+} | null {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    try {
+      const buffer = fs.readFileSync(filePath);
+      content = iconv.decode(buffer, 'cp949');
+    } catch {
+      return null;
+    }
+  }
+
+  const parsed = Papa.parse<string[]>(content, { header: false, skipEmptyLines: true });
+  const rows = parsed.data;
+  if (rows.length < 2) return null;
+
+  const headers = rows[0];
+
+  // "YYYY년계획" 패턴 찾기 (예: "2026년계획")
+  let planColIndex = -1;
+  headers.forEach((header, index) => {
+    if (/^\d+년계획$/.test(header.trim())) {
+      planColIndex = index;
+    }
+  });
+
+  if (planColIndex === -1) return null;
+
+  const planData = new Map<string, number>();
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const 대분류 = (row[0] ?? '').trim();
+    const 중분류 = (row[1] ?? '').trim();
+    const 소분류 = (row[2] ?? '').trim();
+    if (!대분류) continue;
+    const key = `${대분류}|${중분류}|${소분류}`;
+    const val = cleanNumericValue(row[planColIndex] || '0');
+    const existing = planData.get(key) ?? 0;
+    planData.set(key, existing + val);
+  }
+
+  return { planData };
+}
+
+// 현금·차입금잔액 계획 데이터 읽기 ("2026년계획" = 전월 연간 기말잔액 계획)
+export function readCashBorrowingPlanData(filePath: string): {
+  cashPlan: number;       // 현금 전월 연간 계획
+  borrowingPlan: number;  // 차입금 전월 연간 계획
+} | null {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    try {
+      const buffer = fs.readFileSync(filePath);
+      content = iconv.decode(buffer, 'cp949');
+    } catch {
+      return null;
+    }
+  }
+
+  const parsed = Papa.parse<string[]>(content, { header: false, skipEmptyLines: true });
+  const rows = parsed.data;
+  if (rows.length < 2) return null;
+
+  const headers = rows[0];
+
+  // "YYYY년계획" 패턴 찾기 (예: "2026년계획")
+  let planColIndex = -1;
+  headers.forEach((header, index) => {
+    if (/^\d+년계획$/.test(header.trim())) {
+      planColIndex = index;
+    }
+  });
+
+  if (planColIndex === -1) return null;
+
+  let cashPlan = 0;
+  let borrowingPlan = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const label = (row[0] ?? '').trim();
+    if (label === '현금잔액') cashPlan = cleanNumericValue(row[planColIndex] || '0');
+    else if (label === '차입금잔액') borrowingPlan = cleanNumericValue(row[planColIndex] || '0');
+  }
+
+  return { cashPlan, borrowingPlan };
+}
+
+// BS 계획 데이터 읽기 (N월계획, YYYY년합계(계획) 컬럼 파싱)
+export function readBSPlanData(filePath: string): {
+  planMonthValue: Map<string, number>;
+  planAnnualValue: Map<string, number>;
+  planMonth: number;
+} | null {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    try {
+      const buffer = fs.readFileSync(filePath);
+      content = iconv.decode(buffer, 'cp949');
+    } catch {
+      return null;
+    }
+  }
+
+  const parsed = Papa.parse<string[]>(content, { header: false, skipEmptyLines: true });
+  const rows = parsed.data;
+  if (rows.length < 2) return null;
+
+  const headers = rows[0];
+
+  // "N월계획" 패턴 찾기 (예: "2월계획")
+  let planMonthColIndex = -1;
+  let planMonth = -1;
+  // "YYYY년합계(계획)" 패턴 찾기 (예: "2026년합계(계획)")
+  let planAnnualColIndex = -1;
+
+  headers.forEach((header, index) => {
+    const monthPlanMatch = header.trim().match(/^(\d+)월계획$/);
+    if (monthPlanMatch) {
+      planMonthColIndex = index;
+      planMonth = parseInt(monthPlanMatch[1], 10);
+    }
+    if (/^\d+년합계\(계획\)$/.test(header.trim())) {
+      planAnnualColIndex = index;
+    }
+  });
+
+  if (planMonthColIndex === -1 || planMonth === -1) return null;
+
+  const planMonthValue = new Map<string, number>();
+  const planAnnualValue = new Map<string, number>();
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const account = row[0]?.trim();
+    if (!account) continue;
+    if (planMonthColIndex >= 0) {
+      planMonthValue.set(account, cleanNumericValue(row[planMonthColIndex] || '0'));
+    }
+    if (planAnnualColIndex >= 0) {
+      planAnnualValue.set(account, cleanNumericValue(row[planAnnualColIndex] || '0'));
+    }
+  }
+
+  return { planMonthValue, planAnnualValue, planMonth };
+}
+
 // 현금흐름표 계층형 CSV (대분류, 중분류, 소분류, 1월~12월)
 export interface CFHierarchyRow {
   대분류: string;

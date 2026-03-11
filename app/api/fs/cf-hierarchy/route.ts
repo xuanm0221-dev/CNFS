@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
-import { readCFHierarchyCSV, CFHierarchyRow } from '@/lib/csv';
+import { readCFHierarchyCSV, CFHierarchyRow, readCFPlanData } from '@/lib/csv';
 
 type YearData = Map<string, { total: number; months: number[] }>;
 
@@ -23,7 +23,7 @@ export interface CFHierarchyApiRow {
   level: 0 | 1 | 2;
   account: string;
   isGroup: boolean;
-  values: number[]; // [전년합계, 1월..12월(당년), 당년합계, YoY]
+  values: number[]; // 2026: [전년합계(0), 1~12월(1-12), 당년합계(13), YoY(14), 계획(15), 계획-전년(16), N-1차이금액(17), N-1%(18)]
   대분류?: string;
   중분류?: string;
   소분류?: string;
@@ -38,6 +38,12 @@ export async function GET(request: NextRequest) {
     const is2025 = year === 2025;
 
     const baseDir = path.join(process.cwd(), '파일', 'cashflow');
+
+    // 2026년 계획 데이터 로드
+    const cfPlanData = (!is2025 && year === 2026)
+      ? readCFPlanData(path.join(baseDir, '2026.csv'))
+      : null;
+
     const years = is2025 ? ([2023, 2024, 2025, 2026] as const) : ([2024, 2025, 2026] as const);
     const loaded: { year: number; rows: CFHierarchyRow[] }[] = [];
 
@@ -96,7 +102,10 @@ export async function GET(request: NextRequest) {
       if (소 && !node.소분류.includes(소)) node.소분류.push(소);
     }
 
-    const len = is2025 ? 16 : 15;
+    // 2026년에 계획 데이터가 있으면 values에 4개 추가
+    // [전년합계, 1~12월, 당년합계, YoY, 전월계획, 계획-전년, 예상-전월계획, 예상-전월계획%]
+    const hasPlan = !is2025 && cfPlanData !== null;
+    const len = is2025 ? 16 : hasPlan ? 19 : 15;
 
     const getValues = (
       대: string,
@@ -114,7 +123,18 @@ export async function GET(request: NextRequest) {
         const total2023 = data2023.get(key)?.total ?? 0;
         return [total2023, prevTotal, ...currMonths, currTotal, yoy];
       }
-      return [prevTotal, ...currMonths, currTotal, yoy];
+      const base = [prevTotal, ...currMonths, currTotal, yoy];
+      if (hasPlan && cfPlanData) {
+        const planVal = cfPlanData.planData.get(key) ?? 0; // 전월 연간 계획
+        // 계획-전년: 전월계획 - 2025년합계
+        const planVsPrev = planVal - prevTotal;
+        // 예상-전월계획: 당월예상(currTotal) - 전월계획
+        const nDiff = currTotal - planVal;
+        // %: (예상 - 전월계획) / |전월계획| × 100
+        const nPct = planVal !== 0 ? (nDiff / Math.abs(planVal)) * 100 : 0;
+        return [...base, planVal, planVsPrev, nDiff, nPct];
+      }
+      return base;
     };
 
     const rows: CFHierarchyApiRow[] = [];
@@ -215,6 +235,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       rows,
       columns,
+      hasPlan,
     });
   } catch (error) {
     console.error('CF hierarchy API error:', error);

@@ -9,6 +9,7 @@ interface CashFlowHierarchyTableProps {
   columns: string[];
   monthsCollapsed?: boolean;
   onMonthsToggle?: () => void;
+  hasPlan?: boolean;
 }
 
 export default function CashFlowHierarchyTable({
@@ -16,6 +17,7 @@ export default function CashFlowHierarchyTable({
   columns,
   monthsCollapsed = true,
   onMonthsToggle,
+  hasPlan: hasPlanProp,
 }: CashFlowHierarchyTableProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(['자산성지출']));
   const [allCollapsed, setAllCollapsed] = useState(true);
@@ -84,8 +86,9 @@ export default function CashFlowHierarchyTable({
 
   const valueLen = rows[0]?.values?.length ?? 15;
   const is2025Layout = valueLen === 16; // 2025탭: 2023, 2024, 1~12, 2025, YoY
-  const yoyIndex = valueLen - 1;
-  const currTotalIndex = valueLen - 2;
+  const hasPlanCols = hasPlanProp ?? valueLen === 19; // 2026탭 계획 포함: +계획,계획-전년,차이,%
+  const yoyIndex = hasPlanCols ? 14 : valueLen - 1;
+  const currTotalIndex = hasPlanCols ? 13 : valueLen - 2;
 
   const formatCell = (value: number, index: number) => {
     if (value === 0 && index < yoyIndex) return '-';
@@ -115,33 +118,54 @@ export default function CashFlowHierarchyTable({
       <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-20 bg-navy text-white">
-            <tr>
-              <th className="border border-gray-300 py-3 px-4 text-left sticky left-0 z-30 bg-navy min-w-[200px]">
-                계정과목
-              </th>
-              {monthsCollapsed ? (
-                is2025Layout ? (
-                  <>
-                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[0]}</th>
-                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[1]}</th>
-                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[14]}</th>
-                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">{columns[15]}</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[0]}</th>
-                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[13]}</th>
-                    <th className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">{columns[14]}</th>
-                  </>
-                )
-              ) : (
-                columns.map((col, i) => (
-                  <th key={i} className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">
-                    {col}
+            {monthsCollapsed && hasPlanCols ? (
+              <>
+                <tr>
+                  <th rowSpan={2} className="border border-gray-300 py-3 px-4 text-left sticky left-0 z-30 bg-navy min-w-[200px]">
+                    계정과목
                   </th>
-                ))
-              )}
-            </tr>
+                  <th rowSpan={2} className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2025년(합계)</th>
+                  <th colSpan={2} className="border border-gray-300 py-3 px-4 text-center min-w-[120px] bg-gray-600">전월계획</th>
+                  <th colSpan={4} className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2026년(예상)</th>
+                </tr>
+                <tr>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px] bg-gray-600">연간계획</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px] bg-gray-600">계획-전년</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px]">2026년합계</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[100px]">전년비</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px]">계획 대비</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[90px]">계획 대비%</th>
+                </tr>
+              </>
+            ) : (
+              <tr>
+                <th className="border border-gray-300 py-3 px-4 text-left sticky left-0 z-30 bg-navy min-w-[200px]">
+                  계정과목
+                </th>
+                {monthsCollapsed ? (
+                  is2025Layout ? (
+                    <>
+                      <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[0]}</th>
+                      <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[1]}</th>
+                      <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[14]}</th>
+                      <th className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">{columns[15]}</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[0]}</th>
+                      <th className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">{columns[13]}</th>
+                      <th className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">{columns[14]}</th>
+                    </>
+                  )
+                ) : (
+                  columns.map((col, i) => (
+                    <th key={i} className="border border-gray-300 py-3 px-4 text-center min-w-[100px]">
+                      {col}
+                    </th>
+                  ))
+                )}
+              </tr>
+            )}
           </thead>
           <tbody>
             {visibleRows.map((row, ri) => {
@@ -189,33 +213,64 @@ export default function CashFlowHierarchyTable({
                     )}
                   </td>
                   {monthsCollapsed
-                    ? is2025Layout
+                    ? hasPlanCols
                       ? [
-                          <td key="y23" className={cellClass(row.values[0])}>
-                            {formatCell(row.values[0], 0)}
-                          </td>,
-                          <td key="y24" className={cellClass(row.values[1])}>
-                            {formatCell(row.values[1], 1)}
-                          </td>,
-                          <td key="y25" className={cellClass(row.values[14])}>
-                            {formatCell(row.values[14], 14)}
-                          </td>,
-                          <td key="yoy" className={cellClass(row.values[15])}>
-                            {formatCell(row.values[15], 15)}
-                          </td>,
-                        ]
-                      : [
+                          // 2025년 합계
                           <td key="y25" className={cellClass(row.values[0])}>
                             {formatCell(row.values[0], 0)}
                           </td>,
+                          // N-1월 계획
+                          <td key="plan" className={cellClass(row.values[15])}>
+                            {formatCell(row.values[15], 15)}
+                          </td>,
+                          // N-1월 계획-전년
+                          <td key="plan-prev" className={cellClass(row.values[16])}>
+                            {formatCell(row.values[16], yoyIndex)}
+                          </td>,
+                          // 2026년 합계
                           <td key="y26" className={cellClass(row.values[13])}>
                             {formatCell(row.values[13], 13)}
                           </td>,
+                          // 전년비 (YoY)
                           <td key="yoy" className={cellClass(row.values[14])}>
-                            {formatCell(row.values[14], 14)}
+                            {formatCell(row.values[14], yoyIndex)}
+                          </td>,
+                          // N-1차이금액
+                          <td key="ndiff" className={cellClass(row.values[17])}>
+                            {formatCell(row.values[17], yoyIndex)}
+                          </td>,
+                          // N-1%
+                          <td key="npct" className={`${cellClass(row.values[18])} whitespace-nowrap`}>
+                            {row.values[18] !== 0 ? `${row.values[18] >= 0 ? '+' : ''}${row.values[18].toFixed(1)}%` : '-'}
                           </td>,
                         ]
-                    : row.values.map((v, vi) => (
+                      : is2025Layout
+                        ? [
+                            <td key="y23" className={cellClass(row.values[0])}>
+                              {formatCell(row.values[0], 0)}
+                            </td>,
+                            <td key="y24" className={cellClass(row.values[1])}>
+                              {formatCell(row.values[1], 1)}
+                            </td>,
+                            <td key="y25" className={cellClass(row.values[14])}>
+                              {formatCell(row.values[14], 14)}
+                            </td>,
+                            <td key="yoy" className={cellClass(row.values[15])}>
+                              {formatCell(row.values[15], 15)}
+                            </td>,
+                          ]
+                        : [
+                            <td key="y25" className={cellClass(row.values[0])}>
+                              {formatCell(row.values[0], 0)}
+                            </td>,
+                            <td key="y26" className={cellClass(row.values[13])}>
+                              {formatCell(row.values[13], 13)}
+                            </td>,
+                            <td key="yoy" className={cellClass(row.values[14])}>
+                              {formatCell(row.values[14], 14)}
+                            </td>,
+                          ]
+                    : row.values.slice(0, hasPlanCols ? 19 : undefined).map((v, vi) => (
                         <td key={vi} className={cellClass(v)}>
                           {formatCell(v, vi)}
                         </td>

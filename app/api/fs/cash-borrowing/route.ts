@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
-import { readCashBorrowingCSV } from '@/lib/csv';
+import { readCashBorrowingCSV, readCashBorrowingPlanData } from '@/lib/csv';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
       borrowing: number[];
       prevCash?: number[];
       prevBorrowing?: number[];
+      cashNMonthPlan?: number;
+      borrowingNMonthPlan?: number;
     } = {
       year,
       columns: [],
@@ -40,6 +42,12 @@ export async function GET(request: NextRequest) {
         const prev = readCashBorrowingCSV(filePrev);
         result.prevCash = prev.현금잔액;
         result.prevBorrowing = prev.차입금잔액;
+      }
+      // 2026년 계획 데이터 로드 (전월 연간 계획)
+      const planData = readCashBorrowingPlanData(fileCurr);
+      if (planData) {
+        result.cashNMonthPlan = planData.cashPlan;
+        result.borrowingNMonthPlan = planData.borrowingPlan;
       }
       result.columns = [
         '2025 기초', '2025 1월', '2025 2월', '2025 3월', '2025 4월', '2025 5월', '2025 6월', '2025 7월', '2025 8월', '2025 9월', '2025 10월', '2025 11월', '2025 12월', '2025 기말',

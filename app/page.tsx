@@ -21,7 +21,7 @@ import PLForecastTab from '@/components/pl-forecast/PLForecastTab';
 import PLCashFlowTab from '@/components/pl-forecast/PLCashFlowTab';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<number>(5);
+  const [activeTab, setActiveTab] = useState<number>(2);
   const [inventoryTabMounted, setInventoryTabMounted] = useState<boolean>(true);
   const [plYear, setPlYear] = useState<number>(2026);
   const [plBrand, setPlBrand] = useState<string | null>(null); // null=踰뺤씤, 'mlb', 'kids' ??
@@ -37,8 +37,9 @@ export default function Home() {
   const [bsData, setBsData] = useState<TableRow[] | null>(null);
   const [previousBsData, setPreviousBsData] = useState<TableRow[] | null>(null);
   const [workingCapitalData, setWorkingCapitalData] = useState<TableRow[] | null>(null);
+  const [bsPlanMonth, setBsPlanMonth] = useState<number | null>(null);
   const [cfData, setCfData] = useState<TableRow[] | null>(null);
-  const [cfHierarchyData, setCfHierarchyData] = useState<{ rows: import('@/app/api/fs/cf-hierarchy/route').CFHierarchyApiRow[]; columns: string[] } | null>(null);
+  const [cfHierarchyData, setCfHierarchyData] = useState<{ rows: import('@/app/api/fs/cf-hierarchy/route').CFHierarchyApiRow[]; columns: string[]; hasPlan?: boolean } | null>(null);
   const [cfHierarchyLoading, setCfHierarchyLoading] = useState(false);
   const [cashBorrowingData, setCashBorrowingData] = useState<{
     year: number;
@@ -47,6 +48,8 @@ export default function Home() {
     borrowing: number[];
     prevCash?: number[];
     prevBorrowing?: number[];
+    cashNMonthPlan?: number;
+    borrowingNMonthPlan?: number;
   } | null>(null);
   const [cfWorkingCapitalData, setCfWorkingCapitalData] = useState<TableRow[] | null>(null);
   const [creditRecoveryData, setCreditRecoveryData] = useState<CreditRecoveryData | null>(null);
@@ -203,11 +206,11 @@ export default function Home() {
     { id: 'supra', label: 'SUPRA' },
   ];
 
-  const tabs = ['경영요약', '손익계산서', '재무상태표', '현금흐름표', '여신사용현황', '재고자산', 'PL(FY26 FCST)', 'CF'];
+  const tabs = ['경영요약', '손익계산서', '재무상태표', '현금흐름표', '여신사용현황', '재고자산 (simu)', 'PL (simu)', 'CF (simu)'];
   const tabGroups = useMemo(
     () => [
-      { id: 'group1', label: '그룹1', tabIndexes: [0, 1, 2, 3] },
-      { id: 'group2', label: '그룹2', tabIndexes: [4, 5, 6, 7] },
+      { id: 'group1', label: '재무제표', tabIndexes: [0, 1, 2, 3] },
+      { id: 'group2', label: '자금월보', tabIndexes: [5, 6, 7] },
     ],
     []
   );
@@ -256,6 +259,7 @@ export default function Home() {
         setBsData(result.rows);
         setWorkingCapitalData(result.workingCapital || null);
         setWcRemarksAuto(result.wcRemarksAuto || null);
+        setBsPlanMonth(result.planMonth ?? null);
         
         // ?꾨뀈???곗씠??濡쒕뱶 (2025, 2026?꾩씪 寃쎌슦)
         if (year === 2025 || year === 2026) {
@@ -280,7 +284,7 @@ export default function Home() {
       }
     } catch (err) {
       console.error(err);
-      setError('?곗씠?곕? 遺덈윭?ㅻ뒗???ㅽ뙣?덉뒿?덈떎.');
+      setError('데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -357,13 +361,13 @@ export default function Home() {
           return;
         }
       } catch (fileErr) {
-        console.log('?꾨줈?앺듃 湲곕낯 ?뚯씪 ?놁쓬.');
+        console.log('프로젝트 기본 파일 없음.');
       }
 
-      setError('寃쎌쁺?붿빟 ?곗씠?곕? 遺덈윭?????놁뒿?덈떎.');
+      setError('경영요약 데이터를 불러올 수 없습니다.');
     } catch (err) {
       console.error(err);
-      setError('寃쎌쁺?붿빟 ?곗씠?곕? 遺덈윭?ㅻ뒗???ㅽ뙣?덉뒿?덈떎.');
+      setError('경영요약 데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -455,14 +459,16 @@ export default function Home() {
       ];
       if (cfYear === 2026) {
         fetches.push(fetch('/api/fs/bs?year=2026').then((r) => (r.ok ? r.json() : null)));
-        fetches.push(fetch('/api/annual-plan/credit-recovery?baseYearMonth=26.01').then((r) => (r.ok ? r.json() : null)));
+        fetches.push(fetch('/api/annual-plan/credit-recovery?baseYearMonth=26.02').then((r) => (r.ok ? r.json() : null)));
       }
       Promise.all(fetches)
         .then((results) => {
           type CFHierarchyApiRow = import('@/app/api/fs/cf-hierarchy/route').CFHierarchyApiRow;
-          const hierarchy = results[0] as { rows?: CFHierarchyApiRow[]; columns?: string[] } | null;
-          const cashBorrowing = results[1] as { year?: number; columns?: string[]; cash?: number[]; borrowing?: number[]; prevCash?: number[]; prevBorrowing?: number[] } | null;
-          if (hierarchy?.rows) setCfHierarchyData({ rows: hierarchy.rows, columns: hierarchy.columns || [] });
+          const hierarchy = results[0] as { rows?: CFHierarchyApiRow[]; columns?: string[]; hasPlan?: boolean } | null;
+          const cashBorrowing = results[1] as { year?: number; columns?: string[]; cash?: number[]; borrowing?: number[]; prevCash?: number[]; prevBorrowing?: number[]; cashNMonthPlan?: number; borrowingNMonthPlan?: number } | null;
+          if (hierarchy?.rows) {
+            setCfHierarchyData({ rows: hierarchy.rows, columns: hierarchy.columns || [], hasPlan: hierarchy.hasPlan });
+          }
           if (cashBorrowing && ((cashBorrowing.cash?.length ?? 0) > 0 || (cashBorrowing.borrowing?.length ?? 0) > 0)) {
             setCashBorrowingData({
               year: cashBorrowing.year ?? cfYear,
@@ -471,6 +477,8 @@ export default function Home() {
               borrowing: cashBorrowing.borrowing || [],
               prevCash: cashBorrowing.prevCash,
               prevBorrowing: cashBorrowing.prevBorrowing,
+              cashNMonthPlan: cashBorrowing.cashNMonthPlan,
+              borrowingNMonthPlan: cashBorrowing.borrowingNMonthPlan,
             });
           } else setCashBorrowingData(null);
           if (cfYear === 2026) {
@@ -652,6 +660,7 @@ export default function Home() {
                       setBsRemarks(newRemarks);
                       saveRemarkDebounced(account, remark, 'bs');
                     }}
+                    planMonth={bsYear === 2026 ? bsPlanMonth : null}
                   />
                 </div>
                 
@@ -679,6 +688,7 @@ export default function Home() {
                         setWcRemarks(newRemarks);
                         saveRemarkDebounced(account, remark, 'wc');
                       }}
+                      planMonth={bsYear === 2026 ? bsPlanMonth : null}
                     />
                   </div>
                 )}
@@ -715,12 +725,13 @@ export default function Home() {
             {cfHierarchyData && cfHierarchyData.rows.length > 0 && !cfHierarchyLoading && (
               cfMonthsCollapsed ? (
                 <div className="flex flex-1 min-h-0">
-                  <div className="w-1/3 min-w-0 overflow-auto p-6">
+                  <div className="w-[70%] min-w-0 overflow-auto p-6">
                     <CashFlowHierarchyTable
                       rows={cfHierarchyData.rows}
                       columns={cfHierarchyData.columns}
                       monthsCollapsed={cfMonthsCollapsed}
                       onMonthsToggle={() => setCfMonthsCollapsed(!cfMonthsCollapsed)}
+                      hasPlan={cfYear === 2026 ? cfHierarchyData.hasPlan : false}
                     />
                     {cashBorrowingData && (
                       <CashBorrowingBalance
@@ -731,6 +742,8 @@ export default function Home() {
                         prevCash={cashBorrowingData.prevCash}
                         prevBorrowing={cashBorrowingData.prevBorrowing}
                         monthsCollapsed={cfMonthsCollapsed}
+                        cashNMonthPlan={cashBorrowingData.cashNMonthPlan}
+                        borrowingNMonthPlan={cashBorrowingData.borrowingNMonthPlan}
                       />
                     )}
                     {cfYear === 2026 && cfWorkingCapitalData && cfWorkingCapitalData.length > 0 && (
@@ -738,13 +751,14 @@ export default function Home() {
                         rows={cfWorkingCapitalData}
                         monthsCollapsed={cfMonthsCollapsed}
                         onMonthsToggle={() => setCfMonthsCollapsed(!cfMonthsCollapsed)}
+                        planMonth={bsPlanMonth}
                       />
                     )}
                     {cfYear === 2026 && creditRecoveryData && (
                       <DealerCreditRecoveryTable data={creditRecoveryData} />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 overflow-auto p-6 border-l border-gray-200">
+                  <div className="w-[30%] min-w-0 overflow-auto p-6 border-l border-gray-200">
                     <CFExplanationPanel year={cfYear} rollingNumbers={cfSummaryNumbers ?? undefined} />
                   </div>
                 </div>

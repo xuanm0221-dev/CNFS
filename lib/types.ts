@@ -33,6 +33,12 @@ export interface ComparisonData {
   prevYearAnnual: number | null; // 24년 연간
   currYearAnnual: number | null; // 25년 연간
   annualYoY: number | null; // 연간 YoY
+  // BS 2026 계획 관련 필드
+  currMonthPlan?: number | null; // 당월 계획값
+  annualPlan?: number | null; // 연간 계획값
+  monthYoYActual?: number | null; // 당월YoY = 당월실적 - 전년동월실적
+  planVsActual?: number | null; // 계획비 = 기말예상 - 기말계획
+  planMonth?: number | null; // 계획 기준월 (동적 헤더용)
 }
 
 // 브랜드별 비교 데이터 (브랜드별 손익 보기 전용)

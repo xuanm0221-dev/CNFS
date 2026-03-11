@@ -33,6 +33,24 @@ const INVENTORY_MONTHLY_TOTAL_KEY = 'inventory_monthly_total_closing';
 const INVENTORY_PURCHASE_MONTHLY_KEY = 'inventory_purchase_monthly_by_brand';
 const INVENTORY_SHIPMENT_MONTHLY_KEY = 'inventory_shipment_monthly_by_brand';
 const ANNUAL_PLAN_BRANDS = ['MLB', 'MLB KIDS', 'DISCOVERY'] as const;
+
+/**
+ * 2025년 데이터는 public/data/inventory/2025/ 의 정적 JSON 파일을 직접 사용.
+ * 그 외 연도는 API 라우트 사용.
+ */
+function inventoryUrl(
+  type: 'monthly-stock' | 'retail-sales' | 'shipment-sales' | 'purchase',
+  year: number,
+  brand: string,
+  extra?: Record<string, string>,
+): string {
+  if (year === 2025) {
+    const safeBrand = brand.replace(/\s+/g, '_');
+    return `/data/inventory/2025/${type}-${safeBrand}.json`;
+  }
+  const params = new URLSearchParams({ year: String(year), brand, ...extra });
+  return `/api/inventory/${type}?${params}`;
+}
 const ANNUAL_PLAN_SEASONS = ['currF', 'currS', 'year1', 'year2', 'next', 'past'] as const;
 type AnnualPlanBrand = typeof ANNUAL_PLAN_BRANDS[number];
 type AnnualPlanSeason = typeof ANNUAL_PLAN_SEASONS[number];
@@ -751,6 +769,7 @@ export default function InventoryDashboard() {
   const [prevYearMonthlyDataByBrand, setPrevYearMonthlyDataByBrand] = useState<Partial<Record<LeafBrand, MonthlyStockResponse>>>({});
   const [prevYearRetailDataByBrand, setPrevYearRetailDataByBrand] = useState<Partial<Record<LeafBrand, RetailSalesResponse>>>({});
   const [prevYearShipmentDataByBrand, setPrevYearShipmentDataByBrand] = useState<Partial<Record<LeafBrand, ShipmentSalesResponse>>>({});
+  const [prevYearPurchaseDataByBrand, setPrevYearPurchaseDataByBrand] = useState<Partial<Record<LeafBrand, PurchaseResponse>>>({});
   const [prevYearLoading, setPrevYearLoading] = useState<boolean>(false);
   const [prevYearError, setPrevYearError] = useState<boolean>(false);
 
@@ -907,7 +926,7 @@ export default function InventoryDashboard() {
       if (brand === '전체') {
         const ress = await Promise.all(
           BRANDS_TO_AGGREGATE.map((b) =>
-            fetch(`/api/inventory/monthly-stock?${new URLSearchParams({ year: String(year), brand: b })}`),
+            fetch(inventoryUrl('monthly-stock', year, b)),
           ),
         );
         const jsons: MonthlyStockResponse[] = await Promise.all(ress.map((r) => r.json()));
@@ -918,7 +937,7 @@ export default function InventoryDashboard() {
         setMonthlyDataByBrand(Object.fromEntries(BRANDS_TO_AGGREGATE.map((b, i) => [b, jsons[i]])) as Record<LeafBrand, MonthlyStockResponse>);
         setMonthlyData(aggregateMonthlyStock(jsons));
       } else {
-        const res = await fetch(`/api/inventory/monthly-stock?${new URLSearchParams({ year: String(year), brand })}`);
+        const res = await fetch(inventoryUrl('monthly-stock', year, brand));
         if (!res.ok) throw new Error('?붾퀎 ?곗씠??濡쒕뱶 ?ㅽ뙣');
         const json: MonthlyStockResponse = await res.json();
         if ((json as { error?: string }).error) throw new Error((json as { error?: string }).error);
@@ -940,7 +959,7 @@ export default function InventoryDashboard() {
       if (brand === '전체') {
         const ress = await Promise.all(
           BRANDS_TO_AGGREGATE.map((b) =>
-            fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand: b, growthRate: String(growthRateByBrand[b]), growthRateHq: String(growthRateHqByBrand[b]) })}`),
+            fetch(inventoryUrl('retail-sales', year, b, year !== 2025 ? { growthRate: String(growthRateByBrand[b]), growthRateHq: String(growthRateHqByBrand[b]) } : {})),
           ),
         );
         const jsons: RetailSalesResponse[] = await Promise.all(ress.map((r) => r.json()));
@@ -954,7 +973,7 @@ export default function InventoryDashboard() {
         setRetailData(aggregated);
       } else {
         const brandKey = brand as AnnualPlanBrand;
-        const res = await fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand, growthRate: String(growthRateByBrand[brandKey] ?? growthRate), growthRateHq: String(growthRateHqByBrand[brandKey] ?? growthRateHq) })}`);
+        const res = await fetch(inventoryUrl('retail-sales', year, brand, year !== 2025 ? { growthRate: String(growthRateByBrand[brandKey] ?? growthRate), growthRateHq: String(growthRateHqByBrand[brandKey] ?? growthRateHq) } : {}));
         if (!res.ok) throw new Error('由ы뀒??留ㅼ텧 ?곗씠??濡쒕뱶 ?ㅽ뙣');
         const json: RetailSalesResponse = await res.json();
         if ((json as { error?: string }).error) throw new Error((json as { error?: string }).error);
@@ -977,7 +996,7 @@ export default function InventoryDashboard() {
       if (brand === '전체') {
         const ress = await Promise.all(
           BRANDS_TO_AGGREGATE.map((b) =>
-            fetch(`/api/inventory/shipment-sales?${new URLSearchParams({ year: String(year), brand: b })}`),
+            fetch(inventoryUrl('shipment-sales', year, b)),
           ),
         );
         const jsons: ShipmentSalesResponse[] = await Promise.all(ress.map((r) => r.json()));
@@ -988,7 +1007,7 @@ export default function InventoryDashboard() {
         setShipmentDataByBrand(Object.fromEntries(BRANDS_TO_AGGREGATE.map((b, i) => [b, jsons[i]])) as Record<LeafBrand, ShipmentSalesResponse>);
         setShipmentData(aggregateShipmentSales(jsons));
       } else {
-        const res = await fetch(`/api/inventory/shipment-sales?${new URLSearchParams({ year: String(year), brand })}`);
+        const res = await fetch(inventoryUrl('shipment-sales', year, brand));
         const json: ShipmentSalesResponse = await res.json();
         if (!res.ok || (json as { error?: string }).error) throw new Error((json as { error?: string }).error ?? '異쒓퀬留ㅼ텧 ?곗씠??濡쒕뱶 ?ㅽ뙣');
         shipmentByBrandRef.current[brand as LeafBrand] = json;
@@ -1009,7 +1028,7 @@ export default function InventoryDashboard() {
       if (brand === '전체') {
         const ress = await Promise.all(
           BRANDS_TO_AGGREGATE.map((b) =>
-            fetch(`/api/inventory/purchase?${new URLSearchParams({ year: String(year), brand: b })}`),
+            fetch(inventoryUrl('purchase', year, b)),
           ),
         );
         const jsons: PurchaseResponse[] = await Promise.all(ress.map((r) => r.json()));
@@ -1020,7 +1039,7 @@ export default function InventoryDashboard() {
         setPurchaseDataByBrand(Object.fromEntries(BRANDS_TO_AGGREGATE.map((b, i) => [b, jsons[i]])) as Record<LeafBrand, PurchaseResponse>);
         setPurchaseData(aggregatePurchase(jsons));
       } else {
-        const res = await fetch(`/api/inventory/purchase?${new URLSearchParams({ year: String(year), brand })}`);
+        const res = await fetch(inventoryUrl('purchase', year, brand));
         const json: PurchaseResponse = await res.json();
         if (!res.ok || (json as { error?: string }).error) throw new Error((json as { error?: string }).error ?? '留ㅼ엯?곹뭹 ?곗씠??濡쒕뱶 ?ㅽ뙣');
         purchaseByBrandRef.current[brand as LeafBrand] = json;
@@ -1245,16 +1264,16 @@ export default function InventoryDashboard() {
         if (brand === '전체') {
           const [monthlyRess, retailRess, shipmentRess, purchaseRess] = await Promise.all([
             Promise.all(BRANDS_TO_AGGREGATE.map((b) =>
-              fetch(`/api/inventory/monthly-stock?${new URLSearchParams({ year: String(prevYear), brand: b })}`),
+              fetch(inventoryUrl('monthly-stock', prevYear, b)),
             )),
             Promise.all(BRANDS_TO_AGGREGATE.map((b) =>
-              fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(prevYear), brand: b, growthRate: '0' })}`),
+              fetch(inventoryUrl('retail-sales', prevYear, b, prevYear !== 2025 ? { growthRate: '0' } : {})),
             )),
             Promise.all(BRANDS_TO_AGGREGATE.map((b) =>
-              fetch(`/api/inventory/shipment-sales?${new URLSearchParams({ year: String(prevYear), brand: b })}`),
+              fetch(inventoryUrl('shipment-sales', prevYear, b)),
             )),
             Promise.all(BRANDS_TO_AGGREGATE.map((b) =>
-              fetch(`/api/inventory/purchase?${new URLSearchParams({ year: String(prevYear), brand: b })}`),
+              fetch(inventoryUrl('purchase', prevYear, b)),
             )),
           ]);
           if (cancelled) return;
@@ -1284,12 +1303,17 @@ export default function InventoryDashboard() {
           setPrevYearRetailData(aggregateRetailSales(retailJsons));
           setPrevYearShipmentData(aggregateShipmentSales(shipmentJsons));
           setPrevYearPurchaseData(aggregatePurchase(purchaseJsons));
+          setPrevYearPurchaseDataByBrand({
+            MLB: purchaseJsons[0],
+            'MLB KIDS': purchaseJsons[1],
+            DISCOVERY: purchaseJsons[2],
+          });
         } else {
           const [mRes, rRes, sRes, pRes] = await Promise.all([
-            fetch(`/api/inventory/monthly-stock?${new URLSearchParams({ year: String(prevYear), brand })}`),
-            fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(prevYear), brand, growthRate: '0' })}`),
-            fetch(`/api/inventory/shipment-sales?${new URLSearchParams({ year: String(prevYear), brand })}`),
-            fetch(`/api/inventory/purchase?${new URLSearchParams({ year: String(prevYear), brand })}`),
+            fetch(inventoryUrl('monthly-stock', prevYear, brand)),
+            fetch(inventoryUrl('retail-sales', prevYear, brand, prevYear !== 2025 ? { growthRate: '0' } : {})),
+            fetch(inventoryUrl('shipment-sales', prevYear, brand)),
+            fetch(inventoryUrl('purchase', prevYear, brand)),
           ]);
           if (cancelled) return;
           const [mJson, rJson, sJson, pJson] = await Promise.all([
@@ -1319,6 +1343,7 @@ export default function InventoryDashboard() {
           setPrevYearMonthlyDataByBrand({});
           setPrevYearRetailDataByBrand({});
           setPrevYearShipmentDataByBrand({});
+          setPrevYearPurchaseDataByBrand({ [brand as LeafBrand]: pJson });
         }
       } catch {
         if (!cancelled) {
@@ -1686,12 +1711,13 @@ export default function InventoryDashboard() {
       const mData = prevYearMonthlyDataByBrand[b];
       const rData = prevYearRetailDataByBrand[b];
       const sData = prevYearShipmentDataByBrand[b];
+      const pData = prevYearPurchaseDataByBrand[b];
       if (mData && rData && sData) {
-        result[b] = buildTableDataFromMonthly(mData, rData, sData, undefined, 2025);
+        result[b] = buildTableDataFromMonthly(mData, rData, sData, pData, 2025);
       }
     }
     return result;
-  }, [year, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand]);
+  }, [year, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, prevYearPurchaseDataByBrand]);
 
   // 2026 대리상 리테일 연간합계 = 2025 Sell-out × 성장률 (소계=leaf 합산)
   const retailDealerAnnualTotalByRowKey = useMemo<Record<string, number | null> | null>(() => {
@@ -3437,16 +3463,16 @@ export default function InventoryDashboard() {
       }
 
       const [fm, fr, fs, fp] = await Promise.all([
-        fetch(`/api/inventory/monthly-stock?${new URLSearchParams({ year: String(year), brand })}`).then(
+        fetch(inventoryUrl('monthly-stock', year, brand)).then(
           (r) => r.json() as Promise<MonthlyStockResponse & { error?: string }>,
         ),
-        fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: String(year), brand, growthRate: String(growthRateByBrand[brand as AnnualPlanBrand] ?? growthRate), growthRateHq: String(growthRateHqByBrand[brand as AnnualPlanBrand] ?? growthRateHq) })}`).then(
+        fetch(inventoryUrl('retail-sales', year, brand, year !== 2025 ? { growthRate: String(growthRateByBrand[brand as AnnualPlanBrand] ?? growthRate), growthRateHq: String(growthRateHqByBrand[brand as AnnualPlanBrand] ?? growthRateHq) } : {})).then(
           (r) => r.json() as Promise<RetailSalesResponse & { error?: string }>,
         ),
-        fetch(`/api/inventory/shipment-sales?${new URLSearchParams({ year: String(year), brand })}`).then(
+        fetch(inventoryUrl('shipment-sales', year, brand)).then(
           (r) => r.json() as Promise<ShipmentSalesResponse & { error?: string }>,
         ),
-        fetch(`/api/inventory/purchase?${new URLSearchParams({ year: String(year), brand })}`).then(
+        fetch(inventoryUrl('purchase', year, brand)).then(
           (r) => r.json() as Promise<PurchaseResponse & { error?: string }>,
         ),
       ]);
