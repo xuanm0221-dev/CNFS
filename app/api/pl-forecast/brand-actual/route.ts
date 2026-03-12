@@ -9,8 +9,14 @@ type SalesBrand = 'MLB' | 'MLB KIDS' | 'DISCOVERY';
 type SalesChannel = 'dealer' | 'direct';
 
 interface BrandActualData {
-  tag: Record<SalesChannel, (number | null)[]>;
-  sales: Record<SalesChannel, (number | null)[]>;
+  tag: Record<SalesChannel, (number | null)[]> & {
+    dealerCloth: (number | null)[];
+    dealerAcc: (number | null)[];
+  };
+  sales: Record<SalesChannel, (number | null)[]> & {
+    dealerCloth: (number | null)[];
+    dealerAcc: (number | null)[];
+  };
   accounts: Record<string, (number | null)[]>;
 }
 
@@ -29,8 +35,8 @@ function empty12(): (number | null)[] {
 
 function makeBrandData(): BrandActualData {
   return {
-    tag: { dealer: empty12(), direct: empty12() },
-    sales: { dealer: empty12(), direct: empty12() },
+    tag: { dealer: empty12(), direct: empty12(), dealerCloth: empty12(), dealerAcc: empty12() },
+    sales: { dealer: empty12(), direct: empty12(), dealerCloth: empty12(), dealerAcc: empty12() },
     accounts: {},
   };
 }
@@ -105,11 +111,15 @@ export async function GET(req: NextRequest) {
 
           if (level1 === 'Tag매출') {
             if (level2 === '대리상') result.brands[brand].tag.dealer[monthIdx] = value;
+            if (level2 === '대리상(의류)') result.brands[brand].tag.dealerCloth[monthIdx] = value;
+            if (level2 === '대리상(ACC)') result.brands[brand].tag.dealerAcc[monthIdx] = value;
             if (level2 === '직영') result.brands[brand].tag.direct[monthIdx] = value;
             continue;
           }
           if (level1 === '실판매출') {
             if (level2 === '대리상') result.brands[brand].sales.dealer[monthIdx] = value;
+            if (level2 === '대리상(의류)') result.brands[brand].sales.dealerCloth[monthIdx] = value;
+            if (level2 === '대리상(ACC)') result.brands[brand].sales.dealerAcc[monthIdx] = value;
             if (level2 === '직영') result.brands[brand].sales.direct[monthIdx] = value;
             continue;
           }
@@ -119,6 +129,23 @@ export async function GET(req: NextRequest) {
             result.brands[brand].accounts[level1] = empty12();
           }
           result.brands[brand].accounts[level1][monthIdx] = value;
+        }
+      }
+    }
+
+    // 분리 행(의류+ACC)으로 dealer 합산 재계산
+    for (const brand of BRANDS) {
+      const bd = result.brands[brand];
+      for (let i = 0; i < 12; i++) {
+        const tc = bd.tag.dealerCloth[i];
+        const ta = bd.tag.dealerAcc[i];
+        if (tc !== null || ta !== null) {
+          bd.tag.dealer[i] = (tc ?? 0) + (ta ?? 0);
+        }
+        const sc = bd.sales.dealerCloth[i];
+        const sa = bd.sales.dealerAcc[i];
+        if (sc !== null || sa !== null) {
+          bd.sales.dealer[i] = (sc ?? 0) + (sa ?? 0);
         }
       }
     }

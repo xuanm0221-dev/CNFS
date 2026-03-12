@@ -49,6 +49,7 @@ const ACCOUNT_LABEL_OVERRIDES: Record<string, string> = {
   Tag매출_의류: '의류',
   Tag매출_ACC: 'ACC',
   Tag매출_직영: '직영',
+  실판매출: '실판매출(V-)',
   실판매출_대리상: '대리상',
   실판매출_의류: '의류',
   실판매출_ACC: 'ACC',
@@ -83,8 +84,8 @@ interface AccShipmentRatioRow {
 }
 
 interface BrandActualData {
-  tag: { dealer: (number | null)[]; direct: (number | null)[] };
-  sales: { dealer: (number | null)[]; direct: (number | null)[] };
+  tag: { dealer: (number | null)[]; direct: (number | null)[]; dealerCloth: (number | null)[]; dealerAcc: (number | null)[] };
+  sales: { dealer: (number | null)[]; direct: (number | null)[]; dealerCloth: (number | null)[]; dealerAcc: (number | null)[] };
   accounts: Record<string, (number | null)[]>;
 }
 
@@ -402,10 +403,15 @@ export default function PLForecastTab() {
   const [brandActualLoading, setBrandActualLoading] = useState<boolean>(false);
   const [brandActualError, setBrandActualError] = useState<string | null>(null);
   const [brandActualAvailableMonths, setBrandActualAvailableMonths] = useState<number[]>([]);
+  const emptyBrandActual = (): BrandActualData => ({
+    tag: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null), dealerCloth: new Array(12).fill(null), dealerAcc: new Array(12).fill(null) },
+    sales: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null), dealerCloth: new Array(12).fill(null), dealerAcc: new Array(12).fill(null) },
+    accounts: {},
+  });
   const [brandActualByBrand, setBrandActualByBrand] = useState<Record<SalesBrand, BrandActualData>>({
-    MLB: { tag: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) }, sales: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) }, accounts: {} },
-    'MLB KIDS': { tag: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) }, sales: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) }, accounts: {} },
-    DISCOVERY: { tag: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) }, sales: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) }, accounts: {} },
+    MLB: emptyBrandActual(),
+    'MLB KIDS': emptyBrandActual(),
+    DISCOVERY: emptyBrandActual(),
   });
   const [opexForecastLoading, setOpexForecastLoading] = useState<boolean>(false);
   const [opexForecastError, setOpexForecastError] = useState<string | null>(null);
@@ -1049,7 +1055,27 @@ export default function PLForecastTab() {
             : row.leafKind === 'dealerCurrF'
               ? dealerSeasonMonthlyByBrand[row.brand].당년F
               : row.leafKind === 'dealerAcc'
-                ? makeMonthlyArray((idx) => dealerAccOtbByBrand[row.brand] * (accRatioByBrand[row.brand][idx] ?? 0))
+                ? (() => {
+                    const brand = row.brand;
+                    const annualOtb = dealerAccOtbByBrand[brand];
+                    let actualSum = 0;
+                    for (let i = 0; i < latestCsvMonth; i++) {
+                      actualSum += brandActualByBrand[brand]?.tag?.dealerAcc?.[i] ?? 0;
+                    }
+                    const remaining = annualOtb - actualSum;
+                    let remainingRatioSum = 0;
+                    for (let i = latestCsvMonth; i < 12; i++) {
+                      remainingRatioSum += accRatioByBrand[brand][i] ?? 0;
+                    }
+                    return makeMonthlyArray((idx) => {
+                      if (idx < latestCsvMonth) {
+                        return brandActualByBrand[brand]?.tag?.dealerAcc?.[idx] ?? 0;
+                      }
+                      const ratio = accRatioByBrand[brand][idx] ?? 0;
+                      if (remainingRatioSum === 0) return annualOtb * ratio;
+                      return remaining * (ratio / remainingRatioSum);
+                    });
+                  })()
                 : row.leafKind === 'direct'
                 ? makeMonthlyArray((idx) => {
                     if (idx + 1 <= latestCsvMonth) return null;
@@ -1114,15 +1140,23 @@ export default function PLForecastTab() {
       for (let i = 0; i < 12; i += 1) {
         const actualDealer = brandActualByBrand[brand]?.tag?.dealer?.[i] ?? null;
         const actualDirect = brandActualByBrand[brand]?.tag?.direct?.[i] ?? null;
+        const actualDealerCloth = brandActualByBrand[brand]?.tag?.dealerCloth?.[i] ?? null;
+        const actualDealerAcc = brandActualByBrand[brand]?.tag?.dealerAcc?.[i] ?? null;
 
         const dealerValue = actualDealer ?? plannedDealer[i] ?? null;
         const directValue = actualDirect ?? plannedDirect[i] ?? null;
-        const split = splitByPlannedRatio(dealerValue, plannedDealerCloth[i] ?? null, plannedDealerAcc[i] ?? null);
 
         dealer[i] = dealerValue;
-        dealerCloth[i] = split.a;
-        dealerAcc[i] = split.b;
         direct[i] = directValue;
+
+        if (actualDealerCloth !== null || actualDealerAcc !== null) {
+          dealerCloth[i] = actualDealerCloth ?? 0;
+          dealerAcc[i] = actualDealerAcc ?? 0;
+        } else {
+          const split = splitByPlannedRatio(dealerValue, plannedDealerCloth[i] ?? null, plannedDealerAcc[i] ?? null);
+          dealerCloth[i] = split.a;
+          dealerAcc[i] = split.b;
+        }
       }
       result[brand] = {
         dealerCloth,
@@ -1211,13 +1245,23 @@ export default function PLForecastTab() {
       for (let i = 0; i < 12; i += 1) {
         const actualDealer = brandActualByBrand[brand]?.sales?.dealer?.[i] ?? null;
         const actualDirect = brandActualByBrand[brand]?.sales?.direct?.[i] ?? null;
+        const actualDealerCloth = brandActualByBrand[brand]?.sales?.dealerCloth?.[i] ?? null;
+        const actualDealerAcc = brandActualByBrand[brand]?.sales?.dealerAcc?.[i] ?? null;
+
         const dealerValue = actualDealer ?? plannedDealer[i] ?? null;
         const directValue = actualDirect ?? plannedDirect[i] ?? null;
-        const split = splitByPlannedRatio(dealerValue, plannedDealerCloth[i] ?? null, plannedDealerAcc[i] ?? null);
+
         dealer[i] = dealerValue;
-        dealerCloth[i] = split.a;
-        dealerAcc[i] = split.b;
         direct[i] = directValue;
+
+        if (actualDealerCloth !== null || actualDealerAcc !== null) {
+          dealerCloth[i] = actualDealerCloth ?? 0;
+          dealerAcc[i] = actualDealerAcc ?? 0;
+        } else {
+          const split = splitByPlannedRatio(dealerValue, plannedDealerCloth[i] ?? null, plannedDealerAcc[i] ?? null);
+          dealerCloth[i] = split.a;
+          dealerAcc[i] = split.b;
+        }
       }
       result[brand] = {
         dealerCloth,

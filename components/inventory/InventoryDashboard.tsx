@@ -2322,7 +2322,7 @@ export default function InventoryDashboard() {
     };
     let hasAny = false;
     for (const b of ANNUAL_PLAN_BRANDS) {
-      const table = perBrandTopTable[b];
+      const table = perBrandTopTableDisplayData[b];
       if (!table) continue;
       const accRow = table.dealer.rows.find((r) => r.key === 'ACC합계');
       if (!accRow) continue;
@@ -2332,7 +2332,7 @@ export default function InventoryDashboard() {
     if (!hasAny) return;
 
     publishDealerAccSellIn(nextValues);
-  }, [year, perBrandTopTable, publishDealerAccSellIn]);
+  }, [year, perBrandTopTableDisplayData, publishDealerAccSellIn]);
 
   // 2026 YOY: 전년(2025) 테이블 구성 → 재고자산합계 sellIn/sellOut/hqSales 추출
   useEffect(() => {
