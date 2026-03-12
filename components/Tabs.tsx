@@ -16,7 +16,6 @@ interface TabsProps {
 }
 
 export default function Tabs({ tabs, activeTab, onChange, groups }: TabsProps) {
-  const STORAGE_KEY = 'dashboard_tab_hidden_groups_v1';
   const ADMIN_PW = process.env.NEXT_PUBLIC_ADMIN_PW ?? '';
 
   const defaultGroups = useMemo<TabGroup[]>(
@@ -59,36 +58,10 @@ export default function Tabs({ tabs, activeTab, onChange, groups }: TabsProps) {
     fetch('/data/tab-config.json')
       .then((r) => r.json())
       .then((cfg: { hiddenGroups?: Record<string, boolean> }) => {
-        const globalDefault = cfg.hiddenGroups ?? { group1: true };
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw) as Record<string, boolean>;
-            const next: Record<string, boolean> = {};
-            tabGroups.forEach((group) => {
-              if (parsed[group.id] === true) next[group.id] = true;
-            });
-            setHiddenGroups(next);
-          } else {
-            setHiddenGroups(globalDefault);
-          }
-        } catch {
-          setHiddenGroups(globalDefault);
-        }
+        setHiddenGroups(cfg.hiddenGroups ?? { group1: true });
       })
       .catch(() => {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (!raw) { setHiddenGroups({ group1: true }); return; }
-          const parsed = JSON.parse(raw) as Record<string, boolean>;
-          const next: Record<string, boolean> = {};
-          tabGroups.forEach((group) => {
-            if (parsed[group.id] === true) next[group.id] = true;
-          });
-          setHiddenGroups(next);
-        } catch {
-          setHiddenGroups({ group1: true });
-        }
+        setHiddenGroups({ group1: true });
       });
   }, [tabGroups]);
 
@@ -113,7 +86,6 @@ export default function Tabs({ tabs, activeTab, onChange, groups }: TabsProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hiddenGroups: hiddenGroupsPayload }),
     });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(hiddenGroupsPayload));
     setSaved(true);
     setTimeout(() => setSaved(false), 1200);
   };
