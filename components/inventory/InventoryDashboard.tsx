@@ -48,6 +48,10 @@ function inventoryUrl(
     const safeBrand = brand.replace(/\s+/g, '_');
     return `/data/inventory/2025/${type}-${safeBrand}.json`;
   }
+  if (year === 2026) {
+    const safeBrand = brand.replace(/\s+/g, '_');
+    return `/data/inventory/2026/${type}-${safeBrand}.json`;
+  }
   const params = new URLSearchParams({ year: String(year), brand, ...extra });
   return `/api/inventory/${type}?${params}`;
 }
@@ -3602,7 +3606,7 @@ export default function InventoryDashboard() {
         onSave={handleSave}
         onRecalc={handleRecalc}
         canSave={!!(monthlyData && retailData && shipmentData && purchaseData)}
-        allBrandsBgLoaded={year === 2026 && allBrandsBgLoaded}
+        allBrandsBgLoaded={year === 2025 || (year === 2026 && allBrandsBgLoaded)}
         brandBgLoadedCount={year === 2026 ? brandBgLoadedCount : 0}
         totalBrands={ANNUAL_PLAN_BRANDS.length}
       />
@@ -4225,6 +4229,11 @@ export default function InventoryDashboard() {
                 {monthlyPlanSummaryText}
               </span>
             )}
+            {year === 2026 && (
+              <code className="font-mono font-semibold text-blue-600 text-xs select-all">
+                {`python scripts/refresh_2026_monthly_stock.py --baseMonth ${monthlyData?.closedThrough ? parseInt(monthlyData.closedThrough.slice(-2)) : 2}`}
+              </code>
+            )}
             <span className="ml-auto text-gray-400 text-xs shrink-0">
               {monthlyOpen ? '접기' : '펼치기'}
             </span>
@@ -4301,8 +4310,13 @@ export default function InventoryDashboard() {
             </SectionIcon>
             <span className="text-sm font-bold text-gray-700">{year === 2025 ? '본사 리테일매출' : '리테일 매출'}</span>
             <span className="text-xs font-normal text-gray-400">
-              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : year === 2026 ? '(단위: CNY K / 실적: 1~2월, 3~12월 성장률 보정)' : `(단위: CNY K / 실적 기준: ~${retailData?.closedThrough ?? '--'})`}
+              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : year === 2026 ? `(단위: CNY K / 실적 기준: ~${retailData?.closedThrough ?? '--'}, 이후 성장률 보정)` : `(단위: CNY K / 실적 기준: ~${retailData?.closedThrough ?? '--'})`}
             </span>
+            {year === 2026 && (
+              <code className="font-mono font-semibold text-blue-600 text-xs select-all">
+                {`python scripts/refresh_2026_retail_sales.py --baseMonth ${retailData?.closedThrough ? parseInt(retailData.closedThrough.slice(-2)) : 2}`}
+              </code>
+            )}
             <span className="ml-auto text-gray-400 text-xs shrink-0">
               {retailOpen ? '접기' : '펼치기'}
             </span>
@@ -4392,6 +4406,11 @@ export default function InventoryDashboard() {
             <span className="text-xs font-normal text-gray-400">
               {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : `(단위: CNY K / 실적 기준: ~${shipmentData?.closedThrough ?? '--'})`}
             </span>
+            {year === 2026 && (
+              <code className="font-mono font-semibold text-blue-600 text-xs select-all">
+                {`python scripts/refresh_2026_shipment_sales.py --baseMonth ${shipmentData?.closedThrough ? parseInt(shipmentData.closedThrough.slice(-2)) : 2}`}
+              </code>
+            )}
             <span className="ml-auto text-gray-400 text-xs shrink-0">
               {shipmentOpen ? '접기' : '펼치기'}
             </span>
@@ -4465,6 +4484,11 @@ export default function InventoryDashboard() {
             <span className="text-xs font-normal text-gray-400">
               {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : `(단위: CNY K / 실적 기준: ~${purchaseData?.closedThrough ?? '--'})`}
             </span>
+            {year === 2026 && (
+              <code className="font-mono font-semibold text-blue-600 text-xs select-all">
+                {`python scripts/refresh_2026_purchase.py --baseMonth ${purchaseData?.closedThrough ? parseInt(purchaseData.closedThrough.slice(-2)) : 2}`}
+              </code>
+            )}
             <span className="ml-auto text-gray-400 text-xs shrink-0">
               {purchaseOpen ? '접기' : '펼치기'}
             </span>

@@ -15,9 +15,9 @@ function toYYMM(year: number, month: number): string {
   return `${year}${String(month).padStart(2, '0')}`;
 }
 
-function buildYyymmList(year: number) {
+function buildYyymmList(year: number, effectiveClosed: string) {
   const all: string[] = Array.from({ length: 12 }, (_, i) => toYYMM(year, i + 1));
-  const queryable = all.filter((yymm) => yymm <= CLOSED_THROUGH);
+  const queryable = all.filter((yymm) => yymm <= effectiveClosed);
   return { all, queryable };
 }
 
@@ -26,11 +26,12 @@ function padRows(
   allYymms: string[],
   queryable: string[],
   includeFuture: boolean,
+  effectiveClosed: string,
 ): RetailSalesRow[] {
   return rows.map((row) => ({
     ...row,
     monthly: allYymms.map((yymm) => {
-      if (!includeFuture && yymm > CLOSED_THROUGH) return null;
+      if (!includeFuture && yymm > effectiveClosed) return null;
       const idx = queryable.indexOf(yymm);
       return idx >= 0 ? (row.monthly[idx] ?? null) : null;
     }),
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
   const brand = searchParams.get('brand') ?? 'MLB';
   const onlyLatest = searchParams.get('onlyLatest') === 'true';
   const includeFuture = searchParams.get('includeFuture') === 'true';
+  const effectiveClosed = searchParams.get('closedThrough') || CLOSED_THROUGH;
 
   // 2025년 캐시 확인 (onlyLatest/includeFuture 없는 일반 요청만 캐시)
   if (year === 2025 && !onlyLatest && !includeFuture) {
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
     if (cached) return NextResponse.json(cached);
   }
 
-  const { all: allYymms, queryable: allQueryable } = buildYyymmList(year);
+  const { all: allYymms, queryable: allQueryable } = buildYyymmList(year, effectiveClosed);
   const baseQueryable = includeFuture ? allYymms : allQueryable;
   const queryable = onlyLatest ? baseQueryable.slice(-1) : baseQueryable;
 
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       year,
       brand,
-      closedThrough: CLOSED_THROUGH,
+      closedThrough: effectiveClosed,
       data: { rows: [] },
     } satisfies PurchaseResponse);
   }
@@ -69,8 +71,8 @@ export async function GET(request: NextRequest) {
     const response: PurchaseResponse = {
       year,
       brand,
-      closedThrough: CLOSED_THROUGH,
-      data: { rows: padRows(tableData.rows, allYymms, queryable, includeFuture) },
+      closedThrough: effectiveClosed,
+      data: { rows: padRows(tableData.rows, allYymms, queryable, includeFuture, effectiveClosed) },
     };
 
     // 2025년 일반 요청 결과 캐시에 저장

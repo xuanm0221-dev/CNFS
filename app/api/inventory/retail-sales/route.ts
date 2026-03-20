@@ -13,11 +13,11 @@ function toYYMM(year: number, month: number): string {
 /**
  * year 기준 YYMM 리스트 생성 — 기초 없음, 1월~12월만
  * all[0..11]    = 해당 연도 1월~12월
- * queryable     = all 중 CLOSED_THROUGH 이하인 것만
+ * queryable     = all 중 effectiveClosed 이하인 것만
  */
-function buildYyymmList(year: number) {
+function buildYyymmList(year: number, effectiveClosed: string) {
   const all: string[] = Array.from({ length: 12 }, (_, i) => toYYMM(year, i + 1));
-  const queryable = all.filter((yymm) => yymm <= CLOSED_THROUGH);
+  const queryable = all.filter((yymm) => yymm <= effectiveClosed);
   return { all, queryable };
 }
 
@@ -34,11 +34,12 @@ function padRows(
   rows: RetailSalesRow[],
   allYymms: string[],      // 1월~12월 12개
   queryable: string[],     // 마감된 월만
+  effectiveClosed: string,
 ): RetailSalesRow[] {
   return rows.map((row) => ({
     ...row,
     monthly: allYymms.map((yymm) => {
-      if (yymm > CLOSED_THROUGH) return null;
+      if (yymm > effectiveClosed) return null;
       const idx = queryable.indexOf(yymm);
       return idx >= 0 ? (row.monthly[idx] ?? null) : null;
     }),
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
   const growthRateHq = parseFloat(searchParams.get('growthRateHq') ?? '10');
   const factorDealer = 1 + growthRate / 100;
   const factorHq = 1 + growthRateHq / 100;
+  const effectiveClosed = searchParams.get('closedThrough') || CLOSED_THROUGH;
 
   // 2025년 캐시 확인
   if (year === 2025) {
@@ -60,13 +62,13 @@ export async function GET(request: NextRequest) {
     if (cached) return NextResponse.json(cached);
   }
 
-  const { all: allYymms, queryable } = buildYyymmList(year);
+  const { all: allYymms, queryable } = buildYyymmList(year, effectiveClosed);
 
   if (queryable.length === 0 && year !== 2026) {
     return NextResponse.json({
       year,
       brand,
-      closedThrough: CLOSED_THROUGH,
+      closedThrough: effectiveClosed,
       dealer: { rows: [] },
       hq: { rows: [] },
     } satisfies RetailSalesResponse);
@@ -74,22 +76,22 @@ export async function GET(request: NextRequest) {
 
   try {
     if (year === 2026) {
-      const { all: all2026, queryable: queryable2026 } = buildYyymmList(2026);
-      const { all: all2025, queryable: queryable2025 } = buildYyymmList(2025);
+      const { all: all2026, queryable: queryable2026 } = buildYyymmList(2026, effectiveClosed);
+      const { all: all2025, queryable: queryable2025 } = buildYyymmList(2025, CLOSED_THROUGH);
       const planFromMonth = getPlanFromMonth(queryable2026);
       const [data2026, data2025] = await Promise.all([
         queryable2026.length > 0
           ? fetchRetailSales(queryable2026, brand, 2026).then((r) => ({
-              dealer: { rows: padRows(r.dealer.rows, all2026, queryable2026) },
-              hq: { rows: padRows(r.hq.rows, all2026, queryable2026) },
+              dealer: { rows: padRows(r.dealer.rows, all2026, queryable2026, effectiveClosed) },
+              hq: { rows: padRows(r.hq.rows, all2026, queryable2026, effectiveClosed) },
             }))
           : {
               dealer: { rows: [] as RetailSalesRow[] },
               hq: { rows: [] as RetailSalesRow[] },
             },
         fetchRetailSales(queryable2025, brand, 2025).then((r) => ({
-          dealer: { rows: padRows(r.dealer.rows, all2025, queryable2025) },
-          hq: { rows: padRows(r.hq.rows, all2025, queryable2025) },
+          dealer: { rows: padRows(r.dealer.rows, all2025, queryable2025, CLOSED_THROUGH) },
+          hq: { rows: padRows(r.hq.rows, all2025, queryable2025, CLOSED_THROUGH) },
         })),
       ]);
       if (data2026.dealer.rows.length === 0 && data2025.dealer.rows.length > 0) {
@@ -104,7 +106,7 @@ export async function GET(request: NextRequest) {
         const response: RetailSalesResponse = {
           year: 2026,
           brand,
-          closedThrough: CLOSED_THROUGH,
+          closedThrough: effectiveClosed,
           dealer: { rows: mergePlanMonths(emptyCurrDealer, data2025.dealer.rows, planFromMonth, factorDealer) },
           hq: { rows: mergePlanMonths(emptyCurrHq, data2025.hq.rows, planFromMonth, factorHq) },
           planFromMonth,
@@ -116,7 +118,7 @@ export async function GET(request: NextRequest) {
         const response: RetailSalesResponse = {
           year: 2026,
           brand,
-          closedThrough: CLOSED_THROUGH,
+          closedThrough: effectiveClosed,
           dealer: { rows: mergePlanMonths(data2026.dealer.rows, data2025.dealer.rows, planFromMonth, factorDealer) },
           hq: { rows: mergePlanMonths(data2026.hq.rows, data2025.hq.rows, planFromMonth, factorHq) },
           planFromMonth,
@@ -131,9 +133,9 @@ export async function GET(request: NextRequest) {
     const response: RetailSalesResponse = {
       year,
       brand,
-      closedThrough: CLOSED_THROUGH,
-      dealer: { rows: padRows(dealer.rows, allYymms, queryable) },
-      hq:     { rows: padRows(hq.rows,     allYymms, queryable) },
+      closedThrough: effectiveClosed,
+      dealer: { rows: padRows(dealer.rows, allYymms, queryable, effectiveClosed) },
+      hq:     { rows: padRows(hq.rows,     allYymms, queryable, effectiveClosed) },
     };
 
     // 2025년 결과 캐시에 저장
