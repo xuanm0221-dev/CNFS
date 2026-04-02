@@ -8,6 +8,7 @@ import type { ShipmentSalesResponse } from '@/app/api/inventory/shipment-sales/r
 import type { PurchaseResponse } from '@/app/api/inventory/purchase/route';
 import { buildTableDataFromMonthly } from '@/lib/build-inventory-from-monthly';
 import { buildTableData, applyAccTargetWoiOverlay, applyHqSellInSellOutPlanOverlay, rebuildTableFromLeafs } from '@/lib/inventory-calc';
+import { SCENARIO_DEFS, SCENARIO_ORDER, type ScenarioKey, type SalesBrand } from '@/components/pl-forecast/plForecastConfig';
 import {
   saveSnapshot,
   loadSnapshot,
@@ -553,10 +554,10 @@ export default function InventoryDashboard() {
   const [year, setYear] = useState<number>(2026);
   const brand = '전체' as Brand;
   const [growthRateByBrand, setGrowthRateByBrand] = useState<Record<AnnualPlanBrand, number>>({
-    MLB: 5, 'MLB KIDS': -1, DISCOVERY: 200,
+    MLB: 5, 'MLB KIDS': -3, DISCOVERY: 280,
   });
   const [growthRateHqByBrand, setGrowthRateHqByBrand] = useState<Record<AnnualPlanBrand, number>>({
-    MLB: 17, 'MLB KIDS': 0, DISCOVERY: 200,
+    MLB: 15, 'MLB KIDS': 8, DISCOVERY: 137,
   });
   const growthRate = growthRateByBrand['MLB'] ?? 5;
   const growthRateHq = growthRateHqByBrand['MLB'] ?? 17;
@@ -708,6 +709,27 @@ export default function InventoryDashboard() {
   // 3개 브랜드 백그라운드 로딩 완료 여부 (필터바 뱃지용)
   const [allBrandsBgLoaded, setAllBrandsBgLoaded] = useState(false);
   const [brandBgLoadedCount, setBrandBgLoadedCount] = useState(0);
+
+  // 시나리오 재고 사전계산 상태
+  const [scenarioInvStatus, setScenarioInvStatus] = useState<Record<ScenarioKey, 'idle' | 'computing' | 'done' | 'error'>>({
+    negative: 'idle', base: 'idle', positive: 'idle',
+  });
+  const [scenarioInvClosing, setScenarioInvClosing] = useState<Partial<Record<ScenarioKey, Partial<Record<SalesBrand, number>>>> | null>(null);
+  const [scenarioInvSavedAt, setScenarioInvSavedAt] = useState<string | null>(null);
+
+  // 마운트 시 기존 시나리오 재고 JSON 불러오기
+  useEffect(() => {
+    fetch('/api/inventory/scenario-inventory')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.closing) {
+          setScenarioInvClosing(data.closing);
+          setScenarioInvSavedAt(data.savedAt ?? null);
+          setScenarioInvStatus({ negative: 'done', base: 'done', positive: 'done' });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // 2026년 재고자산탭 최초 로드 시 3개 브랜드 데이터를 백그라운드에서 병렬 fetch
   // → *DataByBrand에 저장되면 publishHqClosingByBrand 및 하위 publish 효과들이 자동으로 트리거됨
@@ -1213,6 +1235,40 @@ export default function InventoryDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, growthRate, growthRateHq, growthRateByBrand, growthRateHqByBrand]);
 
+  // 성장률 변경 시 retailDataByBrand도 재fetch (백그라운드 ref guard로 인해 갱신 안 되는 문제 수정)
+  const retailByBrandGrowthFetchedRef = useRef<string>('');
+  useEffect(() => {
+    if (year !== 2026) return;
+    if (!allBrandsBgLoaded) return;
+    const key = ANNUAL_PLAN_BRANDS.map(
+      (b) => `${b}:${growthRateByBrand[b] ?? 5}:${growthRateHqByBrand[b] ?? 17}`,
+    ).join('|');
+    if (retailByBrandGrowthFetchedRef.current === key) return;
+    retailByBrandGrowthFetchedRef.current = key;
+
+    let cancelled = false;
+    void Promise.all(
+      ANNUAL_PLAN_BRANDS.map(async (b) => {
+        try {
+          const res = await fetch(
+            `/api/inventory/retail-sales?${new URLSearchParams({
+              year: '2026',
+              brand: b,
+              growthRate: String(growthRateByBrand[b]),
+              growthRateHq: String(growthRateHqByBrand[b]),
+            })}`,
+          );
+          if (cancelled || !res.ok) return;
+          const json = (await res.json()) as RetailSalesResponse;
+          if (cancelled) return;
+          retailByBrandRef.current[b] = json;
+          setRetailDataByBrand((prev) => ({ ...prev, [b]: json }));
+        } catch { /* ignore */ }
+      }),
+    );
+    return () => { cancelled = true; };
+  }, [year, allBrandsBgLoaded, growthRateByBrand, growthRateHqByBrand]);
+
   useEffect(() => {
     if (year !== 2026 || brand !== '전체') return;
     let cancelled = false;
@@ -1667,24 +1723,6 @@ export default function InventoryDashboard() {
     }
     return result;
   }, [year, retailDataByBrand, monthlyDataByBrand, shipmentDataByBrand]);
-
-  const perBrand2025RetailDealerValidationByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
-    if (year !== 2025) return {};
-    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
-    for (const b of ANNUAL_PLAN_BRANDS) {
-      const tableData = perBrand2025AdjustedDealerRetailTable[b];
-      const annualByKey = perBrand2025AdjustedRetailAnnualByKey[b];
-      if (!tableData || !annualByKey) continue;
-      const validation: Record<string, number | null> = {};
-      for (const row of tableData.rows) {
-        const monthlySum = row.monthly.reduce<number | null>((s, v) => (v == null ? s : (s ?? 0) + v), null);
-        const annualTotal = annualByKey[row.key] ?? null;
-        validation[row.key] = monthlySum != null && annualTotal != null ? monthlySum - annualTotal : null;
-      }
-      result[b] = validation;
-    }
-    return result;
-  }, [year, perBrand2025AdjustedDealerRetailTable, perBrand2025AdjustedRetailAnnualByKey]);
 
   // 2026년: 2025 재고자산표 Sell-out 계산용 (단일/전체 브랜드 모두 지원)
   const prevYearTopTableData = useMemo(() => {
@@ -2194,6 +2232,93 @@ export default function InventoryDashboard() {
       year,
     );
   }, [year, brand, monthlyDataByBrand, monthlyData, retailDataByBrand, retailData, shipmentDataByBrand, shipmentData, purchaseDataByBrand, purchaseData, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, otbData, hqSellOutPlan, annualShipmentPlan2026, growthRate, growthRateByBrand]);
+
+  // 시나리오 재고 계산 함수 (버튼 클릭 시 실행)
+  const computeAndSaveScenarioInventory = useCallback(async () => {
+    if (!allBrandsBgLoaded || year !== 2026) return;
+
+    const allClosing: Record<ScenarioKey, Partial<Record<SalesBrand, number>>> = {
+      negative: {}, base: {}, positive: {},
+    };
+
+    for (const scKey of SCENARIO_ORDER) {
+      setScenarioInvStatus((prev) => ({ ...prev, [scKey]: 'computing' }));
+      const def = SCENARIO_DEFS[scKey];
+
+      try {
+        await Promise.all(
+          ANNUAL_PLAN_BRANDS.map(async (b) => {
+            const mData = monthlyDataByBrand[b];
+            const sData = shipmentDataByBrand[b];
+            const pData = purchaseDataByBrand[b];
+            const prevMData = prevYearMonthlyDataByBrand[b];
+            const prevRData = prevYearRetailDataByBrand[b];
+            const prevSData = prevYearShipmentDataByBrand[b];
+            if (!mData || !sData) return;
+
+            // 시나리오 성장률로 리테일 데이터 fetch
+            const params = new URLSearchParams({
+              year: '2026',
+              brand: b,
+              growthRate: String(def.dealerGrowthRate[b]),
+              growthRateHq: String(def.hqGrowthRate[b]),
+            });
+            const res = await fetch(`/api/inventory/retail-sales?${params}`, { cache: 'no-store' });
+            if (!res.ok) return;
+            const scRetail = (await res.json()) as RetailSalesResponse;
+
+            // applyAdjustedDealerRetailPlanBase 적용 (buildBrand2026TopTable과 동일한 파이프라인)
+            const rData =
+              scRetail && prevMData && prevRData && prevSData
+                ? applyAdjustedDealerRetailPlanBase(scRetail, prevMData, prevRData, prevSData, def.dealerGrowthRate[b])
+                : scRetail;
+
+            // buildTableDataFromMonthly + applyAccTargetWoiOverlay + applyHqSellInSellOutPlanOverlay
+            const built = buildTableDataFromMonthly(mData, rData, sData, pData ?? undefined, 2026);
+            const withWoi = applyAccTargetWoiOverlay(
+              built.dealer, built.hq, rData,
+              accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, 2026,
+            );
+            const otbDealerSellIn = otbToDealerSellInPlan(otbData, b);
+            const final = applyHqSellInSellOutPlanOverlay(
+              withWoi.dealer, withWoi.hq,
+              annualPlanToHqSellInPlan(annualShipmentPlan2026, b),
+              { ...hqSellOutPlan, ...otbDealerSellIn },
+              2026,
+            );
+
+            const closing = final.hq.rows.find((r) => r.isTotal)?.closing ?? null;
+            if (closing != null && Number.isFinite(closing)) {
+              allClosing[scKey][b] = closing;
+            }
+          }),
+        );
+        setScenarioInvStatus((prev) => ({ ...prev, [scKey]: 'done' }));
+      } catch {
+        setScenarioInvStatus((prev) => ({ ...prev, [scKey]: 'error' }));
+      }
+    }
+
+    setScenarioInvClosing(allClosing);
+
+    // 버전 해시 (성장률 기반)
+    const version = SCENARIO_ORDER.map((k) => {
+      const d = SCENARIO_DEFS[k];
+      return `${k}:d${ANNUAL_PLAN_BRANDS.map((b) => d.dealerGrowthRate[b]).join(',')}-h${ANNUAL_PLAN_BRANDS.map((b) => d.hqGrowthRate[b]).join(',')}`;
+    }).join('|');
+
+    const savedAt = new Date().toISOString();
+    setScenarioInvSavedAt(savedAt);
+
+    // 로컬에서만 JSON 파일로 저장 (Vercel에서는 403 반환 → 무시)
+    await fetch('/api/inventory/scenario-inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ closing: allClosing, savedAt, version }),
+    }).catch(() => {});
+  }, [allBrandsBgLoaded, year, monthlyDataByBrand, shipmentDataByBrand, purchaseDataByBrand,
+      prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand,
+      accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, otbData, hqSellOutPlan, annualShipmentPlan2026]);
 
   // 브랜드별 당년 top table (buildBrand2026TopTable 이후에 배치)
   const perBrandTopTable = useMemo<Partial<Record<AnnualPlanBrand, TopTablePair>>>(() => {
@@ -3602,6 +3727,10 @@ export default function InventoryDashboard() {
         allBrandsBgLoaded={year === 2025 || (year === 2026 && allBrandsBgLoaded)}
         brandBgLoadedCount={year === 2026 ? brandBgLoadedCount : 0}
         totalBrands={ANNUAL_PLAN_BRANDS.length}
+        scenarioInvStatus={year === 2026 ? scenarioInvStatus : undefined}
+        scenarioInvClosing={year === 2026 ? scenarioInvClosing : undefined}
+        scenarioInvSavedAt={year === 2026 ? scenarioInvSavedAt : undefined}
+        onComputeScenarioInv={year === 2026 && allBrandsBgLoaded ? computeAndSaveScenarioInventory : undefined}
       />
 
       <div className="px-6 py-5">
@@ -3851,9 +3980,7 @@ export default function InventoryDashboard() {
         <div className="mt-4" style={{ paddingLeft: '1.5%', paddingRight: '1.5%' }}>
           <div className="grid grid-cols-3 gap-4">
             {ANNUAL_PLAN_BRANDS.map((b) => {
-              const displayData = year === 2026
-                ? (perBrandTopTableDisplayData[b] ?? perBrandTopTable[b])
-                : perBrandTopTable[b];
+              const displayData = perBrandTopTable[b];
               const prevData = perBrandPrevYearTableData[b];
               if (!displayData) return <div key={b} className="min-w-0 text-xs text-gray-400 py-8 text-center">로딩 중…</div>;
               return inventoryBrandOpen[b] ? (
@@ -3882,9 +4009,7 @@ export default function InventoryDashboard() {
         <div className="mt-4" style={{ paddingLeft: '1.5%', paddingRight: '1.5%' }}>
           <div className="grid grid-cols-3 gap-4">
             {ANNUAL_PLAN_BRANDS.map((b) => {
-              const displayData = year === 2026
-                ? (perBrandTopTableDisplayData[b] ?? perBrandTopTable[b])
-                : perBrandTopTable[b];
+              const displayData = perBrandTopTable[b];
               const prevData = perBrandPrevYearTableData[b];
               if (!displayData) return <div key={b} className="min-w-0 text-xs text-gray-400 py-8 text-center">로딩 중…</div>;
               return inventoryBrandOpen[b] ? (
@@ -4159,8 +4284,8 @@ export default function InventoryDashboard() {
           </div>
         )}
 
-        {/* 대리상 리테일매출(보정) */}
-        {year === 2025 && ANNUAL_PLAN_BRANDS.some((b) => perBrand2025AdjustedDealerRetailTable[b]) && (
+        {/* 대리상 리테일매출 */}
+        {year === 2025 && ANNUAL_PLAN_BRANDS.some((b) => (retailDataByBrand[b]?.dealer?.rows?.length ?? 0) > 0) && (
           <div className="mt-10 border-t border-gray-300 pt-8">
             <button
               type="button"
@@ -4168,11 +4293,10 @@ export default function InventoryDashboard() {
               className="flex items-center gap-2 w-full text-left py-1"
             >
               <SectionIcon>
-                <span className="text-lg">💤</span>
+                <span className="text-lg">📊</span>
               </SectionIcon>
               <span className="text-sm font-bold text-gray-700">대리상 리테일매출</span>
-              <span className="text-xs font-normal text-gray-400">(단위: CNY K)</span>
-              <span className="text-xs font-normal text-orange-500 ml-1">월별 = 기초재고 + 출고 − 기말재고</span>
+              <span className="text-xs font-normal text-gray-400">(단위: CNY K / 실적: 1~12월)</span>
               <span className="ml-auto text-gray-400 text-xs shrink-0">
                 {adjustedRetailOpen ? '접기' : '펼치기'}
               </span>
@@ -4180,8 +4304,8 @@ export default function InventoryDashboard() {
             {adjustedRetailOpen && (
               <div className="mt-3">
                 {ANNUAL_PLAN_BRANDS.map((b) => {
-                  const tableData = perBrand2025AdjustedDealerRetailTable[b];
-                  if (!tableData) return null;
+                  const tableData = retailDataByBrand[b]?.dealer as TableData | undefined;
+                  if (!tableData || tableData.rows.length === 0) return null;
                   return (
                     <div key={b} className={b === 'MLB' ? '' : 'mt-6'}>
                       <div className="text-sm font-bold text-gray-800 mb-1 pt-1 border-t border-gray-400">{b}</div>
@@ -4190,9 +4314,6 @@ export default function InventoryDashboard() {
                         data={tableData}
                         year={year}
                         showOpening={false}
-                        annualTotalByRowKey={perBrand2025AdjustedRetailAnnualByKey[b] ?? undefined}
-                        validationHeader="검증(월합-연간)"
-                        validationByRowKey={perBrand2025RetailDealerValidationByKey[b] ?? undefined}
                       />
                     </div>
                   );
@@ -4254,6 +4375,9 @@ export default function InventoryDashboard() {
                 if (!brandMonthly || brandMonthly.dealer.rows.length === 0) return null;
                 const dealerData = (year === 2026 ? perBrandDealerMonthlyDisplayData[b] : null) ?? (brandMonthly.dealer as TableData);
                 const hqData = (year === 2026 ? perBrandHqMonthlyDisplayData[b] : null) ?? (brandMonthly.hq as TableData);
+                const bClosedThrough = brandMonthly.closedThrough ?? '';
+                const bClosedMonth = bClosedThrough.length >= 6 && bClosedThrough.startsWith(String(year)) ? Number(bClosedThrough.slice(4, 6)) : NaN;
+                const bPlanFromMonth = year === 2026 && Number.isInteger(bClosedMonth) && bClosedMonth >= 1 && bClosedMonth < 12 ? bClosedMonth + 1 : undefined;
                 return (
                   <div key={b} className={b === 'MLB' ? '' : 'mt-8'}>
                     <div className="text-sm font-bold text-gray-800 mb-1 pt-1 border-t border-gray-400">{b}</div>
@@ -4263,7 +4387,7 @@ export default function InventoryDashboard() {
                       year={year}
                       showOpening={true}
                       showAnnualTotal={false}
-                      planFromMonth={year === 2026 ? shipmentPlanFromMonth : undefined}
+                      planFromMonth={bPlanFromMonth}
                     />
                     <InventoryMonthlyTable
                       firstColumnHeader="본사"
@@ -4271,7 +4395,7 @@ export default function InventoryDashboard() {
                       year={year}
                       showOpening={true}
                       showAnnualTotal={false}
-                      planFromMonth={year === 2026 ? shipmentPlanFromMonth : undefined}
+                      planFromMonth={bPlanFromMonth}
                       headerBg="#4db6ac"
                       headerBorderColor="#2a9d8f"
                       totalRowCls="bg-teal-50"

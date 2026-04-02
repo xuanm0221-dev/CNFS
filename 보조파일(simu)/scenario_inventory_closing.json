@@ -1,0 +1,21 @@
+{
+  "closing": {
+    "negative": {
+      "MLB": 2794648,
+      "DISCOVERY": 372500.30814,
+      "MLB KIDS": 175709.5941
+    },
+    "base": {
+      "MLB": 2791568,
+      "DISCOVERY": 372500.30814,
+      "MLB KIDS": 170343.06118
+    },
+    "positive": {
+      "MLB": 2804784,
+      "DISCOVERY": 357816.5921,
+      "MLB KIDS": 166416.34475
+    }
+  },
+  "savedAt": "2026-04-02T09:06:31.507Z",
+  "version": "negative:d0,-5,280-h4,0,137|base:d5,-3,280-h15,8,137|positive:d10,5,330-h20,15,200"
+}

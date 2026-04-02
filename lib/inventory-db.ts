@@ -13,7 +13,7 @@ import { executeSnowflakeQuery } from './snowflake-client';
 // ─────────────────────────────────────────────
 
 /** 현재 마감된 최신 YYMM (이 값 이하만 DB에서 조회) */
-export const CLOSED_THROUGH = '202602';
+export const CLOSED_THROUGH = '202603';
 
 const SEASON_KEYS: MonthlySeasonKey[] = ['당년F', '당년S', '1년차', '2년차', '차기시즌', '과시즌'];
 const ACC_KEYS: MonthlyAccKey[] = ['신발', '모자', '가방', '기타'];

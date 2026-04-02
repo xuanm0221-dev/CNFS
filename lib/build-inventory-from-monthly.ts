@@ -82,15 +82,17 @@ export function buildTableDataFromMonthly(
     const closingDealer = toK(mDealer?.monthly?.[11] ?? null);
     const sellInDealer = ship ? to12ValuesK(ship.monthly) : new Array(12).fill(0);
 
-    // Sell-out = 기초 + Sell-in - 기말 (월별 계산)
+    // Sell-out = 대리상 리테일 매출 실적 (Snowflake FR), 없으면 기초 + Sell-in - 기말로 역산
     const dealerMonthlyK = mDealer
       ? to12Values(mDealer.monthly).map((v) => v / 1000)
       : new Array(12).fill(0);
-    const sellOutDealer = sellInDealer.map((si, m) => {
-      const prevClose = m === 0 ? openingDealer : dealerMonthlyK[m - 1];
-      const thisClose = dealerMonthlyK[m];
-      return prevClose + si - thisClose;
-    });
+    const sellOutDealer = rDealer
+      ? to12ValuesK(rDealer.monthly)
+      : sellInDealer.map((si, m) => {
+          const prevClose = m === 0 ? openingDealer : dealerMonthlyK[m - 1];
+          const thisClose = dealerMonthlyK[m];
+          return prevClose + si - thisClose;
+        });
 
     dealerRaw.push({
       key,

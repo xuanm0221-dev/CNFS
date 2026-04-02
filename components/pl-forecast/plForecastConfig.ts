@@ -1,4 +1,4 @@
-﻿export type ForecastLeafBrand = 'mlb' | 'kids' | 'discovery';
+export type ForecastLeafBrand = 'mlb' | 'kids' | 'discovery';
 
 export interface ForecastRowDef {
   account: string;
@@ -75,6 +75,7 @@ export const ROWS_CORPORATE: ForecastRowDef[] = [
   { account: 'Tag매출_의류', level: 2, isGroup: false, isCalculated: true, format: 'number' },
   { account: 'Tag매출_ACC', level: 2, isGroup: false, isCalculated: true, format: 'number' },
   { account: 'Tag매출_직영', level: 1, isGroup: false, isCalculated: true, format: 'number' },
+  { account: '실판매출(V+)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
   { account: '실판매출', level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
   { account: '실판매출_대리상', level: 1, isGroup: true, isCalculated: true, format: 'number' },
   { account: '실판매출_의류', level: 2, isGroup: false, isCalculated: true, format: 'number' },
@@ -113,6 +114,56 @@ export const ROWS_CORPORATE: ForecastRowDef[] = [
 export const ROWS_BRAND: ForecastRowDef[] = ROWS_CORPORATE.filter(
   (row) => !['MLB', 'KIDS', 'DISCOVERY'].includes(row.account),
 ).map((row) => ({ ...row }));
+
+// ─── 시나리오 공용 타입 & 상수 ───────────────────────────────────────────────
+export type SalesBrand = 'MLB' | 'MLB KIDS' | 'DISCOVERY';
+export type ScenarioKey = 'negative' | 'base' | 'positive';
+
+export interface ScenarioDef {
+  key: ScenarioKey;
+  label: string;
+  shortLabel: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  dealerGrowthRate: Record<SalesBrand, number>;
+  hqGrowthRate: Record<SalesBrand, number>;
+}
+
+export const SCENARIO_DEFS: Record<ScenarioKey, ScenarioDef> = {
+  base: {
+    key: 'base',
+    label: '기존계획',
+    shortLabel: '기존',
+    color: '#3b5f93',
+    bgColor: '#eff3fb',
+    borderColor: '#3b5f93',
+    dealerGrowthRate: { MLB: 5, 'MLB KIDS': -3, DISCOVERY: 280 },
+    hqGrowthRate: { MLB: 15, 'MLB KIDS': 8, DISCOVERY: 137 },
+  },
+  positive: {
+    key: 'positive',
+    label: '긍정계획',
+    shortLabel: '긍정',
+    color: '#059669',
+    bgColor: '#ecfdf5',
+    borderColor: '#059669',
+    dealerGrowthRate: { MLB: 10, 'MLB KIDS': 5, DISCOVERY: 330 },
+    hqGrowthRate: { MLB: 20, 'MLB KIDS': 15, DISCOVERY: 200 },
+  },
+  negative: {
+    key: 'negative',
+    label: '부정계획',
+    shortLabel: '부정',
+    color: '#dc2626',
+    bgColor: '#fef2f2',
+    borderColor: '#dc2626',
+    dealerGrowthRate: { MLB: 0, 'MLB KIDS': -5, DISCOVERY: 280 },
+    hqGrowthRate: { MLB: 4, 'MLB KIDS': 0, DISCOVERY: 137 },
+  },
+};
+
+export const SCENARIO_ORDER: ScenarioKey[] = ['negative', 'base', 'positive'];
 
 export const ANNUAL_2025_RAW_BY_BRAND: Record<ForecastLeafBrand, Record<string, number>> = {
   mlb: {

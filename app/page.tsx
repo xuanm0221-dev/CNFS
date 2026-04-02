@@ -211,7 +211,7 @@ export default function Home() {
     { id: 'supra', label: 'SUPRA' },
   ];
 
-  const tabs = ['경영요약', '손익계산서', '재무상태표', '현금흐름표', '여신사용현황', '재고자산 (simu)', 'PL (simu)', 'CF (simu)'];
+  const tabs = ['경영요약', '손익계산서', '재무상태표', '현금흐름표', '여신사용현황', '재고자산 (sim)', 'PL (sim)', 'CF (sim)'];
   const tabGroups = useMemo(
     () => [
       { id: 'group1', label: '재무제표', tabIndexes: [0, 1, 2, 3] },

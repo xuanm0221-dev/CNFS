@@ -10,8 +10,13 @@ import {
   RAW_ACCOUNTS,
   ROWS_BRAND,
   ROWS_CORPORATE,
+  SCENARIO_DEFS,
+  SCENARIO_ORDER,
   type ForecastLeafBrand,
   type ForecastRowDef,
+  type SalesBrand,
+  type ScenarioDef,
+  type ScenarioKey,
 } from './plForecastConfig';
 
 type MonthlyInputs = Record<ForecastLeafBrand, Record<string, (number | null)[]>>;
@@ -21,7 +26,6 @@ type CalculatedSeries = {
   annual2025: Record<string, number | null>;
 };
 
-type SalesBrand = 'MLB' | 'MLB KIDS' | 'DISCOVERY';
 type SalesSeason = '당년S' | '당년F' | '1년차' | '차기시즌';
 type SalesLeafKind = 'dealerCurrS' | 'dealerCurrF' | 'dealerYear1' | 'dealerNext' | 'dealerAcc' | 'direct';
 
@@ -40,54 +44,16 @@ const SALES_BRANDS: SalesBrand[] = ['MLB', 'MLB KIDS', 'DISCOVERY'];
 const DEALER_CLOTH_SEASONS: SalesSeason[] = ['당년S', '당년F', '1년차', '차기시즌'];
 const FIXED_COST_ACCOUNTS = new Set(['기타(직접비)', '대리상지원금', '감가상각비']);
 
-// ─── 시나리오 타입 및 상수 ─────────────────────────────────────────────────────
-type ScenarioKey = 'negative' | 'base' | 'positive';
+// ScenarioKey, ScenarioDef, SCENARIO_DEFS, SCENARIO_ORDER → plForecastConfig.ts 에서 import
 
-interface ScenarioDef {
-  key: ScenarioKey;
-  label: string;
-  shortLabel: string;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-  dealerGrowthRate: Record<SalesBrand, number>;
-  hqGrowthRate: Record<SalesBrand, number>;
-}
-
-const SCENARIO_DEFS: Record<ScenarioKey, ScenarioDef> = {
-  base: {
-    key: 'base',
-    label: '기존계획',
-    shortLabel: '기존',
-    color: '#3b5f93',
-    bgColor: '#eff3fb',
-    borderColor: '#3b5f93',
-    dealerGrowthRate: { MLB: 5, 'MLB KIDS': -1, DISCOVERY: 200 },
-    hqGrowthRate: { MLB: 17, 'MLB KIDS': 0, DISCOVERY: 200 },
-  },
-  positive: {
-    key: 'positive',
-    label: '긍정계획',
-    shortLabel: '긍정',
-    color: '#059669',
-    bgColor: '#ecfdf5',
-    borderColor: '#059669',
-    dealerGrowthRate: { MLB: 10, 'MLB KIDS': 5, DISCOVERY: 200 },
-    hqGrowthRate: { MLB: 20, 'MLB KIDS': 5, DISCOVERY: 200 },
-  },
-  negative: {
-    key: 'negative',
-    label: '부정계획',
-    shortLabel: '부정',
-    color: '#dc2626',
-    bgColor: '#fef2f2',
-    borderColor: '#dc2626',
-    dealerGrowthRate: { MLB: -2, 'MLB KIDS': -5, DISCOVERY: 100 },
-    hqGrowthRate: { MLB: 5, 'MLB KIDS': -5, DISCOVERY: 100 },
-  },
+type ScenarioWcInvBrand = { tagK: number; costRatio: number; valRate: number; costK: number };
+type ScenarioWcRow = {
+  ar: number | null;
+  inventory: number | null;
+  inventoryByBrand?: Record<SalesBrand, ScenarioWcInvBrand>;
+  ap: number | null;
+  total: number | null;
 };
-
-const SCENARIO_ORDER: ScenarioKey[] = ['negative', 'base', 'positive'];
 
 type ScenarioBrandCalc = {
   tagSalesMonthly: (number | null)[];
@@ -137,6 +103,8 @@ const ACCOUNT_LABEL_OVERRIDES: Record<string, string> = {
 interface InventoryGrowthParams {
   growthRate: number;
   growthRateHq: number;
+  growthRateByBrand: Record<SalesBrand, number>;
+  growthRateHqByBrand: Record<SalesBrand, number>;
 }
 
 interface RetailRow {
@@ -500,17 +468,36 @@ function distributeRemainingByPattern(
   return result;
 }
 
+const DEFAULT_GROWTH_PARAMS: InventoryGrowthParams = {
+  growthRate: 5,
+  growthRateHq: 17,
+  growthRateByBrand: { MLB: 5, 'MLB KIDS': -1, DISCOVERY: 200 },
+  growthRateHqByBrand: { MLB: 17, 'MLB KIDS': 0, DISCOVERY: 200 },
+};
+
 function readInventoryGrowthParams(): InventoryGrowthParams {
-  if (typeof window === 'undefined') return { growthRate: 5, growthRateHq: 17 };
+  if (typeof window === 'undefined') return DEFAULT_GROWTH_PARAMS;
   const raw = window.localStorage.getItem(INVENTORY_GROWTH_PARAMS_KEY);
-  if (!raw) return { growthRate: 5, growthRateHq: 17 };
+  if (!raw) return DEFAULT_GROWTH_PARAMS;
   try {
-    const parsed = JSON.parse(raw) as Partial<InventoryGrowthParams>;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     const growthRate = typeof parsed.growthRate === 'number' ? parsed.growthRate : 5;
     const growthRateHq = typeof parsed.growthRateHq === 'number' ? parsed.growthRateHq : 17;
-    return { growthRate, growthRateHq };
+    const rawByBrand = parsed.growthRateByBrand as Record<string, number> | undefined;
+    const rawHqByBrand = parsed.growthRateHqByBrand as Record<string, number> | undefined;
+    const growthRateByBrand: Record<SalesBrand, number> = {
+      MLB: typeof rawByBrand?.MLB === 'number' ? rawByBrand.MLB : 5,
+      'MLB KIDS': typeof rawByBrand?.['MLB KIDS'] === 'number' ? rawByBrand['MLB KIDS'] : -1,
+      DISCOVERY: typeof rawByBrand?.DISCOVERY === 'number' ? rawByBrand.DISCOVERY : 200,
+    };
+    const growthRateHqByBrand: Record<SalesBrand, number> = {
+      MLB: typeof rawHqByBrand?.MLB === 'number' ? rawHqByBrand.MLB : 17,
+      'MLB KIDS': typeof rawHqByBrand?.['MLB KIDS'] === 'number' ? rawHqByBrand['MLB KIDS'] : 0,
+      DISCOVERY: typeof rawHqByBrand?.DISCOVERY === 'number' ? rawHqByBrand.DISCOVERY : 200,
+    };
+    return { growthRate, growthRateHq, growthRateByBrand, growthRateHqByBrand };
   } catch {
-    return { growthRate: 5, growthRateHq: 17 };
+    return DEFAULT_GROWTH_PARAMS;
   }
 }
 
@@ -528,7 +515,7 @@ export default function PLForecastTab() {
   const [otbData, setOtbData] = useState<Record<string, Record<string, number>> | null>(null);
   const [retailLoading, setRetailLoading] = useState<boolean>(false);
   const [retailError, setRetailError] = useState<string | null>(null);
-  const [growthParams, setGrowthParams] = useState<InventoryGrowthParams>({ growthRate: 5, growthRateHq: 17 });
+  const [growthParams, setGrowthParams] = useState<InventoryGrowthParams>(DEFAULT_GROWTH_PARAMS);
   const [directRetailByBrand, setDirectRetailByBrand] = useState<Record<SalesBrand, (number | null)[]>>({
     MLB: new Array(12).fill(null),
     'MLB KIDS': new Array(12).fill(null),
@@ -605,6 +592,15 @@ export default function PLForecastTab() {
     new Set(['Tag매출', '실판매출', '매출원가 합계', '직접비', '영업비']),
   );
   const [scenarioExpandedScenarios, setScenarioExpandedScenarios] = useState<Set<ScenarioKey>>(new Set());
+  const [scenarioViewMode, setScenarioViewMode] = useState<'summary' | 'full'>('summary');
+  const [wcInvBrandOpen, setWcInvBrandOpen] = useState(false);
+
+  // 시나리오 운전자본표 데이터
+  const [scenarioWcData, setScenarioWcData] = useState<{
+    actual2025: ScenarioWcRow;
+    scenarios: Record<ScenarioKey, ScenarioWcRow>;
+    invDataMissing: boolean;
+  } | null>(null);
   // ─────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -842,11 +838,18 @@ export default function PLForecastTab() {
   useEffect(() => {
     const updateGrowthParams = () => {
       const next = readInventoryGrowthParams();
-      setGrowthParams((prev) =>
-        prev.growthRate === next.growthRate && prev.growthRateHq === next.growthRateHq
-          ? prev
-          : next,
-      );
+      setGrowthParams((prev) => {
+        if (
+          prev.growthRate === next.growthRate &&
+          prev.growthRateHq === next.growthRateHq &&
+          SALES_BRANDS.every(
+            (b) =>
+              prev.growthRateByBrand[b] === next.growthRateByBrand[b] &&
+              prev.growthRateHqByBrand[b] === next.growthRateHqByBrand[b],
+          )
+        ) return prev;
+        return next;
+      });
     };
 
     updateGrowthParams();
@@ -869,8 +872,8 @@ export default function PLForecastTab() {
             const params = new URLSearchParams({
               year: '2026',
               brand,
-              growthRate: String(growthParams.growthRate),
-              growthRateHq: String(growthParams.growthRateHq),
+              growthRate: String(growthParams.growthRateByBrand[brand] ?? growthParams.growthRate),
+              growthRateHq: String(growthParams.growthRateHqByBrand[brand] ?? growthParams.growthRateHq),
             });
             const res = await fetch(`/api/inventory/retail-sales?${params}`, { cache: 'no-store' });
             const json = (await res.json()) as RetailSalesApiResponse & { error?: string };
@@ -998,8 +1001,14 @@ export default function PLForecastTab() {
 
   const rowDefs = activeBrand === null ? ROWS_CORPORATE : ROWS_BRAND;
 
+  const SCENARIO_SUMMARY_ACCOUNTS = ['실판매출(V+)', '영업이익', '영업이익률'];
+
   // 시나리오 모달: 계층구조 접기/펼치기 적용한 visible rows
   const scenarioVisibleRows = useMemo(() => {
+    if (scenarioViewMode === 'summary') {
+      const defs = scenarioModalBrand === null ? ROWS_CORPORATE : ROWS_BRAND;
+      return defs.filter((row) => SCENARIO_SUMMARY_ACCOUNTS.includes(row.account));
+    }
     const defs = scenarioModalBrand === null ? ROWS_CORPORATE : ROWS_BRAND;
     const rows: ForecastRowDef[] = [];
     let skipUntilLevel = -1;
@@ -1010,7 +1019,7 @@ export default function PLForecastTab() {
       if (row.isGroup && scenarioCollapsedAccounts.has(row.account)) skipUntilLevel = row.level;
     }
     return rows;
-  }, [scenarioModalBrand, scenarioCollapsedAccounts]);
+  }, [scenarioModalBrand, scenarioCollapsedAccounts, scenarioViewMode]);
 
   const visibleRows = useMemo(() => {
     const rows: ForecastRowDef[] = [];
@@ -1065,6 +1074,14 @@ export default function PLForecastTab() {
         return {
           monthly: corporateSalesChannel.direct,
           annual2025: null,
+        };
+      }
+      if (account === '실판매출(V+)') {
+        const vMinus = corporateActualSalesChannel.total;
+        const annual25vMinus = corporateCalculated.annual2025['실판매출'] ?? null;
+        return {
+          monthly: vMinus.map((v) => (v === null ? null : v * 1.13)),
+          annual2025: annual25vMinus === null ? null : annual25vMinus * 1.13,
         };
       }
       if (account === '실판매출') {
@@ -1124,6 +1141,14 @@ export default function PLForecastTab() {
     if (account === 'Tag매출_직영') {
       return { monthly: salesChannelByBrand[salesBrand].direct, annual2025: null };
     }
+    if (account === '실판매출(V+)') {
+      const vMinus = salesActualByBrand[salesBrand].total;
+      const annual25vMinus = calculatedByBrand[brandKey].annual2025['실판매출'] ?? null;
+      return {
+        monthly: vMinus.map((v) => (v === null ? null : v * 1.13)),
+        annual2025: annual25vMinus === null ? null : annual25vMinus * 1.13,
+      };
+    }
     if (account === '실판매출') {
       return {
         monthly: salesActualByBrand[salesBrand].total,
@@ -1161,6 +1186,11 @@ export default function PLForecastTab() {
       const annualCogs = sumOrNull(getRowSeries('매출원가').monthly);
       if (annualTag === null || annualTag === 0 || annualCogs === null) return null;
       return (annualCogs * 1.13) / annualTag;
+    }
+
+    if (account === '실판매출(V+)') {
+      const annualVMinus = sumOrNull(getRowSeries('실판매출').monthly);
+      return annualVMinus === null ? null : annualVMinus * 1.13;
     }
 
     return sumOrNull(getRowSeries(account).monthly);
@@ -1866,6 +1896,7 @@ export default function PLForecastTab() {
       if (account === 'Tag매출_의류') return c.salesChannel.dealerCloth;
       if (account === 'Tag매출_ACC') return c.salesChannel.dealerAcc;
       if (account === 'Tag매출_직영') return c.salesChannel.direct;
+      if (account === '실판매출(V+)') return c.salesActual.total.map((v) => (v === null ? null : v * 1.13));
       if (account === '실판매출') return c.salesActual.total;
       if (account === '실판매출_대리상') return c.salesActual.dealer;
       if (account === '실판매출_의류') return c.salesActual.dealerCloth;
@@ -1880,6 +1911,7 @@ export default function PLForecastTab() {
     if (account === 'Tag매출_의류') return bd.salesChannel.dealerCloth;
     if (account === 'Tag매출_ACC') return bd.salesChannel.dealerAcc;
     if (account === 'Tag매출_직영') return bd.salesChannel.direct;
+    if (account === '실판매출(V+)') return bd.salesActual.total.map((v) => (v === null ? null : v * 1.13));
     if (account === '실판매출') return bd.salesActual.total;
     if (account === '실판매출_대리상') return bd.salesActual.dealer;
     if (account === '실판매출_의류') return bd.salesActual.dealerCloth;
@@ -1901,6 +1933,10 @@ export default function PLForecastTab() {
       const cogs = sumOrNull(gs('매출원가'));
       if (tag === null || tag === 0 || cogs === null) return null;
       return (cogs * 1.13) / tag;
+    }
+    if (account === '실판매출(V+)') {
+      const vMinus = sumOrNull(gs('실판매출'));
+      return vMinus === null ? null : vMinus * 1.13;
     }
     return sumOrNull(gs(account));
   };
@@ -1963,12 +1999,13 @@ export default function PLForecastTab() {
     URL.revokeObjectURL(url);
   };
 
-  const openScenarioModal = async () => {
+  const openScenarioModal = async (force = false) => {
     setScenarioModalOpen(true);
 
-    // 이미 데이터가 있으면 API 재호출 없이 바로 열기
-    if (scenarioData) return;
+    // 이미 데이터가 있으면 API 재호출 없이 바로 열기 (force=true이면 무시)
+    if (!force && scenarioData) return;
 
+    setScenarioData(null);
     setScenarioLoading(true);
     setScenarioError(null);
     setScenarioExpandedScenarios(new Set());
@@ -2248,6 +2285,92 @@ export default function PLForecastTab() {
       };
 
       setScenarioData(allData);
+
+      // ─── 운전자본표 데이터 계산 ─────────────────────────────────────────────
+      try {
+        const [invRes, wcRes] = await Promise.all([
+          fetch('/api/inventory/scenario-inventory'),
+          fetch('/api/pl-forecast/wc-forecast'),
+        ]);
+        const invJson = invRes.ok ? await invRes.json() : null;
+        const wcJson = wcRes.ok ? await wcRes.json() : null;
+
+        const invClosing: Partial<Record<ScenarioKey, Partial<Record<SalesBrand, number>>>> = invJson?.closing ?? {};
+        const arBaseK = wcJson?.wc_ar != null ? wcJson.wc_ar / 1000 : null;
+        const apBaseK = wcJson?.wc_ap != null ? wcJson.wc_ap / 1000 : null;
+
+        // tagCostRatio (localStorage: pl_tag_cost_ratio_annual → { values: { MLB, 'MLB KIDS', DISCOVERY } })
+        let tagCostRatioWc: Record<SalesBrand, number> | null = null;
+        try {
+          const raw = window.localStorage.getItem('pl_tag_cost_ratio_annual');
+          if (raw) tagCostRatioWc = JSON.parse(raw)?.values ?? null;
+        } catch (_e) { /* ignore */ }
+
+        // CF(sim)과 동일한 평가감율
+        const WC_VAL_RATE: Record<SalesBrand, number> = {
+          MLB: 0.133924, 'MLB KIDS': 0.276843, DISCOVERY: 0.02253,
+        };
+        const WC_BRANDS: SalesBrand[] = ['MLB', 'MLB KIDS', 'DISCOVERY'];
+
+        const computeInvDetail = (tagByBrand: Partial<Record<SalesBrand, number>>): { total: number; byBrand: Record<SalesBrand, ScenarioWcInvBrand> } | null => {
+          if (!tagCostRatioWc) return null;
+          let total = 0;
+          const byBrand = {} as Record<SalesBrand, ScenarioWcInvBrand>;
+          for (const b of WC_BRANDS) {
+            const tagK = tagByBrand[b] ?? 0;
+            const costRatio = tagCostRatioWc![b] ?? 0;
+            const valRate = WC_VAL_RATE[b];
+            const costK = (tagK / 1.13) * costRatio * (1 - valRate);
+            byBrand[b] = { tagK, costRatio, valRate, costK };
+            total += costK;
+          }
+          return { total, byBrand };
+        };
+
+        // V+ 연간합계 (AR/AP 스케일링 기준)
+        const getVPlusAnnual = (scData: ScenarioResult) => {
+          const total = scData.corporate.salesActual.total;
+          return total.reduce((sum: number, v) => sum + (v ?? 0), 0) * 1.13;
+        };
+        const vPlusBase = getVPlusAnnual(allData.base);
+        const vPlusNeg = getVPlusAnnual(allData.negative);
+        const vPlusPos = getVPlusAnnual(allData.positive);
+
+        const scaleFromBase = (baseK: number | null, vPlusSc: number) => {
+          if (baseK === null || vPlusBase === 0) return baseK;
+          return baseK * (vPlusSc / vPlusBase);
+        };
+
+        // 2025 실적 (CF(sim) STATIC_WORKING_CAPITAL_ROWS 기준, K CNY)
+        const actual2025: ScenarioWcRow = {
+          ar: 725184,
+          inventory: 1497796,
+          ap: -753922,
+          total: 725184 + 1497796 + (-753922),
+        };
+
+        const computeScRow = (scKey: ScenarioKey, vPlus: number): ScenarioWcRow => {
+          const ar = scaleFromBase(arBaseK, vPlus);
+          const ap = scaleFromBase(apBaseK, vPlus);
+          const invTag = invClosing[scKey];
+          const invDetail = invTag ? computeInvDetail(invTag) : null;
+          const inventory = invDetail?.total ?? null;
+          const total = ar !== null && inventory !== null && ap !== null ? ar + inventory + ap : null;
+          return { ar, inventory, inventoryByBrand: invDetail?.byBrand, ap, total };
+        };
+
+        setScenarioWcData({
+          actual2025,
+          scenarios: {
+            base: computeScRow('base', vPlusBase),
+            negative: computeScRow('negative', vPlusNeg),
+            positive: computeScRow('positive', vPlusPos),
+          },
+          invDataMissing: !invJson?.closing,
+        });
+      } catch (_wcErr) { /* WC 계산 실패 무시 */ }
+      // ────────────────────────────────────────────────────────────────────────
+
       setScenarioLoading(false);
     } catch (err) {
       setScenarioError(err instanceof Error ? err.message : '시나리오 계산 오류가 발생했습니다.');
@@ -2333,7 +2456,7 @@ export default function PLForecastTab() {
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
-                onClick={openScenarioModal}
+                onClick={() => void openScenarioModal()}
                 className="flex items-center gap-1.5 rounded-full border border-violet-300 bg-violet-50 px-4 py-1.5 text-xs font-semibold text-violet-700 shadow-sm transition-colors hover:bg-violet-100"
               >
                 ⚖ 시나리오 비교
@@ -3010,32 +3133,43 @@ export default function PLForecastTab() {
               <div className="text-lg font-bold tracking-tight">시나리오 PL 비교</div>
               <div className="text-xs opacity-70">3개 시나리오 연간 PL 비교 (FY26, CNY K)</div>
             </div>
-            <button
-              type="button"
-              onClick={() => setScenarioModalOpen(false)}
-              className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
-            >
-              ✕ 닫기
-            </button>
+            <div className="flex items-center gap-2">
+              {process.env.NODE_ENV === 'development' && (
+                <button
+                  type="button"
+                  onClick={() => { void openScenarioModal(true); }}
+                  disabled={scenarioLoading}
+                  className="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/20 disabled:opacity-40"
+                >
+                  🔄 재계산
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setScenarioModalOpen(false)}
+                className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                ✕ 닫기
+              </button>
+            </div>
           </div>
 
           {/* 성장률 기준 정보 */}
           <div className="shrink-0 border-b border-slate-200 bg-slate-50 px-6 py-3">
-            <div className="mb-2 text-xs font-semibold text-slate-600">📌 시나리오별 적용 성장률 (대리상 출고 / 본사 직영 리테일)</div>
             <div className="grid grid-cols-3 gap-3">
               {SCENARIO_ORDER.map((scKey) => {
                 const def = SCENARIO_DEFS[scKey];
                 return (
                   <div key={scKey} className="rounded-xl border p-3" style={{ borderColor: def.borderColor, background: def.bgColor }}>
                     <div className="mb-2 text-sm font-bold" style={{ color: def.color }}>
-                      {def.label}
+                      {def.label} <span className="text-xs font-normal text-slate-500">(대리상, 직영 성장률)</span>
                     </div>
                     <table className="w-full text-[12px]">
                       <thead>
                         <tr>
                           <th className="pb-1 text-left font-medium text-slate-500">브랜드</th>
-                          <th className="pb-1 text-center font-medium text-slate-500">대리상 출고</th>
-                          <th className="pb-1 text-center font-medium text-slate-500">본사 직영</th>
+                          <th className="pb-1 text-center font-medium text-slate-500">대리상</th>
+                          <th className="pb-1 text-center font-medium text-slate-500">직영</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3060,6 +3194,7 @@ export default function PLForecastTab() {
 
           {/* 브랜드 탭 */}
           <div className="shrink-0 border-b border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(241,245,249,0.92))] px-6 py-3">
+            <div className="flex items-center justify-between">
             <div className="inline-flex flex-wrap gap-1 rounded-2xl border border-slate-200/90 bg-white/85 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-white/70 backdrop-blur">
               {FORECAST_BRANDS.map((brand) => {
                 const selected = scenarioModalBrand === brand.id;
@@ -3084,6 +3219,32 @@ export default function PLForecastTab() {
                 );
               })}
             </div>
+            {/* 요약 / 전체 PL 토글 */}
+            <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
+              <button
+                type="button"
+                onClick={() => setScenarioViewMode('summary')}
+                className={`px-3 py-1.5 font-semibold transition-colors ${
+                  scenarioViewMode === 'summary'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                요약
+              </button>
+              <button
+                type="button"
+                onClick={() => setScenarioViewMode('full')}
+                className={`border-l border-slate-200 px-3 py-1.5 font-semibold transition-colors ${
+                  scenarioViewMode === 'full'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                전체 PL
+              </button>
+            </div>
+            </div>
           </div>
 
           {/* 비교 테이블 */}
@@ -3104,7 +3265,7 @@ export default function PLForecastTab() {
                   <div className="text-sm font-semibold text-red-600">{scenarioError}</div>
                   <button
                     type="button"
-                    onClick={openScenarioModal}
+                    onClick={() => void openScenarioModal()}
                     className="mt-3 rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
                   >
                     다시 시도
@@ -3122,7 +3283,14 @@ export default function PLForecastTab() {
                   if (annual26 === null || annual25 === null || annual25 === 0) return '-';
                   return `${((annual26 / annual25) * 100).toFixed(1)}%`;
                 };
+                const fmtK = (v: number | null) =>
+                  v === null ? '-' : Math.round(v).toLocaleString();
+                const fmtYoyWc = (val: number | null, base: number | null) => {
+                  if (val === null || base === null || base === 0) return '-';
+                  return `${((val / base) * 100).toFixed(1)}%`;
+                };
                 return (
+                  <Fragment>
                   <table className="w-full border-separate border-spacing-0 text-xs">
                     {/* ── 헤더 ── */}
                     <thead className="sticky top-0 z-20">
@@ -3215,10 +3383,17 @@ export default function PLForecastTab() {
                     {/* ── 바디 ── */}
                     <tbody>
                       {scenarioVisibleRows.map((row, rowIdx) => {
-                        const annual2025 =
-                          scenarioModalBrand === null
+                        const annual2025 = (() => {
+                          if (row.account === '실판매출(V+)') {
+                            const vMinus = scenarioModalBrand === null
+                              ? scenarioData.base.corporate.calculated.annual2025['실판매출'] ?? null
+                              : scenarioData.base.byBrand[scenarioModalBrand as ForecastLeafBrand].calculated.annual2025['실판매출'] ?? null;
+                            return vMinus === null ? null : vMinus * 1.13;
+                          }
+                          return scenarioModalBrand === null
                             ? scenarioData.base.corporate.calculated.annual2025[row.account] ?? null
                             : scenarioData.base.byBrand[scenarioModalBrand as ForecastLeafBrand].calculated.annual2025[row.account] ?? null;
+                        })();
                         const bgClass = rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
                         const isBoldRow = row.isBold ?? row.isGroup;
                         const isAccCollapsed = row.isGroup && scenarioCollapsedAccounts.has(row.account);
@@ -3316,6 +3491,125 @@ export default function PLForecastTab() {
                       })}
                     </tbody>
                   </table>
+
+                  {/* 운전자본표 (요약 모드 + 법인 전체 기준) */}
+                  {scenarioViewMode === 'summary' && (() => {
+                    const wc = scenarioWcData;
+                    const WC_ROWS: { key: keyof ScenarioWcRow; label: string; isGroup: boolean; isBrand?: SalesBrand }[] = [
+                      { key: 'total', label: '운전자본합계', isGroup: true },
+                      { key: 'ar', label: '매출채권', isGroup: false },
+                      { key: 'inventory', label: '재고자산', isGroup: true },
+                      { key: 'inventory', label: 'MLB', isGroup: false, isBrand: 'MLB' },
+                      { key: 'inventory', label: 'MLB KIDS', isGroup: false, isBrand: 'MLB KIDS' },
+                      { key: 'inventory', label: 'DISCOVERY', isGroup: false, isBrand: 'DISCOVERY' },
+                      { key: 'ap', label: '매입채무', isGroup: false },
+                    ];
+                    return (
+                      <div className="mt-6">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-700">운전자본표</span>
+                          <span className="text-[10px] text-slate-400">법인 전체 · 단위: K CNY</span>
+                          {wc?.invDataMissing && (
+                            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 border border-amber-200">
+                              ⚠ 재고 미계산 — 재고자산(sim) 탭에서 재계산·저장 버튼을 눌러주세요
+                            </span>
+                          )}
+                        </div>
+                        <table className="w-full border-separate border-spacing-0 text-xs">
+                          <thead className="sticky top-0 z-20">
+                            <tr>
+                              <th className="sticky left-0 z-30 min-w-[240px] border-b border-r border-slate-300 bg-gradient-to-r from-[#2f4f7f] to-[#3b5f93] px-4 py-2.5 text-center font-semibold text-white">
+                                계정과목
+                              </th>
+                              <th className="min-w-[90px] border-b border-b-slate-300 border-r-2 border-r-slate-400 bg-slate-700 px-3 py-2.5 text-center font-semibold text-slate-100">
+                                2025실적
+                              </th>
+                              {SCENARIO_ORDER.map((scKey) => {
+                                const def = SCENARIO_DEFS[scKey];
+                                return (
+                                  <Fragment key={scKey}>
+                                    <th className="min-w-[90px] border-b border-b-slate-300 border-r border-r-slate-200 px-2 py-2.5 text-center font-bold" style={{ background: def.bgColor, color: def.color }}>
+                                      {def.label}
+                                    </th>
+                                    <th className="min-w-[68px] border-b border-b-slate-300 border-r-2 border-r-slate-400 px-2 py-2.5 text-center font-medium last:border-r-0" style={{ background: def.bgColor, color: def.color }}>
+                                      YOY
+                                    </th>
+                                  </Fragment>
+                                );
+                              })}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {WC_ROWS.map((row, rowIdx) => {
+                              const isBrandRow = !!row.isBrand;
+                              if (isBrandRow && !wcInvBrandOpen) return null;
+                              // 2025 실적: 브랜드 행은 hardcoded (CF(sim) 기준, K CNY)
+                              const ACTUAL2025_INV_BY_BRAND: Record<SalesBrand, number> = {
+                                MLB: 1260042, 'MLB KIDS': 66326, DISCOVERY: 171427,
+                              };
+                              const actual25: number | null = isBrandRow
+                                ? (ACTUAL2025_INV_BY_BRAND[row.isBrand!] ?? null)
+                                : ((wc?.actual2025[row.key] as number | null) ?? null);
+
+                              return (
+                                <tr
+                                  key={`${row.key}-${row.label}-${rowIdx}`}
+                                  className={row.isGroup ? 'bg-slate-50' : isBrandRow ? 'bg-white' : 'bg-white'}
+                                >
+                                  <td className={`sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit py-2 text-slate-800 ${row.isGroup ? 'font-semibold' : isBrandRow ? 'pl-8 text-[11px] text-slate-500' : 'font-normal text-slate-700'}`} style={{ paddingLeft: isBrandRow ? undefined : '10px', paddingRight: '10px' }}>
+                                    {row.key === 'inventory' && row.isGroup ? (
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center justify-between hover:text-slate-600"
+                                        onClick={() => setWcInvBrandOpen((v) => !v)}
+                                      >
+                                        <span>{row.label}</span>
+                                        <span className="text-[10px] font-normal text-slate-400">{wcInvBrandOpen ? '▼ 접기' : '▶ 상세'}</span>
+                                      </button>
+                                    ) : row.label}
+                                  </td>
+                                  <td className={`border-b border-b-slate-200 border-r-2 border-r-slate-300 px-3 py-2 text-right text-slate-500 ${isBrandRow ? 'text-[11px]' : ''}`}>
+                                    {fmtK(actual25)}
+                                  </td>
+                                  {SCENARIO_ORDER.map((scKey) => {
+                                    const def = SCENARIO_DEFS[scKey];
+                                    let val: number | null = null;
+                                    let tooltipText: string | undefined;
+
+                                    if (isBrandRow) {
+                                      const bd = wc?.scenarios[scKey].inventoryByBrand?.[row.isBrand!];
+                                      val = bd?.costK ?? null;
+                                      if (bd) {
+                                        tooltipText = `TAG: ${Math.round(bd.tagK).toLocaleString()}K · 원가율: ${(bd.costRatio * 100).toFixed(1)}% · 평가감: ${(bd.valRate * 100).toFixed(1)}%`;
+                                      }
+                                    } else {
+                                      val = (wc?.scenarios[scKey][row.key] as number | null) ?? null;
+                                    }
+
+                                    return (
+                                      <Fragment key={scKey}>
+                                        <td
+                                          className={`border-b border-b-slate-200 border-r border-r-slate-100 px-3 py-2 text-right ${row.isGroup ? 'font-semibold' : isBrandRow ? 'text-[11px] text-slate-500' : 'font-medium'}`}
+                                          style={!isBrandRow ? { color: def.color } : undefined}
+                                          title={tooltipText}
+                                        >
+                                          {fmtK(val)}
+                                        </td>
+                                        <td className="border-b border-b-slate-200 border-r-2 border-r-slate-300 px-3 py-2 text-right text-slate-500 last:border-r-0 text-[11px]">
+                                          {fmtYoyWc(val, actual25)}
+                                        </td>
+                                      </Fragment>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                  </Fragment>
                 );
               })()
             : null}

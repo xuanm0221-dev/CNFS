@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import type { ScenarioKey, SalesBrand } from '@/components/pl-forecast/plForecastConfig';
+import { SCENARIO_DEFS, SCENARIO_ORDER } from '@/components/pl-forecast/plForecastConfig';
+
 const YEARS = [2025, 2026];
 
 /** 성장률 입력 컨트롤 — 표 제목 우측용 */
@@ -75,6 +78,10 @@ interface Props {
   allBrandsBgLoaded?: boolean;
   brandBgLoadedCount?: number;
   totalBrands?: number;
+  scenarioInvStatus?: Record<ScenarioKey, 'idle' | 'computing' | 'done' | 'error'>;
+  scenarioInvClosing?: Partial<Record<ScenarioKey, Partial<Record<SalesBrand, number>>>> | null;
+  scenarioInvSavedAt?: string | null;
+  onComputeScenarioInv?: () => void;
 }
 
 export default function InventoryFilterBar({
@@ -91,6 +98,10 @@ export default function InventoryFilterBar({
   allBrandsBgLoaded = false,
   brandBgLoadedCount = 0,
   totalBrands = 3,
+  scenarioInvStatus,
+  scenarioInvClosing,
+  scenarioInvSavedAt,
+  onComputeScenarioInv,
 }: Props) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -228,6 +239,64 @@ export default function InventoryFilterBar({
                   </>
                 )}
         </div>
+
+        {/* 시나리오 재고 계산 상태 뱃지 */}
+        {scenarioInvStatus && (
+          <div className="flex items-center gap-1.5">
+            <div className="h-4 w-px bg-gray-300 flex-shrink-0" />
+            {SCENARIO_ORDER.map((scKey) => {
+              const def = SCENARIO_DEFS[scKey];
+              const status = scenarioInvStatus[scKey];
+              const closing = scenarioInvClosing?.[scKey];
+              const total = closing
+                ? Object.values(closing).reduce((s, v) => s + (v ?? 0), 0)
+                : null;
+
+              const badgeClass =
+                status === 'done'
+                  ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
+                  : status === 'computing'
+                    ? 'border-blue-300 bg-blue-50 text-blue-700'
+                    : status === 'error'
+                      ? 'border-red-300 bg-red-50 text-red-600'
+                      : 'border-gray-200 bg-gray-50 text-gray-400';
+
+              return (
+                <div
+                  key={scKey}
+                  className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium ${badgeClass}`}
+                  title={total != null ? `${def.label} 기말재고 합계: ${Math.round(total).toLocaleString()} K CNY (TAG)` : def.label}
+                >
+                  {status === 'computing' && (
+                    <svg className="animate-spin" width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 6" />
+                    </svg>
+                  )}
+                  {status === 'done' && <span>✓</span>}
+                  {status === 'error' && <span>✗</span>}
+                  <span>{def.shortLabel}</span>
+                  {total != null && (
+                    <span className="font-mono text-[10px] opacity-75">
+                      {Math.round(total / 1000).toLocaleString()}M
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={onComputeScenarioInv}
+              disabled={!onComputeScenarioInv || SCENARIO_ORDER.some((k) => scenarioInvStatus[k] === 'computing')}
+              className="flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+              title={scenarioInvSavedAt ? `마지막 저장: ${new Date(scenarioInvSavedAt).toLocaleString('ko-KR')}` : '시나리오 재고를 계산하고 JSON으로 저장합니다'}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M5 1v3M5 9V6M1 5h3M9 5H6" />
+              </svg>
+              재계산·저장
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
