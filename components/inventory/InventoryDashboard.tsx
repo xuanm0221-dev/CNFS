@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Brand, InventoryApiResponse, InventoryTableData, InventoryRowRaw, AccKey, ACC_KEYS, SEASON_KEYS, RowKey } from '@/lib/inventory-types';
 import { MonthlyStockResponse } from '@/lib/inventory-monthly-types';
-import { RetailSalesResponse, RetailSalesRow } from '@/lib/retail-sales-types';
+import { RetailSalesResponse } from '@/lib/retail-sales-types';
 import type { ShipmentSalesResponse } from '@/app/api/inventory/shipment-sales/route';
 import type { PurchaseResponse } from '@/app/api/inventory/purchase/route';
 import { buildTableDataFromMonthly } from '@/lib/build-inventory-from-monthly';
@@ -14,7 +14,7 @@ import {
   loadSnapshot,
   type SnapshotData,
 } from '@/lib/inventory-snapshot';
-import { stripPlanMonths, applyPlanToSnapshot, mergePlanMonths, PLAN_FROM_MONTH } from '@/lib/retail-plan';
+import { stripPlanMonths, applyPlanToSnapshot } from '@/lib/retail-plan';
 import {
   BRANDS_TO_AGGREGATE,
   aggregateMonthlyStock,
@@ -103,8 +103,7 @@ const TXT_PLAN_ICON = '📋';
 const TXT_COLLAPSE = '▲ 접기';
 const TXT_EXPAND = '▼ 펼치기';
 
-/** MLB 브랜드 대리상 1년차 연간합계 별도 목표 (CNY K) */
-const MLB_1YEAR_OVERRIDE_K = 1_479_053;
+
 
 /** 본사 의류매입 표(annualPlan) → hqSellInPlan 시즌 행 매핑 */
 const DRIVER_COLUMN_HEADERS = ['전년', '계획금액', '계획YOY', 'Rolling금액', 'RollingYOY', '계획대비 증감', '계획대비 증감(%)'] as const;
@@ -252,112 +251,6 @@ function aggregateTopTables(tables: TopTablePair[], year: number): TopTablePair 
   };
 }
 
-type AdjustedDealerRetailRow = RetailSalesRow & { opening?: number | null };
-
-function buildAdjustedDealerRetailRows(
-  sourceRows: RetailSalesRow[],
-  monthlyRows: MonthlyStockResponse['dealer']['rows'],
-  shipmentRows: ShipmentSalesResponse['data']['rows'],
-): AdjustedDealerRetailRow[] {
-  const monthlyByKey = new Map(monthlyRows.map((row) => [row.key, row]));
-  const shipmentByKey = new Map(shipmentRows.map((row) => [row.key, row]));
-  const leafRows: AdjustedDealerRetailRow[] = sourceRows
-    .filter((row) => row.isLeaf)
-    .map((row) => ({
-      ...row,
-      opening: monthlyByKey.get(row.key)?.opening ?? null,
-      monthly: row.monthly.map((_, monthIndex) => {
-        const monthlyRow = monthlyByKey.get(row.key);
-        const shipmentRow = shipmentByKey.get(row.key);
-        if (!monthlyRow || !shipmentRow) return null;
-        const opening = monthIndex === 0 ? (monthlyRow.opening ?? null) : (monthlyRow.monthly[monthIndex - 1] ?? null);
-        const sellIn = shipmentRow.monthly[monthIndex] ?? null;
-        const closing = monthlyRow.monthly[monthIndex] ?? null;
-        if (opening === null && sellIn === null && closing === null) return null;
-        return (opening ?? 0) + (sellIn ?? 0) - (closing ?? 0);
-      }),
-    }));
-
-  const sumOpening = (rows: AdjustedDealerRetailRow[]): number | null => {
-    const values = rows
-      .map((row) => row.opening)
-      .filter((value): value is number => value != null && Number.isFinite(value));
-    if (values.length === 0) return null;
-    return values.reduce((sum, value) => sum + value, 0);
-  };
-  const sumMonthly = (rows: AdjustedDealerRetailRow[], monthIndex: number): number | null => {
-    const values = rows
-      .map((row) => row.monthly[monthIndex] ?? null)
-      .filter((value): value is number => value != null && Number.isFinite(value));
-    if (values.length === 0) return null;
-    return values.reduce((sum, value) => sum + value, 0);
-  };
-
-  const clothingLeafRows = leafRows.slice(0, 6);
-  const accLeafRows = leafRows.slice(6);
-  const totalTemplate = sourceRows.find((row) => row.isTotal);
-  const subtotalTemplates = sourceRows.filter((row) => row.isSubtotal);
-  const clothingSubtotalTemplate = subtotalTemplates[0] ?? null;
-  const accSubtotalTemplate = subtotalTemplates[1] ?? null;
-  const clothingSubtotal =
-    clothingSubtotalTemplate == null
-      ? null
-      : {
-          ...clothingSubtotalTemplate,
-          opening: sumOpening(clothingLeafRows),
-          monthly: clothingSubtotalTemplate.monthly.map((_, monthIndex) => sumMonthly(clothingLeafRows, monthIndex)),
-        };
-  const accSubtotal =
-    accSubtotalTemplate == null
-      ? null
-      : {
-          ...accSubtotalTemplate,
-          opening: sumOpening(accLeafRows),
-          monthly: accSubtotalTemplate.monthly.map((_, monthIndex) => sumMonthly(accLeafRows, monthIndex)),
-        };
-  const grandTotal =
-    totalTemplate == null
-      ? null
-      : {
-          ...totalTemplate,
-          opening: sumOpening(leafRows),
-          monthly: totalTemplate.monthly.map((_, monthIndex) => sumMonthly(leafRows, monthIndex)),
-        };
-
-  return [
-    ...(grandTotal ? [grandTotal] : []),
-    ...(clothingSubtotal ? [clothingSubtotal] : []),
-    ...clothingLeafRows,
-    ...(accSubtotal ? [accSubtotal] : []),
-    ...accLeafRows,
-  ];
-}
-
-function applyAdjustedDealerRetailPlanBase(
-  currentRetail: RetailSalesResponse,
-  prevYearMonthly: MonthlyStockResponse,
-  prevYearRetail: RetailSalesResponse,
-  prevYearShipment: ShipmentSalesResponse,
-  growthRateDealer: number,
-): RetailSalesResponse {
-  if (currentRetail.planFromMonth == null) return currentRetail;
-  const adjustedPrevDealerRows = buildAdjustedDealerRetailRows(
-    prevYearRetail.dealer.rows,
-    prevYearMonthly.dealer.rows,
-    prevYearShipment.data.rows,
-  );
-  return {
-    ...currentRetail,
-    dealer: {
-      rows: mergePlanMonths(
-        currentRetail.dealer.rows,
-        adjustedPrevDealerRows,
-        currentRetail.planFromMonth,
-        1 + growthRateDealer / 100,
-      ),
-    },
-  };
-}
 
 function buildSeasonShipmentDerivedSellOutPlan(
   planBrand: AnnualPlanBrand,
@@ -1521,38 +1414,20 @@ export default function InventoryDashboard() {
   }, [year]);
 
   const effectiveRetailData = useMemo<RetailSalesResponse | null>(() => {
-    if (!retailData) return null;
-    // 2025년은 연간 확정 실적이므로 closedThrough 관계없이 원본 데이터 그대로 사용
-    if (year === 2026 && prevYearMonthlyData && prevYearRetailData && prevYearShipmentData) {
-      return applyAdjustedDealerRetailPlanBase(
-        retailData,
-        prevYearMonthlyData,
-        prevYearRetailData,
-        prevYearShipmentData,
-        growthRate,
-      );
-    }
     return retailData;
-  }, [year, retailData, prevYearMonthlyData, prevYearRetailData, prevYearShipmentData, growthRate]);
+  }, [retailData]);
 
-  // 브랜드별 effectiveRetailData — applyAdjustedDealerRetailPlanBase 적용 (현재 브랜드 외 2개 포함)
+  // 브랜드별 effectiveRetailData — raw API 데이터 직접 사용
   const perBrandEffectiveRetailData = useMemo<Partial<Record<AnnualPlanBrand, RetailSalesResponse>>>(() => {
     if (year !== 2026) return {};
     const result: Partial<Record<AnnualPlanBrand, RetailSalesResponse>> = {};
     for (const b of ANNUAL_PLAN_BRANDS) {
       const src = retailDataByBrand[b];
-      const prevMData = prevYearMonthlyDataByBrand[b];
-      const prevRData = prevYearRetailDataByBrand[b];
-      const prevSData = prevYearShipmentDataByBrand[b];
       if (!src) continue;
-      if (prevMData && prevRData && prevSData) {
-        result[b] = applyAdjustedDealerRetailPlanBase(src, prevMData, prevRData, prevSData, growthRateByBrand[b] ?? 5);
-      } else {
-        result[b] = src;
-      }
+      result[b] = src;
     }
     return result;
-  }, [year, retailDataByBrand, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, growthRateByBrand]);
+  }, [year, retailDataByBrand]);
 
   const topTableData = useMemo(() => {
     if (
@@ -1574,16 +1449,9 @@ export default function InventoryDashboard() {
       }
       const perBrandTables: TopTablePair[] = BRANDS_TO_AGGREGATE.map((b) => {
         const mData = monthlyDataByBrand[b]!;
-        const baseRetailData = retailDataByBrand[b]!;
+        const rData = retailDataByBrand[b]!;
         const sData = shipmentDataByBrand[b]!;
         const pData = purchaseDataByBrand[b];
-        const prevMData = prevYearMonthlyDataByBrand[b];
-        const prevRData = prevYearRetailDataByBrand[b];
-        const prevSData = prevYearShipmentDataByBrand[b];
-        const rData =
-          prevMData && prevRData && prevSData
-            ? applyAdjustedDealerRetailPlanBase(baseRetailData, prevMData, prevRData, prevSData, growthRate)
-            : baseRetailData;
         const built = buildTableDataFromMonthly(mData, rData, sData, pData ?? undefined, year);
         const withWoi = applyAccTargetWoiOverlay(
           built.dealer,
@@ -1638,7 +1506,7 @@ export default function InventoryDashboard() {
       );
     }
     return built;
-  }, [year, brand, monthlyData, effectiveRetailData, shipmentData, purchaseData, monthlyDataByBrand, retailDataByBrand, shipmentDataByBrand, purchaseDataByBrand, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, annualShipmentPlan2026, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, hqSellOutPlan, growthRate, otbData]);
+  }, [year, brand, monthlyData, effectiveRetailData, shipmentData, purchaseData, monthlyDataByBrand, retailDataByBrand, shipmentDataByBrand, purchaseDataByBrand, annualShipmentPlan2026, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, hqSellOutPlan, otbData]);
 
   // 대리상 리테일매출(보정) 연간 합계 = 대리상 재고자산표 Sell-out (K→원 변환)
   // 재고자산표 key('재고자산합계') → 리테일표 key('매출합계') 매핑
@@ -1706,24 +1574,6 @@ export default function InventoryDashboard() {
     return result;
   }, [year, monthlyDataByBrand, retailDataByBrand, shipmentDataByBrand, purchaseDataByBrand]);
 
-  const perBrand2025AdjustedDealerRetailTable = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
-    if (year !== 2025) return {};
-    const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
-    for (const b of ANNUAL_PLAN_BRANDS) {
-      const rData = retailDataByBrand[b];
-      const mData = monthlyDataByBrand[b];
-      const sData = shipmentDataByBrand[b];
-      if (!rData || !mData || !sData) continue;
-      const rows = buildAdjustedDealerRetailRows(
-        rData.dealer.rows,
-        mData.dealer.rows,
-        sData.data.rows,
-      );
-      result[b] = { rows };
-    }
-    return result;
-  }, [year, retailDataByBrand, monthlyDataByBrand, shipmentDataByBrand]);
-
   // 2026년: 2025 재고자산표 Sell-out 계산용 (단일/전체 브랜드 모두 지원)
   const prevYearTopTableData = useMemo(() => {
     if (year !== 2026) return null;
@@ -1766,284 +1616,112 @@ export default function InventoryDashboard() {
     return result;
   }, [year, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, prevYearPurchaseDataByBrand]);
 
-  // 2026 대리상 리테일 연간합계 = 2025 Sell-out × 성장률 (소계=leaf 합산)
-  const retailDealerAnnualTotalByRowKey = useMemo<Record<string, number | null> | null>(() => {
-    if (year !== 2026 || !prevYearTopTableData) return null;
-    const factor = 1 + growthRate / 100;
-    const result: Record<string, number | null> = {};
-    for (const row of prevYearTopTableData.dealer.rows) {
-      if (!row.isLeaf) continue;
-      result[row.key] = Math.round(row.sellOutTotal * factor * 1000);
-    }
-    const sumKeys = (keys: readonly string[]) => keys.reduce((s, k) => s + (result[k] ?? 0), 0);
-    result['의류합계'] = sumKeys(SEASON_KEYS);
-    result['ACC합계'] = sumKeys(ACC_KEYS);
-    result['매출합계'] = result['의류합계'] + result['ACC합계'];
-    return result;
-  }, [year, prevYearTopTableData, growthRate]);
+  // retailDealerAnnualTotalByRowKey / retailHqAnnualTotalByRowKey 는
+  // perBrandRetailDealerAnnualByKey / perBrandRetailHqAnnualByKey 이후에 정의 (아래 참조)
 
-  // 검증: 1~12월 합계 - 연간합계 (2026 대리상 리테일)
-  // 대리상: 실적월 고정, 계획월만 비중 배분하여 목표 연간합계에 맞춤
-  // planSum=0(계획월 전부 0)이면 remaining을 계획월 수로 균등 배분
-  const adjustedDealerRetailData = useMemo<TableData | null>(() => {
-    if (year !== 2026 || !effectiveRetailData || !retailDealerAnnualTotalByRowKey) return null;
-    const planFrom = effectiveRetailData.planFromMonth ?? 13;
-    const planMonthCount = 12 - (planFrom - 1);
-    const rows = effectiveRetailData.dealer.rows.map((row) => {
-      const annualTarget = retailDealerAnnualTotalByRowKey[row.key] ?? null;
-      if (annualTarget == null) return { ...row };
-      const monthly = [...row.monthly];
-      const actualSum = monthly.slice(0, planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
-      const remaining = annualTarget - actualSum;
-      const planSum = monthly.slice(planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
-      for (let m = planFrom - 1; m < 12; m++) {
-        if (planSum > 0) {
-          const v = monthly[m] ?? 0;
-          monthly[m] = Math.round(remaining * (v / planSum));
-        } else {
-          // 계획월 데이터 없으면 균등 배분
-          monthly[m] = planMonthCount > 0 ? Math.round(remaining / planMonthCount) : 0;
-        }
-      }
-      return { ...row, monthly };
-    });
-    return { rows: rows as TableData['rows'] };
-  }, [year, effectiveRetailData, retailDealerAnnualTotalByRowKey]);
-
-  const retailDealerValidationByRowKey = useMemo<Record<string, number | null> | null>(() => {
-    if (year !== 2026 || !adjustedDealerRetailData || !retailDealerAnnualTotalByRowKey) return null;
-    const result: Record<string, number | null> = {};
-    for (const row of adjustedDealerRetailData.rows) {
-      const monthlySum = row.monthly.reduce<number | null>(
-        (s, v) => (v == null ? s : (s ?? 0) + v),
-        null,
-      );
-      const annualTotal = retailDealerAnnualTotalByRowKey[row.key] ?? null;
-      result[row.key] =
-        monthlySum != null && annualTotal != null ? monthlySum - annualTotal : null;
-    }
-    return result;
-  }, [year, adjustedDealerRetailData, retailDealerAnnualTotalByRowKey]);
-
-  // 2026 본사 리테일 연간합계 = 2025 본사 Sell-out × 본사 성장률 (소계=leaf 합산)
-  const retailHqAnnualTotalByRowKey = useMemo<Record<string, number | null> | null>(() => {
-    if (year !== 2026 || !prevYearTopTableData) return null;
-    const factor = 1 + growthRateHq / 100;
-    const result: Record<string, number | null> = {};
-    for (const row of prevYearTopTableData.hq.rows) {
-      if (!row.isLeaf) continue;
-      result[row.key] = Math.round((row.hqSalesTotal ?? 0) * factor * 1000);
-    }
-    const sumKeys = (keys: readonly string[]) => keys.reduce((s, k) => s + (result[k] ?? 0), 0);
-    result['의류합계'] = sumKeys(SEASON_KEYS);
-    result['ACC합계'] = sumKeys(ACC_KEYS);
-    result['매출합계'] = result['의류합계'] + result['ACC합계'];
-    return result;
-  }, [year, prevYearTopTableData, growthRateHq]);
-
-  // 검증: 1~12월 합계 - 연간합계 (2026 본사 리테일)
-  // 본사: 실적월 고정, 계획월만 비중 배분하여 목표 연간합계에 맞춤
-  // planSum=0(계획월 전부 0)이면 remaining을 계획월 수로 균등 배분
-  const adjustedHqRetailData = useMemo<TableData | null>(() => {
-    if (year !== 2026 || !effectiveRetailData || !retailHqAnnualTotalByRowKey) return null;
-    const planFrom = effectiveRetailData.planFromMonth ?? 13;
-    const planMonthCount = 12 - (planFrom - 1);
-    const rows = effectiveRetailData.hq.rows.map((row) => {
-      const annualTarget = retailHqAnnualTotalByRowKey[row.key] ?? null;
-      if (annualTarget == null) return { ...row };
-      const monthly = [...row.monthly];
-      const actualSum = monthly.slice(0, planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
-      const remaining = annualTarget - actualSum;
-      const planSum = monthly.slice(planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
-      for (let m = planFrom - 1; m < 12; m++) {
-        if (planSum > 0) {
-          const v = monthly[m] ?? 0;
-          monthly[m] = Math.round(remaining * (v / planSum));
-        } else {
-          monthly[m] = planMonthCount > 0 ? Math.round(remaining / planMonthCount) : 0;
-        }
-      }
-      return { ...row, monthly };
-    });
-    return { rows: rows as TableData['rows'] };
-  }, [year, effectiveRetailData, retailHqAnnualTotalByRowKey]);
-
-  const retailHqValidationByRowKey = useMemo<Record<string, number | null> | null>(() => {
-    if (year !== 2026 || !adjustedHqRetailData || !retailHqAnnualTotalByRowKey) return null;
-    const result: Record<string, number | null> = {};
-    for (const row of adjustedHqRetailData.rows) {
-      const monthlySum = row.monthly.reduce<number | null>(
-        (s, v) => (v == null ? s : (s ?? 0) + v),
-        null,
-      );
-      const annualTotal = retailHqAnnualTotalByRowKey[row.key] ?? null;
-      result[row.key] =
-        monthlySum != null && annualTotal != null ? monthlySum - annualTotal : null;
-    }
-    return result;
-  }, [year, adjustedHqRetailData, retailHqAnnualTotalByRowKey]);
-
-  // 브랜드별 대리상 리테일 조정 데이터 (perBrandEffectiveRetailData 기반 월별 재배분)
+  // 브랜드별 대리상 리테일 조정 데이터: retailDataByBrand는 API fetch 시 이미 성장률 적용됨
   const perBrandAdjustedDealerRetailData = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
     if (year !== 2026) return {};
-    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) =>
-      keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
     const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
     for (const b of ANNUAL_PLAN_BRANDS) {
-      const effData = perBrandEffectiveRetailData[b];  // applyAdjustedDealerRetailPlanBase 적용된 데이터
-      const prevTable = perBrandPrevYearTableData[b];
-      if (!effData || !prevTable) continue;
-      const factor = 1 + (growthRateByBrand[b] ?? 5) / 100;
-      const annualByKey: Record<string, number | null> = {};
-      for (const row of prevTable.dealer.rows) {
-        if (!row.isLeaf) continue;
-        annualByKey[row.key] = Math.round(row.sellOutTotal * factor * 1000);
-      }
-      if (b === 'MLB') annualByKey['1년차'] = MLB_1YEAR_OVERRIDE_K * 1000;
-      annualByKey['의류합계'] = sumKeys(annualByKey, SEASON_KEYS);
-      annualByKey['ACC합계']  = sumKeys(annualByKey, ACC_KEYS);
-      annualByKey['매출합계'] = (annualByKey['의류합계'] ?? 0) + (annualByKey['ACC합계'] ?? 0);
-      const planFrom = effData.planFromMonth ?? 13;
-      const planMonthCount = 12 - (planFrom - 1);
-      const rows = effData.dealer.rows.map((row) => {
-        const annualTarget = annualByKey[row.key] ?? null;
-        if (annualTarget == null) return { ...row };
-        const monthly = [...row.monthly];
-        const actualSum = monthly.slice(0, planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
-        const remaining = annualTarget - actualSum;
-        const planSum = monthly.slice(planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
-        for (let m = planFrom - 1; m < 12; m++) {
-          monthly[m] = planSum > 0
-            ? Math.round(remaining * ((monthly[m] ?? 0) / planSum))
-            : (planMonthCount > 0 ? Math.round(remaining / planMonthCount) : 0);
-        }
-        return { ...row, monthly };
-      });
-      result[b] = { rows: rows as TableData['rows'] };
+      const currRetail = retailDataByBrand[b];
+      if (!currRetail) continue;
+      result[b] = { rows: currRetail.dealer.rows as TableData['rows'] };
     }
     return result;
-  }, [year, perBrandEffectiveRetailData, perBrandPrevYearTableData, growthRateByBrand]);
+  }, [year, retailDataByBrand]);
 
-  // 브랜드별 본사 리테일 조정 데이터 (perBrandEffectiveRetailData 기반 월별 재배분)
+  // 브랜드별 본사 리테일 조정 데이터: retailDataByBrand는 API fetch 시 이미 성장률 적용됨
   const perBrandAdjustedHqRetailData = useMemo<Partial<Record<AnnualPlanBrand, TableData>>>(() => {
     if (year !== 2026) return {};
-    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) =>
-      keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
     const result: Partial<Record<AnnualPlanBrand, TableData>> = {};
     for (const b of ANNUAL_PLAN_BRANDS) {
-      const effData = perBrandEffectiveRetailData[b];  // applyAdjustedDealerRetailPlanBase 적용된 데이터
-      const prevTable = perBrandPrevYearTableData[b];
-      if (!effData || !prevTable) continue;
-      const factor = 1 + (growthRateHqByBrand[b] ?? 17) / 100;
-      const annualByKey: Record<string, number | null> = {};
-      for (const row of prevTable.hq.rows) {
-        if (!row.isLeaf) continue;
-        annualByKey[row.key] = Math.round((row.hqSalesTotal ?? 0) * factor * 1000);
-      }
-      annualByKey['의류합계'] = sumKeys(annualByKey, SEASON_KEYS);
-      annualByKey['ACC합계']  = sumKeys(annualByKey, ACC_KEYS);
-      annualByKey['매출합계'] = (annualByKey['의류합계'] ?? 0) + (annualByKey['ACC합계'] ?? 0);
-      const planFrom = effData.planFromMonth ?? 13;
-      const planMonthCount = 12 - (planFrom - 1);
-      const rows = effData.hq.rows.map((row) => {
-        const annualTarget = annualByKey[row.key] ?? null;
-        if (annualTarget == null) return { ...row };
-        const monthly = [...row.monthly];
-        const actualSum = monthly.slice(0, planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
-        const remaining = annualTarget - actualSum;
-        const planSum = monthly.slice(planFrom - 1).reduce<number>((s, v) => s + (v ?? 0), 0);
-        for (let m = planFrom - 1; m < 12; m++) {
-          monthly[m] = planSum > 0
-            ? Math.round(remaining * ((monthly[m] ?? 0) / planSum))
-            : (planMonthCount > 0 ? Math.round(remaining / planMonthCount) : 0);
-        }
-        return { ...row, monthly };
-      });
-      result[b] = { rows: rows as TableData['rows'] };
+      const currRetail = retailDataByBrand[b];
+      if (!currRetail) continue;
+      result[b] = { rows: currRetail.hq.rows as TableData['rows'] };
     }
     return result;
-  }, [year, perBrandEffectiveRetailData, perBrandPrevYearTableData, growthRateHqByBrand]);
+  }, [year, retailDataByBrand]);
 
-  // 브랜드별 대리상 리테일 연간합계 및 검증 (월합 - 연간합계)
+  // 브랜드별 대리상 리테일 연간합계: 조정된 월별 합계에서 파생
   const perBrandRetailDealerAnnualByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
-    if (year !== 2026) return {};
-    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) => keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
-    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
-    for (const b of ANNUAL_PLAN_BRANDS) {
-      const prevTable = perBrandPrevYearTableData[b];
-      if (!prevTable) continue;
-      const factor = 1 + (growthRateByBrand[b] ?? 5) / 100;
-      const annualByKey: Record<string, number | null> = {};
-      for (const row of prevTable.dealer.rows) {
-        if (!row.isLeaf) continue;
-        annualByKey[row.key] = Math.round(row.sellOutTotal * factor * 1000);
-      }
-      if (b === 'MLB') annualByKey['1년차'] = MLB_1YEAR_OVERRIDE_K * 1000;
-      annualByKey['의류합계'] = sumKeys(annualByKey, SEASON_KEYS);
-      annualByKey['ACC합계']  = sumKeys(annualByKey, ACC_KEYS);
-      annualByKey['매출합계'] = (annualByKey['의류합계'] ?? 0) + (annualByKey['ACC합계'] ?? 0);
-      result[b] = annualByKey;
-    }
-    return result;
-  }, [year, perBrandPrevYearTableData, growthRateByBrand]);
-
-  const perBrandRetailDealerValidationByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
     if (year !== 2026) return {};
     const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
     for (const b of ANNUAL_PLAN_BRANDS) {
       const adjData = perBrandAdjustedDealerRetailData[b];
-      const annualByKey = perBrandRetailDealerAnnualByKey[b];
-      if (!adjData || !annualByKey) continue;
-      const validation: Record<string, number | null> = {};
-      for (const row of adjData.rows) {
-        const monthlySum = row.monthly.reduce<number | null>((s, v) => (v == null ? s : (s ?? 0) + v), null);
-        const annualTotal = annualByKey[row.key] ?? null;
-        validation[row.key] = monthlySum != null && annualTotal != null ? monthlySum - annualTotal : null;
-      }
-      result[b] = validation;
-    }
-    return result;
-  }, [year, perBrandAdjustedDealerRetailData, perBrandRetailDealerAnnualByKey]);
-
-  // 브랜드별 본사 리테일 연간합계 및 검증
-  const perBrandRetailHqAnnualByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
-    if (year !== 2026) return {};
-    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) => keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
-    const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
-    for (const b of ANNUAL_PLAN_BRANDS) {
-      const prevTable = perBrandPrevYearTableData[b];
-      if (!prevTable) continue;
-      const factor = 1 + (growthRateHqByBrand[b] ?? 17) / 100;
+      if (!adjData) continue;
       const annualByKey: Record<string, number | null> = {};
-      for (const row of prevTable.hq.rows) {
-        if (!row.isLeaf) continue;
-        annualByKey[row.key] = Math.round((row.hqSalesTotal ?? 0) * factor * 1000);
+      for (const row of adjData.rows) {
+        annualByKey[row.key] = row.monthly.reduce<number>((s, v) => s + (v ?? 0), 0);
       }
-      annualByKey['의류합계'] = sumKeys(annualByKey, SEASON_KEYS);
-      annualByKey['ACC합계']  = sumKeys(annualByKey, ACC_KEYS);
-      annualByKey['매출합계'] = (annualByKey['의류합계'] ?? 0) + (annualByKey['ACC합계'] ?? 0);
       result[b] = annualByKey;
     }
     return result;
-  }, [year, perBrandPrevYearTableData, growthRateHqByBrand]);
+  }, [year, perBrandAdjustedDealerRetailData]);
 
-  const perBrandRetailHqValidationByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
+  // 브랜드별 직영 리테일 연간합계: 조정된 월별 합계에서 파생
+  const perBrandRetailHqAnnualByKey = useMemo<Partial<Record<AnnualPlanBrand, Record<string, number | null>>>>(() => {
     if (year !== 2026) return {};
     const result: Partial<Record<AnnualPlanBrand, Record<string, number | null>>> = {};
     for (const b of ANNUAL_PLAN_BRANDS) {
       const adjData = perBrandAdjustedHqRetailData[b];
-      const annualByKey = perBrandRetailHqAnnualByKey[b];
-      if (!adjData || !annualByKey) continue;
-      const validation: Record<string, number | null> = {};
+      if (!adjData) continue;
+      const annualByKey: Record<string, number | null> = {};
       for (const row of adjData.rows) {
-        const monthlySum = row.monthly.reduce<number | null>((s, v) => (v == null ? s : (s ?? 0) + v), null);
-        const annualTotal = annualByKey[row.key] ?? null;
-        validation[row.key] = monthlySum != null && annualTotal != null ? monthlySum - annualTotal : null;
+        annualByKey[row.key] = row.monthly.reduce<number>((s, v) => s + (v ?? 0), 0);
       }
-      result[b] = validation;
+      result[b] = annualByKey;
     }
     return result;
-  }, [year, perBrandAdjustedHqRetailData, perBrandRetailHqAnnualByKey]);
+  }, [year, perBrandAdjustedHqRetailData]);
+
+  // 하단 리테일에서 파생된 single-brand 연간합계 → 상단 재고자산표 연동용
+  // 전체: per-brand 합산 / 개별 브랜드: per-brand 또는 single-brand 직접 계산
+  const retailDealerAnnualTotalByRowKey = useMemo<Record<string, number | null> | null>(() => {
+    if (year !== 2026) return null;
+    if (brand === '전체') {
+      const merged: Record<string, number> = {};
+      for (const b of ANNUAL_PLAN_BRANDS) {
+        const bk = perBrandRetailDealerAnnualByKey[b];
+        if (!bk) return null;
+        for (const [k, v] of Object.entries(bk)) {
+          merged[k] = (merged[k] ?? 0) + (v ?? 0);
+        }
+      }
+      return merged;
+    }
+    const fromPerBrand = perBrandRetailDealerAnnualByKey[brand as AnnualPlanBrand];
+    if (fromPerBrand) return fromPerBrand as Record<string, number | null>;
+    if (!retailData) return null;
+    const result: Record<string, number | null> = {};
+    for (const row of retailData.dealer.rows) {
+      result[row.key] = row.monthly.reduce<number>((s, v) => s + (v ?? 0), 0);
+    }
+    return result;
+  }, [year, brand, perBrandRetailDealerAnnualByKey, retailData]);
+
+  const retailHqAnnualTotalByRowKey = useMemo<Record<string, number | null> | null>(() => {
+    if (year !== 2026) return null;
+    if (brand === '전체') {
+      const merged: Record<string, number> = {};
+      for (const b of ANNUAL_PLAN_BRANDS) {
+        const bk = perBrandRetailHqAnnualByKey[b];
+        if (!bk) return null;
+        for (const [k, v] of Object.entries(bk)) {
+          merged[k] = (merged[k] ?? 0) + (v ?? 0);
+        }
+      }
+      return merged;
+    }
+    const fromPerBrand = perBrandRetailHqAnnualByKey[brand as AnnualPlanBrand];
+    if (fromPerBrand) return fromPerBrand as Record<string, number | null>;
+    if (!retailData) return null;
+    const result: Record<string, number | null> = {};
+    for (const row of retailData.hq.rows) {
+      result[row.key] = row.monthly.reduce<number>((s, v) => s + (v ?? 0), 0);
+    }
+    return result;
+  }, [year, brand, perBrandRetailHqAnnualByKey, retailData]);
 
   // 2026년 상단 재고자산표 display용: 대리상 Sell-out → 대리상 리테일 연간합계, 본사 본사판매 → 본사 리테일 연간합계
   const topTableDisplayData = useMemo<{ dealer: InventoryTableData; hq: InventoryTableData } | null>(() => {
@@ -2161,10 +1839,10 @@ export default function InventoryDashboard() {
 
   const shouldUseTopTableOnly = year === 2025 || year === 2026;
   const dealerTableData = shouldUseTopTableOnly
-    ? (topTableData?.dealer ?? null)
+    ? (topTableDisplayData?.dealer ?? topTableData?.dealer ?? null)
     : (topTableData?.dealer ?? data?.dealer ?? null);
   const hqTableData = shouldUseTopTableOnly
-    ? (topTableData?.hq ?? null)
+    ? (topTableDisplayData?.hq ?? topTableData?.hq ?? null)
     : (topTableData?.hq ?? data?.hq ?? null);
   const purchaseAnnualTotalByRowKey = useMemo<Record<string, number | null> | null>(() => {
     if (year !== 2026 || !hqTableData) return null;
@@ -2192,16 +1870,9 @@ export default function InventoryDashboard() {
   const buildBrand2026TopTable = useCallback((planBrand: AnnualPlanBrand): TopTablePair | null => {
     if (year !== 2026) return null;
     const mData = monthlyDataByBrand[planBrand] ?? null;
-    const baseRetailData = retailDataByBrand[planBrand] ?? null;
+    const rData = retailDataByBrand[planBrand] ?? null;
     const sData = shipmentDataByBrand[planBrand] ?? null;
     const pData = purchaseDataByBrand[planBrand] ?? null;
-    const prevMData = prevYearMonthlyDataByBrand[planBrand];
-    const prevRData = prevYearRetailDataByBrand[planBrand];
-    const prevSData = prevYearShipmentDataByBrand[planBrand];
-    const rData =
-      baseRetailData && prevMData && prevRData && prevSData
-        ? applyAdjustedDealerRetailPlanBase(baseRetailData, prevMData, prevRData, prevSData, growthRateByBrand[planBrand] ?? growthRate)
-        : baseRetailData;
     if (!mData || !rData || !sData) return null;
     const built = buildTableDataFromMonthly(
       mData,
@@ -2231,7 +1902,7 @@ export default function InventoryDashboard() {
       mergedSellOutPlan,
       year,
     );
-  }, [year, brand, monthlyDataByBrand, monthlyData, retailDataByBrand, retailData, shipmentDataByBrand, shipmentData, purchaseDataByBrand, purchaseData, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, otbData, hqSellOutPlan, annualShipmentPlan2026, growthRate, growthRateByBrand]);
+  }, [year, brand, monthlyDataByBrand, monthlyData, retailDataByBrand, retailData, shipmentDataByBrand, shipmentData, purchaseDataByBrand, purchaseData, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, otbData, hqSellOutPlan, annualShipmentPlan2026]);
 
   // 시나리오 재고 계산 함수 (버튼 클릭 시 실행)
   const computeAndSaveScenarioInventory = useCallback(async () => {
@@ -2251,9 +1922,6 @@ export default function InventoryDashboard() {
             const mData = monthlyDataByBrand[b];
             const sData = shipmentDataByBrand[b];
             const pData = purchaseDataByBrand[b];
-            const prevMData = prevYearMonthlyDataByBrand[b];
-            const prevRData = prevYearRetailDataByBrand[b];
-            const prevSData = prevYearShipmentDataByBrand[b];
             if (!mData || !sData) return;
 
             // 시나리오 성장률로 리테일 데이터 fetch
@@ -2265,15 +1933,8 @@ export default function InventoryDashboard() {
             });
             const res = await fetch(`/api/inventory/retail-sales?${params}`, { cache: 'no-store' });
             if (!res.ok) return;
-            const scRetail = (await res.json()) as RetailSalesResponse;
+            const rData = (await res.json()) as RetailSalesResponse;
 
-            // applyAdjustedDealerRetailPlanBase 적용 (buildBrand2026TopTable과 동일한 파이프라인)
-            const rData =
-              scRetail && prevMData && prevRData && prevSData
-                ? applyAdjustedDealerRetailPlanBase(scRetail, prevMData, prevRData, prevSData, def.dealerGrowthRate[b])
-                : scRetail;
-
-            // buildTableDataFromMonthly + applyAccTargetWoiOverlay + applyHqSellInSellOutPlanOverlay
             const built = buildTableDataFromMonthly(mData, rData, sData, pData ?? undefined, 2026);
             const withWoi = applyAccTargetWoiOverlay(
               built.dealer, built.hq, rData,
@@ -2317,7 +1978,6 @@ export default function InventoryDashboard() {
       body: JSON.stringify({ closing: allClosing, savedAt, version }),
     }).catch(() => {});
   }, [allBrandsBgLoaded, year, monthlyDataByBrand, shipmentDataByBrand, purchaseDataByBrand,
-      prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand,
       accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, otbData, hqSellOutPlan, annualShipmentPlan2026]);
 
   // 브랜드별 당년 top table (buildBrand2026TopTable 이후에 배치)
@@ -2342,7 +2002,7 @@ export default function InventoryDashboard() {
       retailDataByBrand, retailData, shipmentDataByBrand, shipmentData,
       purchaseDataByBrand, purchaseData]);
 
-  // 브랜드별 2026 display overlay (리테일 연간합계 교체)
+  // 브랜드별 2026 display overlay: 하단 리테일 매출표의 연간합계를 상단 재고자산표에 반영
   const perBrandTopTableDisplayData = useMemo<Partial<Record<AnnualPlanBrand, TopTablePair>>>(() => {
     if (year !== 2026) return {};
     const inventoryKeyToRetailKey = (key: string) => key === '재고자산합계' ? '매출합계' : key;
@@ -2351,42 +2011,21 @@ export default function InventoryDashboard() {
       return monthly.map((v) => Math.round(v * (newTotal / oldTotal)));
     };
     const ACC_LEAF_KEYS = new Set(['신발', '모자', '가방', '기타']);
-    const sumKeys = (rec: Record<string, number | null>, keys: readonly string[]) =>
-      keys.reduce((s, k) => s + (rec[k] ?? 0), 0);
 
     const result: Partial<Record<AnnualPlanBrand, TopTablePair>> = {};
     for (const b of ANNUAL_PLAN_BRANDS) {
       const topTable = perBrandTopTable[b];
-      const prevTable = perBrandPrevYearTableData[b];
-      if (!topTable || !prevTable) continue;
+      if (!topTable) continue;
 
-      const factorDealer = 1 + (growthRateByBrand[b] ?? 5) / 100;
-      const factorHq    = 1 + (growthRateHqByBrand[b] ?? 17) / 100;
-
-      const dealerAnnual: Record<string, number | null> = {};
-      for (const row of prevTable.dealer.rows) {
-        if (!row.isLeaf) continue;
-        dealerAnnual[row.key] = Math.round(row.sellOutTotal * factorDealer * 1000);
-      }
-      if (b === 'MLB') dealerAnnual['1년차'] = MLB_1YEAR_OVERRIDE_K * 1000;
-      dealerAnnual['의류합계'] = sumKeys(dealerAnnual, SEASON_KEYS);
-      dealerAnnual['ACC합계']  = sumKeys(dealerAnnual, ACC_KEYS);
-      dealerAnnual['매출합계'] = (dealerAnnual['의류합계'] ?? 0) + (dealerAnnual['ACC합계'] ?? 0);
-
-      const hqAnnual: Record<string, number | null> = {};
-      for (const row of prevTable.hq.rows) {
-        if (!row.isLeaf) continue;
-        hqAnnual[row.key] = Math.round((row.hqSalesTotal ?? 0) * factorHq * 1000);
-      }
-      hqAnnual['의류합계'] = sumKeys(hqAnnual, SEASON_KEYS);
-      hqAnnual['ACC합계']  = sumKeys(hqAnnual, ACC_KEYS);
-      hqAnnual['매출합계'] = (hqAnnual['의류합계'] ?? 0) + (hqAnnual['ACC합계'] ?? 0);
+      const dealerAnnual = perBrandRetailDealerAnnualByKey[b];
+      const hqAnnual = perBrandRetailHqAnnualByKey[b];
+      if (!dealerAnnual && !hqAnnual) continue;
 
       const dealerLeafRows = topTable.dealer.rows
         .filter((row) => row.isLeaf)
         .map((row) => {
           const retailKey = inventoryKeyToRetailKey(row.key);
-          const newTotalWon = dealerAnnual[retailKey] ?? null;
+          const newTotalWon = dealerAnnual?.[retailKey] ?? null;
           let updatedRow = row;
           if (newTotalWon != null) {
             const newSellOutK = newTotalWon / 1000;
@@ -2412,7 +2051,7 @@ export default function InventoryDashboard() {
         .filter((row) => row.isLeaf)
         .map((row) => {
           const retailKey = inventoryKeyToRetailKey(row.key);
-          const newTotalWon = hqAnnual[retailKey] ?? null;
+          const newTotalWon = hqAnnual?.[retailKey] ?? null;
           const newTotalK = newTotalWon != null ? newTotalWon / 1000 : null;
           const oldHqTotal = row.hqSalesTotal ?? 0;
           const newHqSales = newTotalK != null && row.hqSales
@@ -2435,7 +2074,7 @@ export default function InventoryDashboard() {
       result[b] = { dealer: { rows: dealerRows }, hq: { rows: hqRows } };
     }
     return result;
-  }, [year, perBrandTopTable, perBrandPrevYearTableData, growthRateByBrand, growthRateHqByBrand]);
+  }, [year, perBrandTopTable, perBrandRetailDealerAnnualByKey, perBrandRetailHqAnnualByKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || year !== 2026) return;
@@ -3356,7 +2995,7 @@ export default function InventoryDashboard() {
     for (const b of ANNUAL_PLAN_BRANDS) {
       const mData = monthlyDataByBrand[b];
       const shipDisplay = perBrandShipmentDisplayData[b];
-      const effRetail = perBrandEffectiveRetailData[b];  // applyAdjustedDealerRetailPlanBase만 적용 (월별재배분 X)
+      const effRetail = perBrandEffectiveRetailData[b];
       const dealerRows = perBrandTopTable[b]?.dealer.rows;
       if (!mData || !shipDisplay || !effRetail || !dealerRows) continue;
       const shipmentByKey = new Map(shipDisplay.rows.map((row) => [row.key, row]));
@@ -3421,7 +3060,7 @@ export default function InventoryDashboard() {
       const mData = monthlyDataByBrand[b];
       const purchaseDisplay = perBrandPurchaseDisplayData[b];
       const shipDisplay = perBrandShipmentDisplayData[b];
-      const effRetail = perBrandEffectiveRetailData[b];  // applyAdjustedDealerRetailPlanBase만 적용 (월별재배분 X)
+      const effRetail = perBrandEffectiveRetailData[b];
       const hqRows = perBrandTopTable[b]?.hq.rows;
       if (!mData || !purchaseDisplay || !shipDisplay || !effRetail || !hqRows) continue;
       const purchaseByKey = new Map(purchaseDisplay.rows.map((row) => [row.key, row]));
@@ -3980,7 +3619,7 @@ export default function InventoryDashboard() {
         <div className="mt-4" style={{ paddingLeft: '1.5%', paddingRight: '1.5%' }}>
           <div className="grid grid-cols-3 gap-4">
             {ANNUAL_PLAN_BRANDS.map((b) => {
-              const displayData = perBrandTopTable[b];
+              const displayData = perBrandTopTableDisplayData[b] ?? perBrandTopTable[b];
               const prevData = perBrandPrevYearTableData[b];
               if (!displayData) return <div key={b} className="min-w-0 text-xs text-gray-400 py-8 text-center">로딩 중…</div>;
               return inventoryBrandOpen[b] ? (
@@ -4009,7 +3648,7 @@ export default function InventoryDashboard() {
         <div className="mt-4" style={{ paddingLeft: '1.5%', paddingRight: '1.5%' }}>
           <div className="grid grid-cols-3 gap-4">
             {ANNUAL_PLAN_BRANDS.map((b) => {
-              const displayData = perBrandTopTable[b];
+              const displayData = perBrandTopTableDisplayData[b] ?? perBrandTopTable[b];
               const prevData = perBrandPrevYearTableData[b];
               if (!displayData) return <div key={b} className="min-w-0 text-xs text-gray-400 py-8 text-center">로딩 중…</div>;
               return inventoryBrandOpen[b] ? (
@@ -4440,12 +4079,7 @@ export default function InventoryDashboard() {
           </button>
           {year === 2026 && (
             <div className="mt-1 pl-7 text-xs text-red-600">
-              대리상: 실적월까지 당해 실적, 이후는 전년(2025 보정 대리상 리테일) x 성장률 / 직영: 실적월까지 당해 실적, 이후는 전년 본사 리테일 x 본사 성장률
-            </div>
-          )}
-          {year === 2026 && brand === 'MLB' && (
-            <div className="mt-1 pl-7 text-xs text-amber-700 font-medium">
-              ※ 대리상 1년차 연간합계: MLB 별도 목표 적용 ({MLB_1YEAR_OVERRIDE_K.toLocaleString()}K)
+              대리상: 실적월까지 당해 실적, 이후는 전년 대리상 리테일 x 성장률 / 직영: 실적월까지 당해 실적, 이후는 전년 본사 리테일 x 본사 성장률
             </div>
           )}
           {retailError && !retailOpen && (
@@ -4477,8 +4111,8 @@ export default function InventoryDashboard() {
                         showOpening={false}
                         planFromMonth={brandRetail.planFromMonth}
                         annualTotalByRowKey={year === 2026 ? (perBrandRetailDealerAnnualByKey[b] ?? undefined) : undefined}
-                        validationHeader={year === 2026 ? '검증(월합-연간)' : undefined}
-                        validationByRowKey={year === 2026 ? (perBrandRetailDealerValidationByKey[b] ?? undefined) : undefined}
+                        validationHeader={undefined}
+                        validationByRowKey={undefined}
                       />
                     )}
                     <InventoryMonthlyTable
@@ -4488,8 +4122,8 @@ export default function InventoryDashboard() {
                       showOpening={false}
                       planFromMonth={year === 2025 ? undefined : brandRetail.planFromMonth}
                       annualTotalByRowKey={year === 2026 ? (perBrandRetailHqAnnualByKey[b] ?? undefined) : undefined}
-                      validationHeader={year === 2026 ? '검증(월합-연간)' : undefined}
-                      validationByRowKey={year === 2026 ? (perBrandRetailHqValidationByKey[b] ?? undefined) : undefined}
+                      validationHeader={undefined}
+                      validationByRowKey={undefined}
                       headerBg="#4db6ac"
                       headerBorderColor="#2a9d8f"
                       totalRowCls="bg-teal-50"
