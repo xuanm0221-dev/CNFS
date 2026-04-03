@@ -129,7 +129,7 @@ export default function CashFlowHierarchyTable({
                   <th colSpan={4} className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2026년(예상)</th>
                 </tr>
                 <tr>
-                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px] bg-gray-600">연간계획</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px] bg-gray-600">2026년계획(N-1)</th>
                   <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px] bg-gray-600">계획-전년</th>
                   <th className="border border-gray-300 py-2 px-4 text-center min-w-[110px]">2026년합계</th>
                   <th className="border border-gray-300 py-2 px-4 text-center min-w-[100px]">전년비</th>

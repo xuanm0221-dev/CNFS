@@ -22,10 +22,10 @@ function toNumber(raw: string | undefined): number {
 
 export async function GET() {
   try {
-    const filePath = path.join(process.cwd(), '보조파일(simu)', 'CF_forecast_year', 'workingcapital_2026_forecast.csv');
+    const filePath = path.join(process.cwd(), '파일', '연말기준운전자본.csv');
 
     if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ error: 'workingcapital_2026_forecast.csv 파일 없음' }, { status: 404 });
+      return NextResponse.json({ error: '파일/연말기준운전자본.csv 없음' }, { status: 404 });
     }
 
     const raw = fs.readFileSync(filePath, 'utf-8');

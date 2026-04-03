@@ -105,7 +105,13 @@ export async function GET() {
       'borrowings',
     ]);
 
-    return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } });
+    const sourcePathRelative = path.relative(process.cwd(), filePath).split(path.sep).join('/');
+    const sourcePathAbsolute = path.resolve(filePath).split(path.sep).join('/');
+
+    return NextResponse.json(
+      { ...data, sourcePathRelative, sourcePathAbsolute },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `CF 계획 조회 오류: ${msg}` }, { status: 500 });

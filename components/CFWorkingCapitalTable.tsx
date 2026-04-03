@@ -50,7 +50,7 @@ export default function CFWorkingCapitalTable({
     const prev2025Annual = row.comparisons?.prevYearAnnual ?? null;
     const curr2026Annual = row.comparisons?.currYearAnnual ?? null;
     const annualYoY = row.comparisons?.annualYoY ?? null;
-    // 전월 연간 계획 = annualPlan (연간합계(계획) 컬럼)
+    // 전월 연간 계획 = annualPlan (BS CSV YYYY년연간계획(N-1) 열 · 레거시 YYYY년합계(계획) 동일 의미)
     const annualPlan = row.comparisons?.annualPlan ?? null;
     // 계획-전년: 전월계획 - 2025년기말
     const planVsPrev = annualPlan != null && prev2025Annual != null ? annualPlan - prev2025Annual : null;

@@ -1,6 +1,8 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { formatNumber } from '@/lib/utils';
+import type { CFHierarchyApiRow } from '@/app/api/fs/cf-hierarchy/route';
 import {
   ANNUAL_2025_RAW_BY_BRAND,
   DIRECT_EXPENSE_ACCOUNTS,
@@ -99,6 +101,156 @@ const ACCOUNT_LABEL_OVERRIDES: Record<string, string> = {
   실판매출_ACC: 'ACC',
   실판매출_직영: '직영',
 };
+
+function formatScenarioCfAmount(value: number): string {
+  if (value === 0) return '-';
+  return value < 0
+    ? `(${formatNumber(Math.abs(value), false, false)})`
+    : formatNumber(value, false, false);
+}
+
+/** 전년대비: 옆 열(2025 실적·기존계획)과 동일하게 K(원 ÷ 1000, 정수) */
+function formatScenarioCfYoyDiff(당년: number | null, 전년: number | null): string {
+  if (당년 == null || 전년 == null) return '-';
+  if (!Number.isFinite(당년) || !Number.isFinite(전년)) return '-';
+  const diffK = Math.round((당년 - 전년) / 1000);
+  if (diffK === 0) return '0';
+  const body = Math.abs(diffK).toLocaleString('ko-KR');
+  if (diffK > 0) return `+${body}`;
+  return `-${body}`;
+}
+
+/** 기존계획대비(부정·긍정): 시나리오 원 − 기존계획(연간) 원 → K 정수, 전년대비와 동일 부호 규칙 */
+function formatScenarioCfVsBase(시나리오원: number | null, 기존계획원: number | null): string {
+  if (시나리오원 == null || 기존계획원 == null) return '-';
+  if (!Number.isFinite(시나리오원) || !Number.isFinite(기존계획원)) return '-';
+  return formatScenarioCfYoyDiff(시나리오원, 기존계획원);
+}
+
+/** 시나리오 PL 연동 없음 → 부정·긍정 열에도 기존계획(연간)과 동일 금액 표시 */
+function scenarioCfRowMirrorsBasePlan(row: CFHierarchyApiRow): boolean {
+  if (row.account === 'net cash') return false;
+  if (row.account === '기타수익' || row.account === '차입금') return true;
+  if (row.account === '자산성지출' && row.level === 0 && row.isGroup) return true;
+  if (row.대분류 === '자산성지출' && row.level === 1) return true;
+  if (row.대분류 === '영업활동' && row.account === '본사선급금') return true;
+  if (row.대분류 === '영업활동' && row.account === '비용' && row.isGroup && row.level === 1) return true;
+  if (row.대분류 === '영업활동' && row.중분류 === '비용' && row.level === 2) return true;
+  return false;
+}
+
+type ScenarioWcDataForCf = {
+  scenarios: Record<ScenarioKey, { ar: number | null; ap: number | null }>;
+};
+
+/** 운전자본 매출채권·매입채무: 부정/긍정 K − 기존계획 K */
+function wcVsBaseDeltaK(
+  wc: ScenarioWcDataForCf | null,
+  scKey: ScenarioKey,
+  key: 'ar' | 'ap',
+): number | null {
+  if (!wc || scKey === 'base') return null;
+  const val = wc.scenarios[scKey][key];
+  const baseVal = wc.scenarios.base[key];
+  if (val == null || baseVal == null) return null;
+  if (!Number.isFinite(val) || !Number.isFinite(baseVal)) return null;
+  return Math.round(val - baseVal);
+}
+
+/**
+ * CF 연간(values[13], 원) + WC 기존계획대비(K)×1000 → 부정·긍정 매출수금·물품대 그룹 행
+ */
+function cfWcLinkedPlanYuan(
+  row: CFHierarchyApiRow,
+  scKey: ScenarioKey,
+  plan26: number | null,
+  wc: ScenarioWcDataForCf | null,
+): number | null {
+  if (scKey === 'base' || plan26 == null || !Number.isFinite(plan26)) return null;
+  if (row.대분류 !== '영업활동' || !row.isGroup || row.level !== 1) return null;
+  if (row.account === '매출수금') {
+    const d = wcVsBaseDeltaK(wc, scKey, 'ar');
+    if (d == null) return null;
+    return plan26 + d * 1000;
+  }
+  if (row.account === '물품대') {
+    const d = wcVsBaseDeltaK(wc, scKey, 'ap');
+    if (d == null) return null;
+    return plan26 + d * 1000;
+  }
+  return null;
+}
+
+function cfPlan26Yuan(r: CFHierarchyApiRow): number | null {
+  const v = r.values ?? [];
+  return Number.isFinite(v[13]) ? v[13] : null;
+}
+
+/**
+ * 부정·긍정 영업활동 합계(원) = 표와 동일 규칙으로 네 그룹 행만 합산
+ * (매출수금·물품대 WC연동 연간 + 본사선급금·비용 기존계획 연간)
+ */
+function cfOperatingActivityScenarioYuan(
+  rows: CFHierarchyApiRow[] | null,
+  wc: ScenarioWcDataForCf | null,
+  scKey: ScenarioKey,
+): number | null {
+  if (!rows?.length || scKey === 'base') return null;
+  const rSales = rows.find(
+    (r) => r.대분류 === '영업활동' && r.account === '매출수금' && r.isGroup && r.level === 1,
+  );
+  const rGoods = rows.find(
+    (r) => r.대분류 === '영업활동' && r.account === '물품대' && r.isGroup && r.level === 1,
+  );
+  const rAdv = rows.find(
+    (r) => r.대분류 === '영업활동' && r.account === '본사선급금' && !r.isGroup && r.level === 1,
+  );
+  const rExp = rows.find(
+    (r) => r.대분류 === '영업활동' && r.account === '비용' && r.isGroup && r.level === 1,
+  );
+  if (!rSales || !rGoods || !rAdv || !rExp) return null;
+  const pS = cfPlan26Yuan(rSales);
+  const pG = cfPlan26Yuan(rGoods);
+  const pA = cfPlan26Yuan(rAdv);
+  const pE = cfPlan26Yuan(rExp);
+  if (pS == null || pG == null || pA == null || pE == null) return null;
+  const adjS = cfWcLinkedPlanYuan(rSales, scKey, pS, wc);
+  const adjG = cfWcLinkedPlanYuan(rGoods, scKey, pG, wc);
+  if (adjS == null || adjG == null) return null;
+  return adjS + adjG + pA + pE;
+}
+
+/**
+ * 부정·긍정 net cash(원) = 영업활동 시나리오 합 + 자산성지출 + 기타수익 + 차입금 (표와 동일 규칙)
+ */
+function cfNetCashScenarioYuan(
+  rows: CFHierarchyApiRow[] | null,
+  wc: ScenarioWcDataForCf | null,
+  scKey: ScenarioKey,
+): number | null {
+  if (!rows?.length || scKey === 'base') return null;
+  const op = cfOperatingActivityScenarioYuan(rows, wc, scKey);
+  if (op == null) return null;
+  const rCapex = rows.find((r) => r.account === '자산성지출' && r.level === 0 && r.isGroup);
+  const rOther = rows.find((r) => r.account === '기타수익' && r.level === 0);
+  const rBorrow = rows.find((r) => r.account === '차입금' && r.level === 0);
+  if (!rCapex || !rOther || !rBorrow) return null;
+  const pC = cfPlan26Yuan(rCapex);
+  const pO = cfPlan26Yuan(rOther);
+  const pB = cfPlan26Yuan(rBorrow);
+  if (pC == null || pO == null || pB == null) return null;
+  return op + pC + pO + pB;
+}
+
+/** PL 시나리오 모달: 해당 시나리오 연간 − 기존계획 연간. number는 K(원÷1000), percent는 YOY와 동일 %p */
+function fmtVsBasePl(시나리오원: number | null, 기존계획원: number | null, fmt?: 'number' | 'percent'): string {
+  if (fmt === 'percent') {
+    if (시나리오원 === null || 기존계획원 === null) return '-';
+    const diff = (시나리오원 - 기존계획원) * 100;
+    return `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%p`;
+  }
+  return formatScenarioCfYoyDiff(시나리오원, 기존계획원);
+}
 
 interface InventoryGrowthParams {
   growthRate: number;
@@ -602,7 +754,81 @@ export default function PLForecastTab() {
     scenarios: Record<ScenarioKey, ScenarioWcRow>;
     invDataMissing: boolean;
   } | null>(null);
+
+  const [scenarioCfRows, setScenarioCfRows] = useState<CFHierarchyApiRow[] | null>(null);
+  const [scenarioCfError, setScenarioCfError] = useState<string | null>(null);
+  const [scenarioCfCollapsed, setScenarioCfCollapsed] = useState<Set<string>>(() => new Set(['자산성지출']));
+  const [scenarioCfAllCollapsed, setScenarioCfAllCollapsed] = useState(true);
+  const [scenarioCfLegendOpen, setScenarioCfLegendOpen] = useState(false);
+  const scenarioCfRowsLengthRef = useRef(0);
   // ─────────────────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!scenarioModalOpen) {
+      scenarioCfRowsLengthRef.current = 0;
+      return;
+    }
+    setScenarioCfRows(null);
+    setScenarioCfError(null);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/fs/cf-hierarchy?year=2026', { cache: 'no-store' });
+        const json = (await res.json()) as { rows?: CFHierarchyApiRow[]; error?: string };
+        if (cancelled) return;
+        if (res.ok && Array.isArray(json.rows)) {
+          setScenarioCfRows(json.rows);
+          setScenarioCfError(null);
+        } else {
+          setScenarioCfRows(null);
+          setScenarioCfError(typeof json?.error === 'string' ? json.error : '현금흐름표를 불러오지 못했습니다.');
+        }
+      } catch {
+        if (!cancelled) {
+          setScenarioCfRows(null);
+          setScenarioCfError('현금흐름표를 불러오지 못했습니다.');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scenarioModalOpen]);
+
+  useEffect(() => {
+    const len = scenarioCfRows?.length ?? 0;
+    if (len > 0) {
+      if (scenarioCfRowsLengthRef.current === 0 && scenarioCfRows) {
+        const groups = scenarioCfRows.filter((r) => r.isGroup).map((r) => r.account);
+        if (groups.length) {
+          const next = new Set(groups);
+          next.add('자산성지출');
+          setScenarioCfCollapsed(next);
+          setScenarioCfAllCollapsed(true);
+        }
+      }
+      scenarioCfRowsLengthRef.current = len;
+    } else if (len === 0) {
+      scenarioCfRowsLengthRef.current = 0;
+    }
+  }, [scenarioCfRows]);
+
+  const scenarioCfVisibleRows = useMemo(() => {
+    const rows = scenarioCfRows ?? [];
+    const result: CFHierarchyApiRow[] = [];
+    let skipLevel = -1;
+    for (const row of rows) {
+      if (row.level <= skipLevel) skipLevel = -1;
+      if (skipLevel >= 0 && row.level > skipLevel) continue;
+      if (row.isGroup && scenarioCfCollapsed.has(row.account)) {
+        skipLevel = row.level === 0 ? 0 : row.level;
+        result.push(row);
+        continue;
+      }
+      result.push(row);
+    }
+    return result;
+  }, [scenarioCfRows, scenarioCfCollapsed]);
 
   useEffect(() => {
     let mounted = true;
@@ -3185,10 +3411,10 @@ export default function PLForecastTab() {
             </div>
           </div>
 
-          {/* 브랜드 탭 */}
-          <div className="shrink-0 border-b border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(241,245,249,0.92))] px-6 py-3">
-            <div className="flex items-center justify-between">
-            <div className="inline-flex flex-wrap gap-1 rounded-2xl border border-slate-200/90 bg-white/85 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-white/70 backdrop-blur">
+          {/* 브랜드 탭 — 높이·타이포를 요약/전체 PL 토글과 맞춘 컴팩트 스타일 */}
+          <div className="shrink-0 border-b border-slate-200 bg-white px-6 py-2">
+            <div className="flex items-center justify-between gap-3">
+            <div className="inline-flex flex-wrap gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 text-xs shadow-sm">
               {FORECAST_BRANDS.map((brand) => {
                 const selected = scenarioModalBrand === brand.id;
                 return (
@@ -3196,15 +3422,15 @@ export default function PLForecastTab() {
                     key={brand.id ?? 'corp'}
                     type="button"
                     onClick={() => setScenarioModalBrand(brand.id)}
-                    className={`group relative overflow-hidden rounded-xl px-4 py-2 text-sm font-semibold tracking-[-0.01em] transition-all duration-200 ${
+                    className={`group relative overflow-hidden rounded-md px-3 py-1.5 font-semibold tracking-[-0.01em] transition-colors ${
                       selected
-                        ? 'bg-[linear-gradient(135deg,#1f3b5b_0%,#355b88_55%,#4d78a9_100%)] text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] ring-1 ring-slate-300/20'
-                        : 'text-slate-600 hover:-translate-y-[1px] hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-[linear-gradient(135deg,#1f3b5b_0%,#355b88_55%,#4d78a9_100%)] text-white shadow-sm ring-1 ring-slate-300/25'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
                     <span
-                      className={`absolute inset-0 transition-opacity duration-200 ${
-                        selected ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.24),transparent_58%)] opacity-100' : 'bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.14),transparent_58%)] opacity-0 group-hover:opacity-100'
+                      className={`pointer-events-none absolute inset-0 transition-opacity duration-200 ${
+                        selected ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.2),transparent_58%)] opacity-100' : 'bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.12),transparent_58%)] opacity-0 group-hover:opacity-100'
                       }`}
                     />
                     <span className="relative z-10">{brand.label}</span>
@@ -3291,17 +3517,18 @@ export default function PLForecastTab() {
                     <thead className="sticky top-0 z-20">
                       <tr>
                         {/* 계정과목 */}
-                        <th className="sticky left-0 z-30 min-w-[240px] border-b border-r border-slate-300 bg-gradient-to-r from-[#2f4f7f] to-[#3b5f93] px-4 py-2.5 text-center font-semibold text-white">
-                          계정과목
+                        <th className="sticky left-0 z-30 min-w-[200px] border-b border-r border-slate-300 bg-gradient-to-r from-[#2f4f7f] to-[#3b5f93] px-3 py-2.5 text-center font-semibold text-white">
+                          손익계산서
                         </th>
-                        {/* 2025 실적 */}
-                        <th className="min-w-[90px] border-b border-b-slate-300 border-r-2 border-r-slate-400 bg-slate-700 px-3 py-2.5 text-center font-semibold text-slate-100">
+                        {/* 2025 실적 — 운전자본·현금흐름과 동일 min-w */}
+                        <th className="min-w-[88px] border-b border-b-slate-300 border-r-2 border-r-slate-400 bg-slate-700 px-3 py-2.5 text-center font-semibold text-slate-100">
                           2025실적
                         </th>
                         {/* 시나리오별 헤더 */}
                         {SCENARIO_ORDER.map((scKey) => {
                           const def = SCENARIO_DEFS[scKey];
                           const isScExpanded = scenarioExpandedScenarios.has(scKey);
+                          const showVsBasePl = scKey === 'negative' || scKey === 'positive';
                           if (isScExpanded) {
                             return (
                               <Fragment key={scKey}>
@@ -3316,7 +3543,7 @@ export default function PLForecastTab() {
                                 ))}
                                 {/* 연간 + 토글 */}
                                 <th
-                                  className="min-w-[90px] border-b border-b-slate-300 border-r border-r-slate-200 px-2 py-2.5 text-center font-bold"
+                                  className="min-w-[88px] border-b border-b-slate-300 border-r border-r-slate-200 px-2 py-2.5 text-center font-bold"
                                   style={{ background: def.bgColor, color: def.color }}
                                 >
                                   <button
@@ -3336,11 +3563,19 @@ export default function PLForecastTab() {
                                 </th>
                                 {/* YOY */}
                                 <th
-                                  className="min-w-[68px] border-b border-b-slate-300 border-r-2 border-r-slate-400 px-2 py-2.5 text-center font-medium last:border-r-0"
+                                  className={`min-w-[76px] border-b border-b-slate-300 px-2 py-2.5 text-center font-medium last:border-r-0 ${showVsBasePl ? 'border-r border-r-slate-200' : 'border-r-2 border-r-slate-400'}`}
                                   style={{ background: def.bgColor, color: def.color }}
                                 >
                                   YOY
                                 </th>
+                                {showVsBasePl && (
+                                  <th
+                                    className="min-w-[76px] border-b border-b-slate-300 border-r-2 border-r-slate-400 px-2 py-2.5 text-center font-medium"
+                                    style={{ background: def.bgColor, color: def.color }}
+                                  >
+                                    기존계획대비
+                                  </th>
+                                )}
                               </Fragment>
                             );
                           }
@@ -3348,7 +3583,7 @@ export default function PLForecastTab() {
                             <Fragment key={scKey}>
                               {/* 연간 + 토글 */}
                               <th
-                                className="min-w-[90px] border-b border-b-slate-300 border-r border-r-slate-200 px-2 py-2.5 text-center font-bold"
+                                className="min-w-[88px] border-b border-b-slate-300 border-r border-r-slate-200 px-2 py-2.5 text-center font-bold"
                                 style={{ background: def.bgColor, color: def.color }}
                               >
                                 <button
@@ -3364,11 +3599,19 @@ export default function PLForecastTab() {
                               </th>
                               {/* YOY */}
                               <th
-                                className="min-w-[68px] border-b border-b-slate-300 border-r-2 border-r-slate-400 px-2 py-2.5 text-center font-medium last:border-r-0"
+                                className={`min-w-[76px] border-b border-b-slate-300 px-2 py-2.5 text-center font-medium last:border-r-0 ${showVsBasePl ? 'border-r border-r-slate-200' : 'border-r-2 border-r-slate-400'}`}
                                 style={{ background: def.bgColor, color: def.color }}
                               >
                                 YOY
                               </th>
+                              {showVsBasePl && (
+                                <th
+                                  className="min-w-[76px] border-b border-b-slate-300 border-r-2 border-r-slate-400 px-2 py-2.5 text-center font-medium"
+                                  style={{ background: def.bgColor, color: def.color }}
+                                >
+                                  기존계획대비
+                                </th>
+                              )}
                             </Fragment>
                           );
                         })}
@@ -3389,6 +3632,7 @@ export default function PLForecastTab() {
                             ? scenarioData.base.corporate.calculated.annual2025[row.account] ?? null
                             : scenarioData.base.byBrand[scenarioModalBrand as ForecastLeafBrand].calculated.annual2025[row.account] ?? null;
                         })();
+                        const annual26BasePlan = getScenarioAnnual26(row.account, scenarioModalBrand, scenarioData.base);
                         const bgClass = rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
                         const isBoldRow = row.isBold ?? row.isGroup;
                         const isAccCollapsed = row.isGroup && scenarioCollapsedAccounts.has(row.account);
@@ -3430,8 +3674,10 @@ export default function PLForecastTab() {
                             {SCENARIO_ORDER.map((scKey) => {
                               const def = SCENARIO_DEFS[scKey];
                               const isScExpanded = scenarioExpandedScenarios.has(scKey);
+                              const showVsBasePl = scKey === 'negative' || scKey === 'positive';
                               const annual26 = getScenarioAnnual26(row.account, scenarioModalBrand, scenarioData[scKey]);
                               const yoyStr = fmtYoy(annual26, annual2025, row.format);
+                              const vsBaseStr = fmtVsBasePl(annual26, annual26BasePlan, row.format);
 
                               if (isScExpanded) {
                                 const monthly = getScenarioRowSeries(row.account, scenarioModalBrand, scenarioData[scKey]);
@@ -3454,11 +3700,19 @@ export default function PLForecastTab() {
                                     </td>
                                     {/* YOY */}
                                     <td
-                                      className="border-b border-b-slate-200 border-r-2 border-r-slate-300 px-2 py-2 text-right font-medium last:border-r-0"
+                                      className={`border-b border-b-slate-200 px-2 py-2 text-right font-medium last:border-r-0 ${showVsBasePl ? 'border-r border-r-slate-200' : 'border-r-2 border-r-slate-300'}`}
                                       style={{ color: def.color, background: def.bgColor }}
                                     >
                                       {yoyStr}
                                     </td>
+                                    {showVsBasePl && (
+                                      <td
+                                        className="border-b border-b-slate-200 border-r-2 border-r-slate-300 px-2 py-2 text-right text-slate-500"
+                                        style={{ background: def.bgColor }}
+                                      >
+                                        {vsBaseStr}
+                                      </td>
+                                    )}
                                   </Fragment>
                                 );
                               }
@@ -3474,10 +3728,15 @@ export default function PLForecastTab() {
                                   </td>
                                   {/* YOY */}
                                   <td
-                                    className="border-b border-b-slate-200 border-r-2 border-r-slate-300 px-3 py-2 text-right text-slate-500 last:border-r-0"
+                                    className={`border-b border-b-slate-200 px-3 py-2 text-right text-slate-500 last:border-r-0 ${showVsBasePl ? 'border-r border-r-slate-200' : 'border-r-2 border-r-slate-300'}`}
                                   >
                                     {yoyStr}
                                   </td>
+                                  {showVsBasePl && (
+                                    <td className="border-b border-b-slate-200 border-r-2 border-r-slate-300 px-3 py-2 text-right text-slate-500">
+                                      {vsBaseStr}
+                                    </td>
+                                  )}
                                 </Fragment>
                               );
                             })}
@@ -3486,6 +3745,12 @@ export default function PLForecastTab() {
                       })}
                     </tbody>
                   </table>
+                  <p className="mt-2 mb-6 text-[10px] leading-relaxed text-slate-500">
+                    <span className="font-semibold text-slate-600">손익계산서</span> · 3개 시나리오 연간 비교 · 단위: K CNY.{' '}
+                    <span className="font-semibold text-slate-600">열 정의:</span> 각 시나리오는 연간·YOY 순이며,{' '}
+                    <span className="font-medium text-slate-600">부정·긍정</span>만 YOY 우측에 기존계획대비(해당 시나리오 연간 − 기존계획 연간, 금액은 K·비율행은 %p)가 붙습니다.{' '}
+                    기존계획의 YOY 다음은 곧 긍정 연간 열입니다.
+                  </p>
 
                   {/* 운전자본표: 법인 전체 · 요약/전체 PL 전환과 무관하게 항상 표시 */}
                   {(() => {
@@ -3500,35 +3765,45 @@ export default function PLForecastTab() {
                       { key: 'ap', label: '매입채무', isGroup: false },
                     ];
                     return (
-                      <div className="mt-6">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-bold text-slate-700">운전자본표</span>
-                          <span className="text-[10px] text-slate-400">법인 전체 · 단위: K CNY</span>
-                          {wc?.invDataMissing && (
+                      <div className="mb-6">
+                        {wc?.invDataMissing && (
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
                             <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 border border-amber-200">
                               ⚠ 재고 미계산 — 재고자산(sim) 탭에서 재계산·저장 버튼을 눌러주세요
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         <table className="w-full border-separate border-spacing-0 text-xs">
                           <thead className="sticky top-0 z-20">
                             <tr>
-                              <th className="sticky left-0 z-30 min-w-[240px] border-b border-r border-slate-300 bg-gradient-to-r from-[#2f4f7f] to-[#3b5f93] px-4 py-2.5 text-center font-semibold text-white">
-                                계정과목
+                              <th className="sticky left-0 z-30 min-w-[200px] border-b border-r border-slate-300 bg-gradient-to-r from-[#2f4f7f] to-[#3b5f93] px-3 py-2.5 text-center font-semibold text-white">
+                                운전자본표
                               </th>
-                              <th className="min-w-[90px] border-b border-b-slate-300 border-r-2 border-r-slate-400 bg-slate-700 px-3 py-2.5 text-center font-semibold text-slate-100">
+                              <th className="min-w-[88px] border-b border-b-slate-300 border-r-2 border-r-slate-400 bg-slate-700 px-3 py-2.5 text-center font-semibold text-slate-100">
                                 2025실적
                               </th>
                               {SCENARIO_ORDER.map((scKey) => {
                                 const def = SCENARIO_DEFS[scKey];
+                                const isBase = scKey === 'base';
                                 return (
                                   <Fragment key={scKey}>
-                                    <th className="min-w-[90px] border-b border-b-slate-300 border-r border-r-slate-200 px-2 py-2.5 text-center font-bold" style={{ background: def.bgColor, color: def.color }}>
+                                    <th className="min-w-[88px] border-b border-b-slate-300 border-r border-r-slate-200 px-2 py-2.5 text-center font-bold" style={{ background: def.bgColor, color: def.color }}>
                                       {def.label}
                                     </th>
-                                    <th className="min-w-[80px] border-b border-b-slate-300 border-r-2 border-r-slate-400 px-2 py-2.5 text-center font-medium last:border-r-0" style={{ background: def.bgColor, color: def.color }}>
+                                    <th
+                                      className={`min-w-[76px] border-b border-b-slate-300 px-2 py-2.5 text-center font-medium ${isBase ? 'border-r-2 border-r-slate-400' : 'border-r border-r-slate-200'}`}
+                                      style={{ background: def.bgColor, color: def.color }}
+                                    >
                                       전년대비
                                     </th>
+                                    {!isBase && (
+                                      <th
+                                        className="min-w-[76px] border-b border-b-slate-300 border-r-2 border-r-slate-400 px-2 py-2.5 text-center font-medium"
+                                        style={{ background: def.bgColor, color: def.color }}
+                                      >
+                                        기존계획대비
+                                      </th>
+                                    )}
                                   </Fragment>
                                 );
                               })}
@@ -3549,7 +3824,7 @@ export default function PLForecastTab() {
                               return (
                                 <tr
                                   key={`${row.key}-${row.label}-${rowIdx}`}
-                                  className={row.isGroup ? 'bg-slate-50' : isBrandRow ? 'bg-white' : 'bg-white'}
+                                  className={row.key === 'total' && row.isGroup ? 'bg-amber-50' : 'bg-white'}
                                 >
                                   <td className={`sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit py-2 text-slate-800 ${row.isGroup ? 'font-semibold' : isBrandRow ? 'pl-8 text-[11px] text-slate-500' : 'font-normal text-slate-700'}`} style={{ paddingLeft: isBrandRow ? undefined : '10px', paddingRight: '10px' }}>
                                     {row.key === 'inventory' && row.isGroup ? (
@@ -3568,17 +3843,22 @@ export default function PLForecastTab() {
                                   </td>
                                   {SCENARIO_ORDER.map((scKey) => {
                                     const def = SCENARIO_DEFS[scKey];
+                                    const isBase = scKey === 'base';
                                     let val: number | null = null;
+                                    let basePlanK: number | null = null;
                                     let tooltipText: string | undefined;
 
                                     if (isBrandRow) {
                                       const bd = wc?.scenarios[scKey].inventoryByBrand?.[row.isBrand!];
                                       val = bd?.costK ?? null;
+                                      const bdBase = wc?.scenarios.base.inventoryByBrand?.[row.isBrand!];
+                                      basePlanK = bdBase?.costK ?? null;
                                       if (bd) {
                                         tooltipText = `TAG: ${Math.round(bd.tagK).toLocaleString()}K · 원가율: ${(bd.costRatio * 100).toFixed(1)}% · 평가감: ${(bd.valRate * 100).toFixed(1)}%`;
                                       }
                                     } else {
                                       val = (wc?.scenarios[scKey][row.key] as number | null) ?? null;
+                                      basePlanK = (wc?.scenarios.base[row.key] as number | null) ?? null;
                                     }
 
                                     return (
@@ -3590,9 +3870,16 @@ export default function PLForecastTab() {
                                         >
                                           {fmtK(val)}
                                         </td>
-                                        <td className="border-b border-b-slate-200 border-r-2 border-r-slate-300 px-3 py-2 text-right text-slate-500 last:border-r-0 text-[11px]">
+                                        <td
+                                          className={`border-b border-b-slate-200 px-3 py-2 text-right text-slate-500 text-[11px] ${isBase ? 'border-r-2 border-r-slate-300' : 'border-r border-r-slate-100'}`}
+                                        >
                                           {fmtYoyWc(val, actual25)}
                                         </td>
+                                        {!isBase && (
+                                          <td className="border-b border-b-slate-200 border-r-2 border-r-slate-300 px-3 py-2 text-right text-slate-500 text-[11px]">
+                                            {fmtYoyWc(val, basePlanK)}
+                                          </td>
+                                        )}
                                       </Fragment>
                                     );
                                   })}
@@ -3601,7 +3888,8 @@ export default function PLForecastTab() {
                             })}
                           </tbody>
                         </table>
-                        <div className="mt-3 border-t border-slate-200 pt-2">
+                        <p className="mt-2 text-[10px] text-slate-500">법인 전체 · 단위: K CNY</p>
+                        <div className="mt-3">
                           <button
                             type="button"
                             onClick={() => setWcLegendOpen((v) => !v)}
@@ -3614,6 +3902,7 @@ export default function PLForecastTab() {
                           </button>
                           {wcLegendOpen && (
                             <div className="mt-2 space-y-2.5 rounded-lg border border-slate-200 bg-slate-50/95 px-3 py-2.5 text-[11px] leading-snug text-slate-700">
+                              <p className="text-[10px] text-slate-600">표는 법인 전체 기준이며, 단위는 K CNY입니다.</p>
                               <div>
                                 <span className="font-semibold text-slate-800">매출채권 · 매입채무 (성장률 → 매출 규모 → 동일 비율 스케일)</span>
                                 <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-slate-600">
@@ -3649,10 +3938,14 @@ export default function PLForecastTab() {
                                 </ul>
                               </div>
                               <div>
-                                <span className="font-semibold text-slate-800">운전자본합계 · 전년대비</span>
+                                <span className="font-semibold text-slate-800">전년대비 · 기존계획대비</span>
                                 <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-slate-600">
                                   <li>합계: 매출채권 + 재고자산(원가) + 매입채무(기준값 부호 그대로 합산).</li>
-                                  <li>전년대비: 2025 실적(K) 대비 해당 시나리오 금액(K)의 차이(정수, 소수 없음). 양수는 + 표기.</li>
+                                  <li>전년대비: 2025 실적(K) 대비 해당 시나리오 금액(K) 차이(정수). 양수는 + 표기.</li>
+                                  <li>
+                                    기존계획대비: <span className="font-medium">부정계획·긍정계획</span> 열에만 표시. 해당 시나리오(K) −{' '}
+                                    <span className="font-medium">기존계획</span> 열(K) 차이(정수). 기존계획 열은 기준이므로 세 번째 열 없음.
+                                  </li>
                                 </ul>
                               </div>
                             </div>
@@ -3661,6 +3954,305 @@ export default function PLForecastTab() {
                       </div>
                     );
                   })()}
+
+                  {/* 현금흐름표 (연간만 · 메인 계층/토글과 동일) */}
+                  <div>
+                    {scenarioCfError && !scenarioCfRows?.length ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">{scenarioCfError}</div>
+                    ) : !scenarioCfRows?.length ? (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">현금흐름표를 불러오는 중…</div>
+                    ) : (
+                      <>
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
+                          <table className="w-full border-separate border-spacing-0 text-xs">
+                            <thead className="sticky top-0 z-20">
+                              <tr>
+                                <th className="sticky left-0 z-30 min-w-[200px] border-b border-r border-slate-300 bg-gradient-to-r from-[#2f4f7f] to-[#3b5f93] px-3 py-2.5 text-left font-semibold text-white">
+                                  <div className="flex min-w-0 items-center justify-between gap-2">
+                                    <span className="min-w-0 truncate">현금흐름표</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (!scenarioCfRows) return;
+                                        if (scenarioCfAllCollapsed) {
+                                          setScenarioCfCollapsed(new Set());
+                                          setScenarioCfAllCollapsed(false);
+                                        } else {
+                                          const groups = scenarioCfRows
+                                            .filter((r) => r.isGroup)
+                                            .map((r) => r.account);
+                                          const toCollapse = new Set(groups);
+                                          toCollapse.add('자산성지출');
+                                          setScenarioCfCollapsed(toCollapse);
+                                          setScenarioCfAllCollapsed(true);
+                                        }
+                                      }}
+                                      className="shrink-0 rounded-md border border-white/35 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white shadow-sm hover:bg-white/20"
+                                    >
+                                      {scenarioCfAllCollapsed ? '펼치기 ▼' : '접기 ▲'}
+                                    </button>
+                                  </div>
+                                </th>
+                                <th className="min-w-[88px] border-b border-b-slate-300 border-r-2 border-r-slate-400 bg-slate-700 px-3 py-2.5 text-center font-semibold text-slate-100">
+                                  2025년 실적
+                                </th>
+                                {SCENARIO_ORDER.map((scKey) => {
+                                  const def = SCENARIO_DEFS[scKey];
+                                  const isBase = scKey === 'base';
+                                  return (
+                                    <Fragment key={`cf-hdr-${scKey}`}>
+                                      <th
+                                        className="min-w-[88px] border-b border-b-slate-300 border-r border-r-slate-200 px-2 py-2.5 text-center font-bold"
+                                        style={{ background: def.bgColor, color: def.color }}
+                                      >
+                                        {def.label}
+                                      </th>
+                                      <th
+                                        className={`min-w-[76px] border-b border-b-slate-300 px-2 py-2.5 text-center font-medium ${isBase ? 'border-r-2 border-r-slate-400' : 'border-r border-r-slate-200'}`}
+                                        style={{ background: def.bgColor, color: def.color }}
+                                      >
+                                        전년대비
+                                      </th>
+                                      {!isBase && (
+                                        <th
+                                          className="min-w-[76px] border-b border-b-slate-300 border-r-2 border-r-slate-400 px-2 py-2.5 text-center font-medium"
+                                          style={{ background: def.bgColor, color: def.color }}
+                                        >
+                                          기존계획대비
+                                        </th>
+                                      )}
+                                    </Fragment>
+                                  );
+                                })}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {scenarioCfVisibleRows.map((row, ri) => {
+                                const isNetCash = row.account === 'net cash';
+                                const isMajor = row.level === 0 && !isNetCash;
+                                const isMedium = row.level === 1;
+                                const indentPx = row.level === 0 ? 12 : row.level === 1 ? 36 : 60;
+                                const v = row.values ?? [];
+                                const actual25 = Number.isFinite(v[0]) ? v[0] : null;
+                                const plan26 = Number.isFinite(v[13]) ? v[13] : null;
+                                const rowBg = isNetCash
+                                  ? 'bg-gray-100'
+                                  : isMajor || isMedium
+                                    ? 'bg-gray-50'
+                                    : 'bg-white';
+                                const tdSticky = `sticky left-0 z-10 border-b border-r border-slate-200 py-2 px-3 ${rowBg}`;
+                                const tdNum = `border-b border-r border-slate-200 py-2 px-2 text-right tabular-nums ${rowBg}`;
+                                return (
+                                  <tr key={`cf-sc-${ri}-${row.account}`}>
+                                    <td className={tdSticky} style={{ paddingLeft: `${indentPx}px` }}>
+                                      {row.isGroup ? (
+                                        <div className="flex items-center gap-1">
+                                          <span className={isMajor ? 'font-semibold text-slate-800' : 'font-medium text-slate-800'}>{row.account}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setScenarioCfCollapsed((prev) => {
+                                                const next = new Set(prev);
+                                                if (next.has(row.account)) next.delete(row.account);
+                                                else next.add(row.account);
+                                                return next;
+                                              })
+                                            }
+                                            className="p-0.5 text-[10px] text-slate-500 hover:text-slate-800"
+                                          >
+                                            {scenarioCfCollapsed.has(row.account) ? '▶' : '▼'}
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className={isNetCash ? 'font-semibold text-slate-800' : 'text-slate-800'}>{row.account}</span>
+                                      )}
+                                    </td>
+                                    <td className={`${tdNum} ${actual25 != null && actual25 < 0 ? 'text-red-600' : 'text-slate-700'}`}>
+                                      {actual25 != null ? formatScenarioCfAmount(actual25) : '-'}
+                                    </td>
+                                    {SCENARIO_ORDER.map((scKey) => {
+                                      const isBase = scKey === 'base';
+                                      if (isBase) {
+                                        return (
+                                          <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                            <td className={`${tdNum} ${plan26 != null && plan26 < 0 ? 'text-red-600' : 'text-slate-700'}`}>
+                                              {plan26 != null ? formatScenarioCfAmount(plan26) : '-'}
+                                            </td>
+                                            <td className={`${tdNum} text-slate-600 border-r-2 border-r-slate-400`}>
+                                              {formatScenarioCfYoyDiff(plan26, actual25)}
+                                            </td>
+                                          </Fragment>
+                                        );
+                                      }
+                                      if (scenarioCfRowMirrorsBasePlan(row)) {
+                                        return (
+                                          <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                            <td className={`${tdNum} ${plan26 != null && plan26 < 0 ? 'text-red-600' : 'text-slate-700'}`}>
+                                              {plan26 != null ? formatScenarioCfAmount(plan26) : '-'}
+                                            </td>
+                                            <td className={`${tdNum} text-slate-600 border-r border-r-slate-200`}>
+                                              {formatScenarioCfYoyDiff(plan26, actual25)}
+                                            </td>
+                                            <td className={`${tdNum} text-slate-600 border-r-2 border-r-slate-400`}>
+                                              {formatScenarioCfVsBase(plan26, plan26)}
+                                            </td>
+                                          </Fragment>
+                                        );
+                                      }
+                                      if (
+                                        (scKey === 'negative' || scKey === 'positive') &&
+                                        row.account === '영업활동' &&
+                                        row.level === 0 &&
+                                        row.isGroup
+                                      ) {
+                                        const opSum = cfOperatingActivityScenarioYuan(
+                                          scenarioCfRows,
+                                          scenarioWcData,
+                                          scKey,
+                                        );
+                                        if (opSum != null) {
+                                          return (
+                                            <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                              <td
+                                                className={`${tdNum} ${opSum < 0 ? 'text-red-600' : 'text-slate-700'}`}
+                                              >
+                                                {formatScenarioCfAmount(opSum)}
+                                              </td>
+                                              <td className={`${tdNum} text-slate-600 border-r border-r-slate-200`}>
+                                                {formatScenarioCfYoyDiff(opSum, actual25)}
+                                              </td>
+                                              <td className={`${tdNum} text-slate-600 border-r-2 border-r-slate-400`}>
+                                                {plan26 != null
+                                                  ? formatScenarioCfVsBase(opSum, plan26)
+                                                  : '-'}
+                                              </td>
+                                            </Fragment>
+                                          );
+                                        }
+                                      }
+                                      if (
+                                        (scKey === 'negative' || scKey === 'positive') &&
+                                        row.account === 'net cash'
+                                      ) {
+                                        const ncSum = cfNetCashScenarioYuan(
+                                          scenarioCfRows,
+                                          scenarioWcData,
+                                          scKey,
+                                        );
+                                        if (ncSum != null) {
+                                          return (
+                                            <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                              <td
+                                                className={`${tdNum} ${ncSum < 0 ? 'text-red-600' : 'text-slate-700'}`}
+                                              >
+                                                {formatScenarioCfAmount(ncSum)}
+                                              </td>
+                                              <td className={`${tdNum} text-slate-600 border-r border-r-slate-200`}>
+                                                {formatScenarioCfYoyDiff(ncSum, actual25)}
+                                              </td>
+                                              <td className={`${tdNum} text-slate-600 border-r-2 border-r-slate-400`}>
+                                                {plan26 != null
+                                                  ? formatScenarioCfVsBase(ncSum, plan26)
+                                                  : '-'}
+                                              </td>
+                                            </Fragment>
+                                          );
+                                        }
+                                      }
+                                      const cfWcAdj =
+                                        scKey === 'negative' || scKey === 'positive'
+                                          ? cfWcLinkedPlanYuan(row, scKey, plan26, scenarioWcData)
+                                          : null;
+                                      if (cfWcAdj != null) {
+                                        return (
+                                          <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                            <td className={`${tdNum} ${cfWcAdj < 0 ? 'text-red-600' : 'text-slate-700'}`}>
+                                              {formatScenarioCfAmount(cfWcAdj)}
+                                            </td>
+                                            <td className={`${tdNum} text-slate-600 border-r border-r-slate-200`}>
+                                              {formatScenarioCfYoyDiff(cfWcAdj, actual25)}
+                                            </td>
+                                            <td className={`${tdNum} text-slate-600 border-r-2 border-r-slate-400`}>
+                                              {plan26 != null ? formatScenarioCfVsBase(cfWcAdj, plan26) : '-'}
+                                            </td>
+                                          </Fragment>
+                                        );
+                                      }
+                                      return (
+                                        <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                          <td className={`${tdNum} text-slate-400`}>-</td>
+                                          <td className={`${tdNum} text-slate-400 border-r border-r-slate-200`}>-</td>
+                                          <td className={`${tdNum} text-slate-600 border-r-2 border-r-slate-400`}>
+                                            {formatScenarioCfVsBase(null, plan26)}
+                                          </td>
+                                        </Fragment>
+                                      );
+                                    })}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setScenarioCfLegendOpen((v) => !v)}
+                            className="flex w-full items-center gap-2 rounded-md py-1.5 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            <span className="inline-flex w-4 shrink-0 justify-center text-[10px] text-slate-500 tabular-nums">
+                              {scenarioCfLegendOpen ? '▼' : '▶'}
+                            </span>
+                            <span>데이터 출처 · 열 정의</span>
+                          </button>
+                          {scenarioCfLegendOpen && (
+                            <div className="mt-2 space-y-2 rounded-lg border border-slate-200 bg-slate-50/95 px-3 py-2.5 text-[11px] leading-snug text-slate-700">
+                              <p className="text-slate-600">
+                                <span className="font-semibold text-slate-800">표 요약:</span> 연간 합계 · 단위 K CNY · 계층은 메인 탭 현금흐름과 동일.
+                              </p>
+                              <p>
+                                <span className="font-semibold text-slate-800">출처:</span>{' '}
+                                <span className="font-mono text-[10px]">GET /api/fs/cf-hierarchy?year=2026</span> ·{' '}
+                                <span className="font-mono text-[10px]">파일/cashflow</span> 연도별 CSV (메인 현금흐름표와 동일).
+                              </p>
+                              <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
+                                <li>
+                                  <span className="font-medium">2025년 실적</span>: API 행의 전년 합계(<span className="font-mono text-[10px]">values[0]</span>).
+                                </li>
+                                <li>
+                                  열 순서: <span className="font-medium">부정계획</span>(값·전년대비·기존계획대비) → <span className="font-medium">기존계획</span>(값·전년대비만) →{' '}
+                                  <span className="font-medium">긍정계획</span>(값·전년대비·기존계획대비).
+                                </li>
+                                <li>
+                                  <span className="font-medium">기존계획</span>: 2026년 연간 합계(<span className="font-mono text-[10px]">values[13]</span>), 메인 탭 당년 합계와 동일.
+                                </li>
+                                <li>
+                                  <span className="font-medium">전년대비</span>(각 시나리오 옆): 해당 연간(원) − <span className="font-mono text-[10px]">values[0]</span> 후 ÷ 1000 정수(K), 양수는 + 표기.
+                                </li>
+                                <li>
+                                  <span className="font-medium">기존계획대비</span>(부정·긍정만): 해당 시나리오 연간(원) − 기존계획(<span className="font-mono text-[10px]">values[13]</span>) 후 ÷ 1000 정수(K). 미연동 시 <span className="font-mono text-[10px]">-</span>.
+                                </li>
+                                <li>
+                                  <span className="font-medium">PL 미연동 행</span>(부정·긍정): 자산성지출(합계·하위), 기타수익, 차입금, 영업활동의 비용(합계·하위)·본사선급금은 기존계획 열과 동일 금액·전년대비로 채우며 기존계획대비는 <span className="font-mono text-[10px]">0</span>.
+                                </li>
+                                <li>
+                                  <span className="font-medium">운전자본 연동</span>(부정·긍정): 영업활동의 <span className="font-medium">매출수금</span>·<span className="font-medium">물품대</span> 그룹 행만, 연간 = 기존계획(<span className="font-mono text-[10px]">values[13]</span>) + 운전자본표 매출채권·매입채무의 기존계획대비(K)×1,000원. 시나리오는 운전자본만 구분한다는 전제. 하위 행(브랜드·본사 등)은 미연동.
+                                </li>
+                                <li>
+                                  <span className="font-medium">영업활동</span> 합계(부정·긍정): 위 표에서 쓰는 값과 동일하게{' '}
+                                  <span className="font-medium">매출수금·물품대·본사선급금·비용</span> 네 그룹(또는 본사선급금 단일) 행의 연간을 합산(매출수금·물품대는 WC연동 연간, 본사선급금·비용은 기존계획 연간). 운전자본 미로드 시 네 값을 못 맞추면 <span className="font-mono text-[10px]">-</span>.
+                                </li>
+                                <li>
+                                  <span className="font-medium">net cash</span>(부정·긍정):{' '}
+                                  <span className="font-medium">영업활동</span> 시나리오 연간 + <span className="font-medium">자산성지출</span> + <span className="font-medium">기타수익</span> + <span className="font-medium">차입금</span> 연간(각각 위 표와 동일 규칙·기존계획 <span className="font-mono text-[10px]">values[13]</span> 기준). 영업활동 합을 못 구하면 <span className="font-mono text-[10px]">-</span>.
+                                </li>
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                   </Fragment>
                 );
               })()

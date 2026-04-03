@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatNumber, getRecoveryMonthLabelsAsN월 } from '@/lib/utils';
+import { buildWcPlanByKeyFromBsWorkingCapital } from '@/lib/wc-plan-from-bs';
+import type { TableRow } from '@/lib/types';
 import CFExplanationPanel from '@/components/CFExplanationPanel';
 import type { CFExplanationNumbers } from '@/lib/cf-explanation-data';
 
@@ -51,11 +53,15 @@ type CFSummaryApiRow = {
   values: number[];
 };
 
+type CFHierarchyCsvSource = { year: number; relative: string; absolute: string };
+
 type CashBorrowingApiData = {
   cash: number[];
   borrowing: number[];
   prevCash?: number[];
   prevBorrowing?: number[];
+  cashNMonthPlan?: number;
+  borrowingNMonthPlan?: number;
 };
 
 type PLCreditRecoveryData = {
@@ -323,6 +329,14 @@ export default function PLCashFlowTab() {
           borrowing: Array.isArray(json?.borrowing) ? json.borrowing : [],
           prevCash: Array.isArray(json?.prevCash) ? json.prevCash : undefined,
           prevBorrowing: Array.isArray(json?.prevBorrowing) ? json.prevBorrowing : undefined,
+          cashNMonthPlan:
+            typeof json?.cashNMonthPlan === 'number' && Number.isFinite(json.cashNMonthPlan)
+              ? json.cashNMonthPlan
+              : undefined,
+          borrowingNMonthPlan:
+            typeof json?.borrowingNMonthPlan === 'number' && Number.isFinite(json.borrowingNMonthPlan)
+              ? json.borrowingNMonthPlan
+              : undefined,
         });
       } catch {
         // ignore
@@ -496,36 +510,22 @@ export default function PLCashFlowTab() {
   });
   const [shipmentLoaded, setShipmentLoaded] = useState(false);
 
-  const [cfPlanByKey, setCfPlanByKey] = useState<Record<string, number>>({});
-  const [cashDebtPlan, setCashDebtPlan] = useState<{ cash: number | null; borrowing: number | null }>({ cash: null, borrowing: null });
+  const [cfHierarchyCsvSources, setCfHierarchyCsvSources] = useState<CFHierarchyCsvSource[]>([]);
+  const [cfSourcesLegendOpen, setCfSourcesLegendOpen] = useState(false);
   const [wcPlanByKey, setWcPlanByKey] = useState<Record<string, number>>({});
   const [wcForecastByKey, setWcForecastByKey] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    fetch('/api/pl-forecast/cf-plan', { cache: 'no-store' })
+    fetch('/api/fs/bs?year=2026', { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data: Record<string, number>) => {
-        if (data && !data.error) setCfPlanByKey(data);
+      .then((data: { workingCapital?: TableRow[]; error?: string }) => {
+        if (!data || 'error' in data || !Array.isArray(data.workingCapital)) {
+          setWcPlanByKey({});
+          return;
+        }
+        setWcPlanByKey(buildWcPlanByKeyFromBsWorkingCapital(data.workingCapital));
       })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetch('/api/pl-forecast/cash-debt-plan', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data: { cash: number | null; borrowing: number | null }) => {
-        if (data && !('error' in data)) setCashDebtPlan(data);
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetch('/api/pl-forecast/wc-plan', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data: Record<string, number>) => {
-        if (data && !('error' in data)) setWcPlanByKey(data);
-      })
-      .catch(() => {});
+      .catch(() => setWcPlanByKey({}));
   }, []);
 
   useEffect(() => {
@@ -843,6 +843,17 @@ export default function PLCashFlowTab() {
         const json = await res.json();
         if (!mounted || !res.ok || !Array.isArray(json?.rows)) return;
         setCfValuesByKey(buildCFValueMap(json.rows as CFSummaryApiRow[]));
+        const hierarchy = Array.isArray(json.hierarchyCsvSources) ? json.hierarchyCsvSources : [];
+        setCfHierarchyCsvSources(
+          hierarchy.filter(
+            (item: unknown): item is CFHierarchyCsvSource =>
+              !!item &&
+              typeof item === 'object' &&
+              typeof (item as CFHierarchyCsvSource).year === 'number' &&
+              typeof (item as CFHierarchyCsvSource).relative === 'string' &&
+              typeof (item as CFHierarchyCsvSource).absolute === 'string',
+          ),
+        );
       } catch {
         // ignore
       } finally {
@@ -889,35 +900,40 @@ export default function PLCashFlowTab() {
     return Number.isFinite(raw) ? raw : null;
   };
 
+  // 메인 현금흐름표와 동일: cf-hierarchy가 2026.csv N년계획(N-1) 열로 채운 values[15]~[18]
   const cfPlan = (rowKey: string): number | null => {
-    const v = cfPlanByKey[rowKey];
-    return typeof v === 'number' && Number.isFinite(v) ? v : null;
+    const values = cfValuesByKey[rowKey];
+    if (!values || values.length < 19) return null;
+    const raw = values[15];
+    return Number.isFinite(raw) ? raw : null;
   };
 
   const cfPlanVsPrev = (row: StaticCFRow): number | null => {
-    const plan = cfPlan(row.key);
-    if (plan == null || row.actual2025 == null) return null;
-    return plan - row.actual2025;
+    const values = cfValuesByKey[row.key];
+    if (!values || values.length < 19) return null;
+    const raw = values[16];
+    return Number.isFinite(raw) ? raw : null;
   };
 
   const cfPlanVsRollingAmount = (rowKey: string): number | null => {
-    const rolling = cf2026(rowKey);
-    const plan = cfPlan(rowKey);
-    if (rolling == null || plan == null) return null;
-    return rolling - plan;
+    const values = cfValuesByKey[rowKey];
+    if (!values || values.length < 19) return null;
+    const raw = values[17];
+    return Number.isFinite(raw) ? raw : null;
   };
 
   const cfPlanVsRollingPct = (rowKey: string): string => {
-    const rolling = cf2026(rowKey);
-    const plan = cfPlan(rowKey);
-    if (rolling == null || plan == null || plan === 0) return '-';
-    const pct = (rolling / plan) * 100;
-    return `${Math.round(pct)}%`;
+    const values = cfValuesByKey[rowKey];
+    if (!values || values.length < 19) return '-';
+    const raw = values[18];
+    if (!Number.isFinite(raw) || raw === 0) return '-';
+    return `${raw >= 0 ? '+' : ''}${raw.toFixed(1)}%`;
   };
 
-  // 현금잔액/차입금잔액 계획 헬퍼
   const cashDebtPlanValue = (rowKey: 'cash' | 'borrowing'): number | null =>
-    rowKey === 'cash' ? cashDebtPlan.cash : cashDebtPlan.borrowing;
+    rowKey === 'cash'
+      ? (cashBorrowingData.cashNMonthPlan ?? null)
+      : (cashBorrowingData.borrowingNMonthPlan ?? null);
 
   const cashDebtPlanVsPrev = (rowKey: 'cash' | 'borrowing'): number | null => {
     const plan = cashDebtPlanValue(rowKey);
@@ -936,12 +952,14 @@ export default function PLCashFlowTab() {
   const cashDebtVsRollingPct = (rowKey: 'cash' | 'borrowing'): string => {
     const rolling = cashBorrowing2026(rowKey);
     const plan = cashDebtPlanValue(rowKey);
-    if (rolling == null || !plan) return '-';
-    const pct = (rolling / plan) * 100;
-    return `${Math.round(pct)}%`;
+    if (rolling == null || plan == null) return '-';
+    const nDiff = rolling - plan;
+    const nPct = plan !== 0 ? (nDiff / Math.abs(plan)) * 100 : 0;
+    if (nPct !== 0) return `${nPct >= 0 ? '+' : ''}${nPct.toFixed(1)}%`;
+    return '-';
   };
 
-  // 운전자본 계획 헬퍼 (CSV는 1위안, formatKValue는 K단위 → /1000)
+  // 운전자본 계획: BS workingCapital annualPlan(원), 표시 K단위 → /1000
   const wcPlan = (rowKey: string): number | null => {
     const v = wcPlanByKey[rowKey];
     return typeof v === 'number' && Number.isFinite(v) ? v : null;
@@ -1275,7 +1293,7 @@ export default function PLCashFlowTab() {
                     계정과목
                   </th>
                   <th rowSpan={2} className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2025년(합계)</th>
-                  <th colSpan={2} className="border border-gray-300 py-2 px-4 text-center bg-gray-600">계획</th>
+                  <th colSpan={2} className="border border-gray-300 py-2 px-4 text-center bg-gray-600">전월계획</th>
                   {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
                     <th key={`cf-header-${month}`} rowSpan={2} className="border border-gray-300 py-3 px-4 text-center min-w-[84px]">
                       {month}
@@ -1284,7 +1302,7 @@ export default function PLCashFlowTab() {
                   <th colSpan={4} className="border border-gray-300 py-2 px-4 text-center">2026년 Rolling</th>
                 </tr>
                 <tr>
-                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[120px] bg-gray-600">2026년(계획)</th>
+                  <th className="border border-gray-300 py-2 px-4 text-center min-w-[120px] bg-gray-600">2026년계획(N-1)</th>
                   <th className="border border-gray-300 py-2 px-4 text-center min-w-[100px] bg-gray-600">계획-전년</th>
                   <th className="border border-gray-300 py-2 px-4 text-center min-w-[120px]">2026년(합계)</th>
                   <th className="border border-gray-300 py-2 px-4 text-center min-w-[100px]">Rolling-전년</th>
@@ -1358,6 +1376,51 @@ export default function PLCashFlowTab() {
             </table>
           </div>
 
+          <div className="mt-2 border border-gray-200 rounded-md bg-white/80">
+            <button
+              type="button"
+              onClick={() => setCfSourcesLegendOpen((open) => !open)}
+              className="flex items-center gap-1 w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
+            >
+              <span className="text-gray-600 select-none w-4 text-center">{cfSourcesLegendOpen ? '▾' : '▸'}</span>
+              <span className="font-medium">데이터 출처 (CSV)</span>
+            </button>
+            {cfSourcesLegendOpen && (
+              <div className="px-3 pb-3 pt-0 text-xs text-gray-600 space-y-3 border-t border-gray-100">
+                <p className="font-sans text-gray-500 mt-2 leading-relaxed">
+                  숫자는 화면에서 K(천) 단위로 표시됩니다(원본 ÷ 1000).
+                  <br />
+                  「2025년(합계)」열은 이 양식에 맞춘 <span className="font-medium text-gray-700">고정 표기값</span>이며 CSV가
+                  아닙니다.
+                </p>
+                {cfHierarchyCsvSources.length > 0 && (
+                  <div>
+                    <p className="font-medium text-gray-700">월별·전월계획·2026 Rolling·계획대비</p>
+                    <p className="font-sans text-gray-500 mb-1">
+                      메인 현금흐름표와 동일하게 <span className="font-medium text-gray-700">파일/cashflow</span> 연도별 CSV와{' '}
+                      <span className="font-medium text-gray-700">/api/fs/cf-hierarchy</span>를 사용합니다. 전월계획 블록은
+                      2026.csv의 <span className="font-medium text-gray-700">2026년계획(N-1)</span> 열 기준입니다.
+                    </p>
+                    <ul className="list-disc pl-4 space-y-2 font-mono break-all">
+                      {cfHierarchyCsvSources.map((s) => (
+                        <li key={s.year}>
+                          <span className="font-sans text-gray-500">{s.year}.csv — 상대 </span>
+                          {s.relative}
+                          <br />
+                          <span className="font-sans text-gray-500">절대 </span>
+                          {s.absolute}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {cfHierarchyCsvSources.length === 0 && (
+                  <p className="text-gray-400 pt-2">출처 정보를 불러오지 못했습니다.</p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="mt-8">
             <h3 className="text-base font-semibold text-gray-800 mb-2">현금잔액과 차입금잔액표</h3>
             <div className="overflow-x-auto border border-gray-300 rounded-lg shadow-sm">
@@ -1366,7 +1429,7 @@ export default function PLCashFlowTab() {
                   <tr>
                     <th rowSpan={2} className="border border-gray-300 py-2.5 px-4 text-left sticky left-0 z-10 bg-navy min-w-[200px]">구분</th>
                     <th rowSpan={2} className="border border-gray-300 py-2.5 px-4 text-center min-w-[120px]">기초잔액</th>
-                    <th colSpan={2} className="border border-gray-300 py-1.5 px-4 text-center bg-gray-600">계획</th>
+                    <th colSpan={2} className="border border-gray-300 py-1.5 px-4 text-center bg-gray-600">전월계획</th>
                     {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
                       <th key={`balance-header-${month}`} rowSpan={2} className="border border-gray-300 py-2.5 px-4 text-center min-w-[84px]">
                         {month}
@@ -1375,7 +1438,7 @@ export default function PLCashFlowTab() {
                     <th colSpan={4} className="border border-gray-300 py-1.5 px-4 text-center">2026년 Rolling</th>
                   </tr>
                   <tr>
-                    <th className="border border-gray-300 py-1.5 px-4 text-center min-w-[120px] bg-gray-600">2026년(계획)</th>
+                    <th className="border border-gray-300 py-1.5 px-4 text-center min-w-[120px] bg-gray-600">2026년계획(N-1)</th>
                     <th className="border border-gray-300 py-1.5 px-4 text-center min-w-[100px] bg-gray-600">계획-전년</th>
                     <th className="border border-gray-300 py-1.5 px-4 text-center min-w-[120px]">기말잔액</th>
                     <th className="border border-gray-300 py-1.5 px-4 text-center min-w-[100px]">Rolling-전년</th>
@@ -1445,7 +1508,7 @@ export default function PLCashFlowTab() {
                   <tr>
                     <th rowSpan={2} className="border border-gray-300 py-3 px-4 text-left sticky left-0 z-20 bg-navy min-w-[200px]">계정과목</th>
                     <th rowSpan={2} className="border border-gray-300 py-3 px-4 text-center min-w-[120px]">2025년(기말)</th>
-                    <th colSpan={2} className="border border-gray-300 py-2 px-4 text-center bg-gray-600">계획</th>
+                    <th colSpan={2} className="border border-gray-300 py-2 px-4 text-center bg-gray-600">전월계획</th>
                     {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month, monthIndex) => (
                       <th key={`wc-header-${month}`} rowSpan={2} className="border border-gray-300 py-3 px-4 text-center min-w-[84px]">
                         {formatWorkingCapitalMonthHeader(month, monthIndex)}
@@ -1454,7 +1517,7 @@ export default function PLCashFlowTab() {
                     <th colSpan={4} className="border border-gray-300 py-2 px-4 text-center">2026년 Rolling</th>
                   </tr>
                   <tr>
-                    <th className="border border-gray-300 py-2 px-4 text-center min-w-[120px] bg-gray-600">2026년(계획)</th>
+                    <th className="border border-gray-300 py-2 px-4 text-center min-w-[120px] bg-gray-600">2026년연간계획(N-1)</th>
                     <th className="border border-gray-300 py-2 px-4 text-center min-w-[100px] bg-gray-600">계획-전년</th>
                     <th className="border border-gray-300 py-2 px-4 text-center min-w-[120px]">2026년(기말)</th>
                     <th className="border border-gray-300 py-2 px-4 text-center min-w-[100px]">Rolling-전년</th>

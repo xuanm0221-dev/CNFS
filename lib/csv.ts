@@ -289,7 +289,7 @@ export async function readCreditCSV(filePath: string) {
 }
 
 // CF 계층 계획 데이터 읽기 (대분류|중분류|소분류 → N-1월 계획값)
-// CF 계층 계획 데이터 읽기 ("2026년계획" = 전월 연간 계획)
+// 헤더: "YYYY년계획" 또는 "YYYY년계획(N-1)" (전월 연간 계획)
 export function readCFPlanData(filePath: string): {
   planData: Map<string, number>; // "대분류|중분류|소분류" → 전월 연간 계획값
 } | null {
@@ -311,10 +311,10 @@ export function readCFPlanData(filePath: string): {
 
   const headers = rows[0];
 
-  // "YYYY년계획" 패턴 찾기 (예: "2026년계획")
+  // "YYYY년계획" / "YYYY년계획(N-1)" 패턴 찾기
   let planColIndex = -1;
   headers.forEach((header, index) => {
-    if (/^\d+년계획$/.test(header.trim())) {
+    if (/^\d+년계획(\(N-1\))?$/.test(header.trim())) {
       planColIndex = index;
     }
   });
@@ -338,7 +338,7 @@ export function readCFPlanData(filePath: string): {
   return { planData };
 }
 
-// 현금·차입금잔액 계획 데이터 읽기 ("2026년계획" = 전월 연간 기말잔액 계획)
+// 현금·차입금잔액 계획 데이터 읽기 (동일 헤더 패턴: YYYY년계획 또는 YYYY년계획(N-1))
 export function readCashBorrowingPlanData(filePath: string): {
   cashPlan: number;       // 현금 전월 연간 계획
   borrowingPlan: number;  // 차입금 전월 연간 계획
@@ -361,10 +361,10 @@ export function readCashBorrowingPlanData(filePath: string): {
 
   const headers = rows[0];
 
-  // "YYYY년계획" 패턴 찾기 (예: "2026년계획")
+  // "YYYY년계획" / "YYYY년계획(N-1)" 패턴 찾기
   let planColIndex = -1;
   headers.forEach((header, index) => {
-    if (/^\d+년계획$/.test(header.trim())) {
+    if (/^\d+년계획(\(N-1\))?$/.test(header.trim())) {
       planColIndex = index;
     }
   });
@@ -384,7 +384,7 @@ export function readCashBorrowingPlanData(filePath: string): {
   return { cashPlan, borrowingPlan };
 }
 
-// BS 계획 데이터 읽기 (N월계획, YYYY년합계(계획) 컬럼 파싱)
+// BS 계획 데이터 읽기 (N월계획, YYYY년연간계획(N-1) 우선 · 레거시 YYYY년합계(계획) 폴백)
 export function readBSPlanData(filePath: string): {
   planMonthValue: Map<string, number>;
   planAnnualValue: Map<string, number>;
@@ -411,19 +411,25 @@ export function readBSPlanData(filePath: string): {
   // "N월계획" 패턴 찾기 (예: "2월계획")
   let planMonthColIndex = -1;
   let planMonth = -1;
-  // "YYYY년합계(계획)" 패턴 찾기 (예: "2026년합계(계획)")
-  let planAnnualColIndex = -1;
+  let planAnnualColNew = -1; // YYYY년연간계획(N-1)
+  let planAnnualColLegacy = -1; // YYYY년합계(계획)
 
   headers.forEach((header, index) => {
-    const monthPlanMatch = header.trim().match(/^(\d+)월계획$/);
+    const h = header.trim();
+    const monthPlanMatch = h.match(/^(\d+)월계획$/);
     if (monthPlanMatch) {
       planMonthColIndex = index;
       planMonth = parseInt(monthPlanMatch[1], 10);
     }
-    if (/^\d+년합계\(계획\)$/.test(header.trim())) {
-      planAnnualColIndex = index;
+    if (/^\d+년연간계획\(N-1\)$/.test(h)) {
+      planAnnualColNew = index;
+    }
+    if (/^\d+년합계\(계획\)$/.test(h)) {
+      planAnnualColLegacy = index;
     }
   });
+
+  const planAnnualColIndex = planAnnualColNew >= 0 ? planAnnualColNew : planAnnualColLegacy;
 
   if (planMonthColIndex === -1 || planMonth === -1) return null;
 

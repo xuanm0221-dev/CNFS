@@ -19,6 +19,12 @@ function buildYearData(rows: CFHierarchyRow[]): YearData {
   return map;
 }
 
+function pathPairForJson(filePath: string): { relative: string; absolute: string } {
+  const absolute = path.resolve(filePath).split(path.sep).join('/');
+  const relative = path.relative(process.cwd(), filePath).split(path.sep).join('/');
+  return { relative, absolute };
+}
+
 export interface CFHierarchyApiRow {
   level: 0 | 1 | 2;
   account: string;
@@ -46,6 +52,7 @@ export async function GET(request: NextRequest) {
 
     const years = is2025 ? ([2023, 2024, 2025, 2026] as const) : ([2024, 2025, 2026] as const);
     const loaded: { year: number; rows: CFHierarchyRow[] }[] = [];
+    const hierarchyCsvSources: { year: number; relative: string; absolute: string }[] = [];
 
     for (const y of years) {
       const filePath = path.join(baseDir, `${y}.csv`);
@@ -53,10 +60,15 @@ export async function GET(request: NextRequest) {
       try {
         const data = await readCFHierarchyCSV(filePath, y);
         loaded.push(data);
+        hierarchyCsvSources.push({ year: y, ...pathPairForJson(filePath) });
       } catch (e) {
         console.warn(`CF hierarchy ${y} load skip:`, e);
       }
     }
+
+    const planFilePath2026 = path.join(baseDir, '2026.csv');
+    const embeddedPlanColumnInFile =
+      !is2025 && year === 2026 && cfPlanData !== null ? pathPairForJson(planFilePath2026) : null;
 
     if (loaded.length === 0) {
       return NextResponse.json({
@@ -64,6 +76,8 @@ export async function GET(request: NextRequest) {
         columns: is2025
           ? ['2023년(합계)', '2024년(합계)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '2025년(합계)', 'YoY']
           : ['2025년(합계)', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '2026년(합계)', 'YoY'],
+        hierarchyCsvSources,
+        embeddedPlanColumnInFile,
       });
     }
 
@@ -236,6 +250,8 @@ export async function GET(request: NextRequest) {
       rows,
       columns,
       hasPlan,
+      hierarchyCsvSources,
+      embeddedPlanColumnInFile,
     });
   } catch (error) {
     console.error('CF hierarchy API error:', error);
