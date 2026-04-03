@@ -90,6 +90,9 @@ const FORECAST_TO_SALES_BRAND: Record<ForecastLeafBrand, SalesBrand> = {
 };
 const INVENTORY_GROWTH_PARAMS_KEY = 'inventory_growth_params';
 const PL_TAG_COST_RATIO_KEY = 'pl_tag_cost_ratio_annual';
+/** 시나리오 모달 「현금 & 차입금」표 기초잔액 (K CNY, 원 ÷ 1000 반올림) */
+const SCENARIO_CASH_DEBT_OPENING_K = { cash: 139543, debt: 909685 } as const;
+
 const ACCOUNT_LABEL_OVERRIDES: Record<string, string> = {
   Tag매출_대리상: '대리상',
   Tag매출_의류: '의류',
@@ -761,7 +764,41 @@ export default function PLForecastTab() {
   const [scenarioCfAllCollapsed, setScenarioCfAllCollapsed] = useState(true);
   const [scenarioCfLegendOpen, setScenarioCfLegendOpen] = useState(false);
   const scenarioCfRowsLengthRef = useRef(0);
+  /** 기존계획 열: 현금차입금잔액/2026.csv 기말잔액 (= cash-borrowing API 시리즈 인덱스 13) K */
+  const [scenarioCashBorrowPlanK, setScenarioCashBorrowPlanK] = useState<{
+    cash: number | null;
+    debt: number | null;
+  } | null>(null);
   // ─────────────────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!scenarioModalOpen) {
+      setScenarioCashBorrowPlanK(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/fs/cash-borrowing?year=2026', { cache: 'no-store' });
+        const json = (await res.json()) as { cash?: number[]; borrowing?: number[]; error?: string };
+        if (cancelled) return;
+        if (!res.ok) {
+          setScenarioCashBorrowPlanK(null);
+          return;
+        }
+        const c = Array.isArray(json.cash) && json.cash.length > 13 ? json.cash[13] : null;
+        const b = Array.isArray(json.borrowing) && json.borrowing.length > 13 ? json.borrowing[13] : null;
+        const cashK = c != null && Number.isFinite(c) ? Math.round(c / 1000) : null;
+        const debtK = b != null && Number.isFinite(b) ? Math.round(b / 1000) : null;
+        setScenarioCashBorrowPlanK({ cash: cashK, debt: debtK });
+      } catch {
+        if (!cancelled) setScenarioCashBorrowPlanK(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scenarioModalOpen]);
 
   useEffect(() => {
     if (!scenarioModalOpen) {
@@ -4252,6 +4289,104 @@ export default function PLForecastTab() {
                         </div>
                       </>
                     )}
+                  </div>
+
+                  <div className="mt-6">
+                    <table className="w-full border-separate border-spacing-0 text-xs">
+                      <thead className="sticky top-0 z-20">
+                        <tr>
+                          <th className="sticky left-0 z-30 min-w-[200px] border-b border-r border-slate-300 bg-gradient-to-r from-[#2f4f7f] to-[#3b5f93] px-3 py-2.5 text-center font-semibold text-white">
+                            현금 &amp; 차입금
+                          </th>
+                          <th className="min-w-[88px] border-b border-b-slate-300 border-r-2 border-r-slate-400 bg-slate-700 px-3 py-2.5 text-center font-semibold text-slate-100">
+                            기초잔액
+                          </th>
+                          {SCENARIO_ORDER.map((scKey) => {
+                            const def = SCENARIO_DEFS[scKey];
+                            const isBase = scKey === 'base';
+                            return (
+                              <Fragment key={`cbd-hdr-${scKey}`}>
+                                <th
+                                  className="min-w-[88px] border-b border-b-slate-300 border-r border-r-slate-200 px-2 py-2.5 text-center font-bold"
+                                  style={{ background: def.bgColor, color: def.color }}
+                                >
+                                  {def.label}
+                                </th>
+                                <th
+                                  className={`min-w-[76px] border-b border-b-slate-300 px-2 py-2.5 text-center font-medium ${isBase ? 'border-r-2 border-r-slate-400' : 'border-r border-r-slate-200'}`}
+                                  style={{ background: def.bgColor, color: def.color }}
+                                >
+                                  전년대비
+                                </th>
+                                {!isBase && (
+                                  <th
+                                    className="min-w-[76px] border-b border-b-slate-300 border-r-2 border-r-slate-400 px-2 py-2.5 text-center font-medium"
+                                    style={{ background: def.bgColor, color: def.color }}
+                                  >
+                                    기존계획대비
+                                  </th>
+                                )}
+                              </Fragment>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(
+                          [
+                            {
+                              label: '현금잔액',
+                              openingK: SCENARIO_CASH_DEBT_OPENING_K.cash,
+                              planK: scenarioCashBorrowPlanK?.cash ?? null,
+                            },
+                            {
+                              label: '차입금잔액',
+                              openingK: SCENARIO_CASH_DEBT_OPENING_K.debt,
+                              planK: scenarioCashBorrowPlanK?.debt ?? null,
+                            },
+                          ] as const
+                        ).map((row) => (
+                          <tr key={row.label} className="bg-white">
+                            <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-white py-2 pl-[10px] pr-[10px] text-slate-700">
+                              {row.label}
+                            </td>
+                            <td className="border-b border-b-slate-200 border-r-2 border-r-slate-300 px-3 py-2 text-right text-slate-500">
+                              {fmtK(row.openingK)}
+                            </td>
+                            {SCENARIO_ORDER.map((scKey) => {
+                              const def = SCENARIO_DEFS[scKey];
+                              const isBase = scKey === 'base';
+                              const planK = row.planK;
+                              const scenarioVal: number | null = isBase ? planK : null;
+                              return (
+                                <Fragment key={`${row.label}-${scKey}`}>
+                                  <td
+                                    className="border-b border-b-slate-200 border-r border-r-slate-100 px-3 py-2 text-right font-medium"
+                                    style={{ color: def.color }}
+                                  >
+                                    {fmtK(scenarioVal)}
+                                  </td>
+                                  <td
+                                    className={`border-b border-b-slate-200 px-3 py-2 text-right text-slate-500 text-[11px] ${isBase ? 'border-r-2 border-r-slate-300' : 'border-r border-r-slate-100'}`}
+                                  >
+                                    {fmtYoyWc(scenarioVal, row.openingK)}
+                                  </td>
+                                  {!isBase && (
+                                    <td className="border-b border-b-slate-200 border-r-2 border-r-slate-300 px-3 py-2 text-right text-slate-500 text-[11px]">
+                                      {fmtYoyWc(scenarioVal, planK)}
+                                    </td>
+                                  )}
+                                </Fragment>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <p className="mt-2 text-[10px] text-slate-500">
+                      법인 전체 · 단위: K CNY · 기존계획 기말잔액은{' '}
+                      <span className="font-mono text-[10px]">GET /api/fs/cash-borrowing?year=2026</span> 시리즈 기말(인덱스 13)
+                    </p>
                   </div>
                   </Fragment>
                 );
