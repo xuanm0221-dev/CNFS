@@ -92,13 +92,14 @@ const INVENTORY_GROWTH_PARAMS_KEY = 'inventory_growth_params';
 const PL_TAG_COST_RATIO_KEY = 'pl_tag_cost_ratio_annual';
 /** 시나리오 모달 「현금 & 차입금」표 기초잔액 (K CNY, 원 ÷ 1000 반올림) */
 const SCENARIO_CASH_DEBT_OPENING_K = { cash: 139543, debt: 909685 } as const;
-/** 운영 현금 목표 구간(K) — 부정·긍정 기말 현금에 따른 차입·상환 밴드 */
-const SCENARIO_CASH_BAND_LOW_K = 100_000;
-const SCENARIO_CASH_BAND_HIGH_K = 120_000;
 /** 시나리오 표: 연간↔YOY, YOY↔기존계획대비 사이 세로선(얇게) */
 const SCENARIO_COL_DIVIDER_THIN_R = '[border-right:1px_dashed_#cbd5e1]';
 /** 시나리오 블록 끝(다음 시나리오 열 앞) — 1px 유지 */
 const SCENARIO_COL_DIVIDER_BLK_R = 'border-r border-r-slate-200';
+/** CF 비용 하위: 시뮬 전용 조정 행(CSV 기존계획 0, 부정·긍정 열에 차액만) */
+const SCENARIO_CF_POS_NEG_ADJUST_ACCOUNT = '부정/긍정 조정';
+const SCENARIO_CF_TAX_ADJUST_ACCOUNT = '법인세 조정';
+const SCENARIO_CF_CORP_TAX_RATE = 0.25;
 
 const ACCOUNT_LABEL_OVERRIDES: Record<string, string> = {
   Tag매출_대리상: '대리상',
@@ -145,54 +146,34 @@ function scenarioCfRowMirrorsBasePlan(row: CFHierarchyApiRow): boolean {
   if (row.대분류 === '자산성지출' && row.level === 1) return true;
   if (row.대분류 === '영업활동' && row.account === '본사선급금') return true;
   if (row.대분류 === '영업활동' && row.account === '비용' && row.isGroup && row.level === 1) return true;
-  if (row.대분류 === '영업활동' && row.중분류 === '비용' && row.level === 2) return true;
+  if (row.대분류 === '영업활동' && row.중분류 === '비용' && row.level === 2) {
+    if (row.account === SCENARIO_CF_POS_NEG_ADJUST_ACCOUNT) return false;
+    if (row.account === SCENARIO_CF_TAX_ADJUST_ACCOUNT) return false;
+    return true;
+  }
   return false;
 }
 
-type ScenarioWcDataForCf = {
-  scenarios: Record<ScenarioKey, { ar: number | null; ap: number | null }>;
-};
-
-/** 운전자본 매출채권·매입채무: 부정/긍정 K − 기존계획 K */
-function wcVsBaseDeltaK(
-  wc: ScenarioWcDataForCf | null,
-  scKey: ScenarioKey,
-  key: 'ar' | 'ap',
-): number | null {
-  if (!wc || scKey === 'base') return null;
-  const val = wc.scenarios[scKey][key];
-  const baseVal = wc.scenarios.base[key];
-  if (val == null || baseVal == null) return null;
-  if (!Number.isFinite(val) || !Number.isFinite(baseVal)) return null;
-  return Math.round(val - baseVal);
-}
-
 /**
- * CF 연간(values[13], 원) + WC 기존계획대비(K)×1000 → 부정·긍정 물품대.
- * 매출수금은 위에 더해 법인 영업이익(시나리오−기존계획) K×1000 원.
+ * 부정·긍정 CF 연간(values[13], 원): 매출수금은 PL 실판매출(V-) ΔK 가산, 물품대는 PL 매출원가 ΔK 감산(CF 유출 부호와 맞춤).
  */
 function cfWcLinkedPlanYuan(
   row: CFHierarchyApiRow,
   scKey: ScenarioKey,
   plan26: number | null,
-  wc: ScenarioWcDataForCf | null,
   scenarioData: AllScenarioData | null,
 ): number | null {
   if (scKey === 'base' || plan26 == null || !Number.isFinite(plan26)) return null;
   if (row.대분류 !== '영업활동' || !row.isGroup || row.level !== 1) return null;
   if (row.account === '매출수금') {
-    const d = wcVsBaseDeltaK(wc, scKey, 'ar');
-    if (d == null) return null;
-    let yuan = plan26 + d * 1000;
-    const oiK = corpOperatingProfitVsBaseDeltaK(scKey, scenarioData);
-    if (oiK === null) return null;
-    yuan += oiK * 1000;
-    return yuan;
+    const plK = corpRealSalesVsBaseDeltaK(scKey, scenarioData);
+    if (plK == null) return null;
+    return plan26 + plK * 1000;
   }
   if (row.account === '물품대') {
-    const d = wcVsBaseDeltaK(wc, scKey, 'ap');
-    if (d == null) return null;
-    return plan26 + d * 1000;
+    const cogsK = corpCogsVsBaseDeltaK(scKey, scenarioData);
+    if (cogsK == null) return null;
+    return plan26 - cogsK * 1000;
   }
   return null;
 }
@@ -204,11 +185,10 @@ function cfPlan26Yuan(r: CFHierarchyApiRow): number | null {
 
 /**
  * 부정·긍정 영업활동 합계(원) = 표와 동일 규칙으로 네 그룹 행만 합산
- * (매출수금: WC+법인영업이익 연동 연간, 물품대: WC 연간, 본사선급금·비용: 기존계획 연간)
+ * (매출수금·물품대 PL연동, 본사선급금·비용 그룹 기존계획 연간, 시뮬 「부정/긍정 조정」「법인세 조정」차액 가산)
  */
 function cfOperatingActivityScenarioYuan(
   rows: CFHierarchyApiRow[] | null,
-  wc: ScenarioWcDataForCf | null,
   scKey: ScenarioKey,
   scenarioData: AllScenarioData | null,
 ): number | null {
@@ -231,75 +211,108 @@ function cfOperatingActivityScenarioYuan(
   const pA = cfPlan26Yuan(rAdv);
   const pE = cfPlan26Yuan(rExp);
   if (pS == null || pG == null || pA == null || pE == null) return null;
-  const adjS = cfWcLinkedPlanYuan(rSales, scKey, pS, wc, scenarioData);
-  const adjG = cfWcLinkedPlanYuan(rGoods, scKey, pG, wc, scenarioData);
+  const adjS = cfWcLinkedPlanYuan(rSales, scKey, pS, scenarioData);
+  const adjG = cfWcLinkedPlanYuan(rGoods, scKey, pG, scenarioData);
   if (adjS == null || adjG == null) return null;
-  return adjS + adjG + pA + pE;
+  const adjPn = cfSimPosNegAdjustYuan(scKey, scenarioData);
+  const adjTax = cfSimCorpTaxAdjustYuan(scKey, scenarioData);
+  if (adjPn == null || adjTax == null) return null;
+  return adjS + adjG + pA + pE + adjPn + adjTax;
 }
 
 /**
- * 부정·긍정 net cash(원) = 영업활동 시나리오 합 + 자산성지출 + 기타수익 + 차입금 (표와 동일 규칙)
+ * 부정·긍정 차입금 연간(원): 기존계획 차입 − (△영업활동 + △자산성지출 + △기타수익).
+ * △ = 해당 대분류 연간(시나리오 − 기존계획). 자산성·기타는 기존계획 미러이므로 Δ=0.
+ * 차입금이 음수(갚은 것)이므로 영업 악화(△ < 0) → 덜 갚음(차입이 덜 음수).
  */
-function cfNetCashScenarioYuan(
+function cfBorrowScenarioFlowYuan(
   rows: CFHierarchyApiRow[] | null,
-  wc: ScenarioWcDataForCf | null,
   scKey: ScenarioKey,
   scenarioData: AllScenarioData | null,
 ): number | null {
   if (!rows?.length || scKey === 'base') return null;
-  const op = cfOperatingActivityScenarioYuan(rows, wc, scKey, scenarioData);
-  if (op == null) return null;
-  const rCapex = rows.find((r) => r.account === '자산성지출' && r.level === 0 && r.isGroup);
-  const rOther = rows.find((r) => r.account === '기타수익' && r.level === 0);
+  const rOp = rows.find((r) => r.level === 0 && r.account === '영업활동' && r.isGroup);
+  const rCap = rows.find((r) => r.account === '자산성지출' && r.level === 0 && r.isGroup);
+  const rOth = rows.find((r) => r.account === '기타수익' && r.level === 0);
   const rBorrow = rows.find((r) => r.account === '차입금' && r.level === 0);
-  if (!rCapex || !rOther || !rBorrow) return null;
-  const pC = cfPlan26Yuan(rCapex);
-  const pO = cfPlan26Yuan(rOther);
+  if (!rOp || !rCap || !rOth || !rBorrow) return null;
+  const opPl = cfPlan26Yuan(rOp);
+  const cPl = cfPlan26Yuan(rCap);
+  const oPl = cfPlan26Yuan(rOth);
   const pB = cfPlan26Yuan(rBorrow);
-  if (pC == null || pO == null || pB == null) return null;
-  return op + pC + pO + pB;
+  if (opPl == null || cPl == null || oPl == null || pB == null) return null;
+  const opSc = cfOperatingActivityScenarioYuan(rows, scKey, scenarioData);
+  if (opSc == null) return null;
+  const cSc = cPl;
+  const oSc = oPl;
+  return pB - (opSc - opPl) - (cSc - cPl) - (oSc - oPl);
 }
 
 /**
- * 시나리오 모달 현금·차입 기말(K): (1) 기존계획 기말현금 + net cash 시나리오−기존(원)→K,
- * (2) [100k,120k] 밴드로 차입·상환, (3) 상한 초과분 상환은 min(기존계획 차입잔액K, 초과차이K), 나머지는 현금 잔류.
+ * 부정·긍정 net cash 연간(원): 영업활동 + 자산성지출 + 기타수익 + 차입금 (4개 항목 합산).
  */
-function scenarioCashBorrowClosingK(
-  cashPlanBaseK: number | null,
-  debtPlanBaseK: number | null,
-  ncBaseYuan: number | null,
-  ncScYuan: number | null,
+function cfNetCashScenarioYuan(
+  rows: CFHierarchyApiRow[] | null,
+  scKey: ScenarioKey,
+  scenarioData: AllScenarioData | null,
+): number | null {
+  if (!rows?.length || scKey === 'base') return null;
+  const rCap = rows.find((r) => r.account === '자산성지출' && r.level === 0 && r.isGroup);
+  const rOth = rows.find((r) => r.account === '기타수익' && r.level === 0);
+  if (!rCap || !rOth) return null;
+  const cPl = cfPlan26Yuan(rCap);
+  const oPl = cfPlan26Yuan(rOth);
+  if (cPl == null || oPl == null) return null;
+  const opSc = cfOperatingActivityScenarioYuan(rows, scKey, scenarioData);
+  const borrowSc = cfBorrowScenarioFlowYuan(rows, scKey, scenarioData);
+  if (opSc == null || borrowSc == null) return null;
+  // 자산성·기타는 기존계획 미러
+  return opSc + cPl + oPl + borrowSc;
+}
+
+/**
+ * 시나리오 모달 「현금 & 차입금」기말(K): 위 현금흐름표와 동일 헬퍼로 연간(원) 차이 → 반올림 K.
+ * 기말차입K = 기존계획 기말차입K + round((차입_sc − 차입_pl) / 1000)
+ *   (차입_sc > 차입_pl 이면 덜 갚은 것 → 잔액 증가)
+ *   단, 차입금 잔액은 0 하한 적용: 초과 상환분은 기말현금으로 이전.
+ * 기말현금K = 기존계획 기말현금K + round((net_sc − net_pl) / 1000) + 초과상환잉여K
+ */
+function cfScenarioCbdClosingPairK(
+  rows: CFHierarchyApiRow[] | null,
+  scKey: ScenarioKey,
+  scenarioData: AllScenarioData | null,
+  cashPlanK: number | null,
+  debtPlanK: number | null,
+  ncPlYuan: number | null,
+  borrowPlYuan: number | null,
 ): { cash: number; debt: number } | null {
   if (
-    cashPlanBaseK === null ||
-    debtPlanBaseK === null ||
-    ncBaseYuan === null ||
-    ncScYuan === null
+    rows == null ||
+    scKey === 'base' ||
+    cashPlanK == null ||
+    debtPlanK == null ||
+    ncPlYuan == null ||
+    borrowPlYuan == null
   ) {
     return null;
   }
   if (
-    !Number.isFinite(cashPlanBaseK) ||
-    !Number.isFinite(debtPlanBaseK) ||
-    !Number.isFinite(ncBaseYuan) ||
-    !Number.isFinite(ncScYuan)
+    !Number.isFinite(cashPlanK) ||
+    !Number.isFinite(debtPlanK) ||
+    !Number.isFinite(ncPlYuan) ||
+    !Number.isFinite(borrowPlYuan)
   ) {
     return null;
   }
-  const cashStep1K = cashPlanBaseK + Math.round((ncScYuan - ncBaseYuan) / 1000);
-  let borrowDeltaK = 0;
-  let repayActualK = 0;
-  if (cashStep1K < SCENARIO_CASH_BAND_LOW_K) {
-    borrowDeltaK = SCENARIO_CASH_BAND_LOW_K - cashStep1K;
-  } else if (cashStep1K > SCENARIO_CASH_BAND_HIGH_K) {
-    const excessAboveBandK = cashStep1K - SCENARIO_CASH_BAND_HIGH_K;
-    const debtBalanceK = Math.max(0, debtPlanBaseK);
-    // 상환할 현금(초과분)이 차입잔액보다 크면 차입잔액만 상환, 초과분은 현금에 잔류
-    repayActualK = Math.min(debtBalanceK, excessAboveBandK);
-  }
-  const cashFinalK = cashStep1K + borrowDeltaK - repayActualK;
-  const debtFinalK = debtPlanBaseK + borrowDeltaK - repayActualK;
-  return { cash: cashFinalK, debt: debtFinalK };
+  const ncSc = cfNetCashScenarioYuan(rows, scKey, scenarioData);
+  const borrowSc = cfBorrowScenarioFlowYuan(rows, scKey, scenarioData);
+  if (ncSc == null || borrowSc == null) return null;
+  const rawDebtK = debtPlanK + Math.round((borrowSc - borrowPlYuan) / 1000);
+  // 차입금 잔액 0 하한: 창출 현금이 잔액보다 크면 초과분은 기말현금으로 이전
+  const debtK = Math.max(0, rawDebtK);
+  const surplusK = Math.max(0, -rawDebtK);
+  const cashK = cashPlanK + Math.round((ncSc - ncPlYuan) / 1000) + surplusK;
+  return { cash: cashK, debt: debtK };
 }
 
 /** PL 시나리오 모달: 해당 시나리오 연간 − 기존계획 연간. number는 K(원÷1000), percent는 YOY와 동일 %p */
@@ -510,18 +523,86 @@ function sumOrNull(values: (number | null)[]): number | null {
   return values.reduce<number>((sum, v) => sum + (v ?? 0), 0);
 }
 
+/** 법인 실판매출(V-): FY26 월합(원), PL 시나리오 표와 동일 소스 */
+function corpRealSalesAnnual26Yuan(result: ScenarioResult): number | null {
+  const series = result.corporate.salesActual.total;
+  return sumOrNull(series ?? []);
+}
+
+/** 부정·긍정: 법인 실판매출(V-)(FY26 월합 원) 시나리오−기존계획을 K 정수로 */
+function corpRealSalesVsBaseDeltaK(scKey: ScenarioKey, scenarioData: AllScenarioData | null): number | null {
+  if (!scenarioData || scKey === 'base') return null;
+  const sSc = corpRealSalesAnnual26Yuan(scenarioData[scKey]);
+  const sBase = corpRealSalesAnnual26Yuan(scenarioData.base);
+  if (sSc == null || sBase == null) return null;
+  return Math.round((sSc - sBase) / 1000);
+}
+
+/** 법인 매출원가: FY26 월합(원), PL 시나리오 표와 동일 소스 */
+function corpCogsAnnual26Yuan(result: ScenarioResult): number | null {
+  const series = result.corporate.calculated.monthly['매출원가'];
+  return sumOrNull(series ?? []);
+}
+
+/** 부정·긍정: 법인 매출원가(FY26 월합 원) 시나리오−기존계획을 K 정수로 */
+function corpCogsVsBaseDeltaK(scKey: ScenarioKey, scenarioData: AllScenarioData | null): number | null {
+  if (!scenarioData || scKey === 'base') return null;
+  const cSc = corpCogsAnnual26Yuan(scenarioData[scKey]);
+  const cBase = corpCogsAnnual26Yuan(scenarioData.base);
+  if (cSc == null || cBase == null) return null;
+  return Math.round((cSc - cBase) / 1000);
+}
+
+/** 법인 직접비+영업비: FY26 월합(원), PL 시나리오 표와 동일 */
+function corpDirectOpexAnnual26Yuan(result: ScenarioResult): number | null {
+  const m = result.corporate.calculated.monthly;
+  const d = m['직접비'] ?? [];
+  const o = m['영업비'] ?? [];
+  const combined = Array.from({ length: 12 }, (_, i) => {
+    const di = d[i] ?? null;
+    const oi = o[i] ?? null;
+    if (di === null && oi === null) return null;
+    return (di ?? 0) + (oi ?? 0);
+  });
+  return sumOrNull(combined);
+}
+
+/** 부정·긍정: (직접비+영업비) FY26 시나리오−기존계획을 K 정수로 */
+function corpDirectOpexVsBaseDeltaK(scKey: ScenarioKey, scenarioData: AllScenarioData | null): number | null {
+  if (!scenarioData || scKey === 'base') return null;
+  const xSc = corpDirectOpexAnnual26Yuan(scenarioData[scKey]);
+  const xBase = corpDirectOpexAnnual26Yuan(scenarioData.base);
+  if (xSc == null || xBase == null) return null;
+  return Math.round((xSc - xBase) / 1000);
+}
+
+/**
+ * 시뮬 「부정/긍정 조정」행 연간(원): PL 비용 증감과 CF(비용=유출) 부호 맞춤 위해 −Δ×1000.
+ * 기존계획 CF 금액 없음 — 표시는 차액만.
+ */
+function cfSimPosNegAdjustYuan(scKey: ScenarioKey, scenarioData: AllScenarioData | null): number | null {
+  const dK = corpDirectOpexVsBaseDeltaK(scKey, scenarioData);
+  if (dK == null) return null;
+  return -dK * 1000;
+}
+
+/** 법인 영업이익: FY26 월합(원), PL 시나리오 표와 동일 */
 function corpOperatingProfitAnnual26Yuan(result: ScenarioResult): number | null {
   const series = result.corporate.calculated.monthly['영업이익'];
   return sumOrNull(series ?? []);
 }
 
-/** 부정·긍정: 법인 영업이익(FY26 월합 원) 시나리오−기존계획을 K 정수로 */
-function corpOperatingProfitVsBaseDeltaK(scKey: ScenarioKey, scenarioData: AllScenarioData | null): number | null {
+/**
+ * 시뮬 「법인세 조정」행 연간(원): − round(0.25×(OI_sc−OI_base)/1000)×1000 (CF 비용 유출 부호).
+ * 기존계획 CF 금액 없음 — 표시는 차액만.
+ */
+function cfSimCorpTaxAdjustYuan(scKey: ScenarioKey, scenarioData: AllScenarioData | null): number | null {
   if (!scenarioData || scKey === 'base') return null;
   const oiSc = corpOperatingProfitAnnual26Yuan(scenarioData[scKey]);
   const oiBase = corpOperatingProfitAnnual26Yuan(scenarioData.base);
   if (oiSc == null || oiBase == null) return null;
-  return Math.round((oiSc - oiBase) / 1000);
+  const taxDeltaK = Math.round((SCENARIO_CF_CORP_TAX_RATE * (oiSc - oiBase)) / 1000);
+  return -taxDeltaK * 1000;
 }
 
 function makeMonthlyArray(calc: (idx: number) => number | null): (number | null)[] {
@@ -3620,21 +3701,25 @@ export default function PLForecastTab() {
                 };
                 const netCashRowCbd = scenarioCfRows?.find((r) => r.account === 'net cash') ?? null;
                 const ncBaseYuanCbd = netCashRowCbd ? cfPlan26Yuan(netCashRowCbd) : null;
+                const borrowRowCbd = scenarioCfRows?.find((r) => r.account === '차입금' && r.level === 0) ?? null;
+                const borrowPlYuanCbd = borrowRowCbd ? cfPlan26Yuan(borrowRowCbd) : null;
                 const scenarioCbdClosingK: Partial<Record<ScenarioKey, { cash: number; debt: number }>> = {};
                 for (const sk of SCENARIO_ORDER) {
                   if (sk === 'base') continue;
-                  const ncSc = cfNetCashScenarioYuan(scenarioCfRows, scenarioWcData, sk, scenarioData);
-                  const pair = scenarioCashBorrowClosingK(
+                  const pair = cfScenarioCbdClosingPairK(
+                    scenarioCfRows,
+                    sk,
+                    scenarioData,
                     scenarioCashBorrowPlanK?.cash ?? null,
                     scenarioCashBorrowPlanK?.debt ?? null,
                     ncBaseYuanCbd,
-                    ncSc,
+                    borrowPlYuanCbd,
                   );
                   if (pair) scenarioCbdClosingK[sk] = pair;
                 }
                 return (
                   <Fragment>
-                  <table className="w-full border border-slate-200 border-separate border-spacing-0 text-xs">
+                  <table className="mb-6 w-full border border-slate-200 border-separate border-spacing-0 text-xs">
                     {/* ── 헤더 ── */}
                     <thead className="sticky top-0 z-20">
                       <tr>
@@ -3869,12 +3954,6 @@ export default function PLForecastTab() {
                       })}
                     </tbody>
                   </table>
-                  <p className="mt-2 mb-6 text-[10px] leading-relaxed text-slate-500">
-                    <span className="font-semibold text-slate-600">손익계산서</span> · 3개 시나리오 연간 비교 · 단위: K CNY.{' '}
-                    <span className="font-semibold text-slate-600">열 정의:</span> 각 시나리오는 연간·YOY 순이며,{' '}
-                    <span className="font-medium text-slate-600">부정·긍정</span>만 YOY 우측에 기존계획대비(해당 시나리오 연간 − 기존계획 연간, 금액은 K·비율행은 %p)가 붙습니다.{' '}
-                    기존계획의 YOY 다음은 곧 긍정 연간 열입니다.
-                  </p>
 
                   {/* 운전자본표: 법인 전체 · 요약/전체 PL 전환과 무관하게 항상 표시 */}
                   {(() => {
@@ -3901,7 +3980,7 @@ export default function PLForecastTab() {
                           <thead className="sticky top-0 z-20">
                             <tr>
                               <th className="sticky left-0 z-30 min-w-[200px] border-b border-r border-slate-200 bg-gradient-to-r from-[#2f4f7f] to-[#3b5f93] px-3 py-2.5 text-center font-semibold text-white">
-                                운전자본표
+                                운전자본표 (법인전체, K단위)
                               </th>
                               <th className="min-w-[88px] border-b border-b-slate-200 border-r border-r-slate-200 bg-slate-700 px-3 py-2.5 text-center font-semibold text-slate-100">
                                 2025실적
@@ -4016,7 +4095,6 @@ export default function PLForecastTab() {
                             })}
                           </tbody>
                         </table>
-                        <p className="mt-2 text-[10px] text-slate-500">법인 전체 · 단위: K CNY</p>
                         <div className="mt-3">
                           <button
                             type="button"
@@ -4029,53 +4107,20 @@ export default function PLForecastTab() {
                             <span>계산 로직 범례 (부정 / 기존계획 / 긍정)</span>
                           </button>
                           {wcLegendOpen && (
-                            <div className="mt-2 space-y-2.5 rounded-lg border border-slate-200 bg-slate-50/95 px-3 py-2.5 text-[11px] leading-snug text-slate-700">
-                              <p className="text-[10px] text-slate-600">표는 법인 전체 기준이며, 단위는 K CNY입니다.</p>
-                              <div>
-                                <span className="font-semibold text-slate-800">매출채권 · 매입채무 (성장률 → 매출 규모 → 동일 비율 스케일)</span>
-                                <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-slate-600">
-                                  <li>
-                                    기준 K: <span className="font-mono text-[10px]">GET /api/pl-forecast/wc-forecast</span>의 법인{' '}
-                                    <span className="font-mono text-[10px]">wc_ar</span> · <span className="font-mono text-[10px]">wc_ap</span>(원) 각각 ÷ 1,000. 매입채무는 CSV 부호를 그대로 둠.
-                                  </li>
-                                  <li>
-                                    부정·기존계획·긍정마다 시나리오 정의의 <span className="font-medium">브랜드별 대리상·직영 성장률</span>로{' '}
-                                    <span className="font-mono text-[10px]">/api/inventory/retail-sales</span> → PL 재계산 → 법인{' '}
-                                    <span className="font-medium">salesActual.total</span> 12개월 합 × 1.13 = 해당 시나리오의 실판매출(V+) 연간 규모{' '}
-                                    <span className="font-mono text-[10px]">V+_sc</span>.
-                                  </li>
-                                  <li>
-                                    <span className="font-medium">기존계획</span>의 <span className="font-mono text-[10px]">V+_기존</span>을 분모로, AR·AP 모두 같은 배율만 적용:{' '}
-                                    <span className="font-mono text-[10px]">값_sc = 값_기준K × (V+_sc ÷ V+_기존)</span>.{' '}
-                                    <span className="font-mono text-[10px]">V+_기존 = 0</span>이면 스케일 생략. 기존계획 열은 배율 1이라 기준 K와 동일.
-                                  </li>
-                                </ul>
-                              </div>
-                              <div>
-                                <span className="font-semibold text-slate-800">재고자산</span>
-                                <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-slate-600">
-                                  <li>
-                                    브랜드별 TAG(K): <span className="font-mono text-[10px]">GET /api/inventory/scenario-inventory</span>의{' '}
-                                    <span className="font-mono text-[10px]">closing[시나리오][브랜드]</span>(재고자산(sim) 재계산·저장). 미저장 시 재고 행은 비움.
-                                  </li>
-                                  <li>
-                                    브랜드 원가 재고 K: <span className="font-mono text-[10px]">(TAG_K ÷ 1.13) × Tag대비원가율 × (1 − 평가감율)</span>. Tag대비원가율은{' '}
-                                    <span className="font-mono text-[10px]">localStorage pl_tag_cost_ratio_annual</span>, 평가감율은 CF(sim)과 동일(MLB·KIDS·DISCOVERY 고정율).
-                                  </li>
-                                  <li>법인 재고 합계: 세 브랜드 <span className="font-mono text-[10px]">costK</span> 합.</li>
-                                </ul>
-                              </div>
-                              <div>
-                                <span className="font-semibold text-slate-800">전년대비 · 기존계획대비</span>
-                                <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-slate-600">
-                                  <li>합계: 매출채권 + 재고자산(원가) + 매입채무(기준값 부호 그대로 합산).</li>
-                                  <li>전년대비: 2025 실적(K) 대비 해당 시나리오 금액(K) 차이(정수). 양수는 + 표기.</li>
-                                  <li>
-                                    기존계획대비: <span className="font-medium">부정계획·긍정계획</span> 열에만 표시. 해당 시나리오(K) −{' '}
-                                    <span className="font-medium">기존계획</span> 열(K) 차이(정수). 기존계획 열은 기준이므로 세 번째 열 없음.
-                                  </li>
-                                </ul>
-                              </div>
+                            <div className="mt-2 space-y-2 rounded-lg border border-slate-200 bg-slate-50/95 px-3 py-2.5 text-[11px] leading-snug text-slate-700">
+                              <p className="text-[10px] text-slate-600">
+                                <span className="font-semibold text-slate-800">매출채권(K)</span> = 연말기준 AR(K) × (V+해당시나리오 ÷ V+기존계획).{' '}
+                                <span className="text-slate-500">
+                                  [설명] V+가 기존계획 대비 10% 내려가면, AR도 그 연말 기준 금액 대비 10% 내려갑니다. 직영·대리상을 나눠 따로 감소율을 넣지 않고, 법인 합산
+                                  AR 한 덩어리를 매출 규모 비율로만 움직입니다.
+                                </span>
+                              </p>
+                              <p className="text-[10px] text-slate-600">
+                                <span className="font-semibold text-slate-800">매입채무(K)</span> = 연말기준 AP(K) × (V+해당시나리오 ÷ V+기존계획).
+                              </p>
+                              <p className="text-[10px] text-slate-600">
+                                <span className="font-semibold text-slate-800">재고자산(K)</span>: 재고자산(sim)에서 부정·기존계획·긍정 시나리오로 계산·저장한 결과.
+                              </p>
                             </div>
                           )}
                         </div>
@@ -4197,19 +4242,128 @@ export default function PLForecastTab() {
                                     </td>
                                     {SCENARIO_ORDER.map((scKey) => {
                                       const isBase = scKey === 'base';
+                                      const isCfSimExpenseAdjustRow =
+                                        row.대분류 === '영업활동' &&
+                                        row.중분류 === '비용' &&
+                                        row.level === 2 &&
+                                        (row.account === SCENARIO_CF_POS_NEG_ADJUST_ACCOUNT ||
+                                          row.account === SCENARIO_CF_TAX_ADJUST_ACCOUNT);
                                       if (isBase) {
                                         return (
                                           <Fragment key={`cf-sc-${row.account}-${scKey}`}>
                                             <td
                                               className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_THIN_R} ${plan26 != null && plan26 < 0 ? 'text-red-600' : 'text-slate-700'}`}
                                             >
-                                              {plan26 != null ? formatScenarioCfAmount(plan26) : '-'}
+                                              {isCfSimExpenseAdjustRow
+                                                ? '-'
+                                                : plan26 != null
+                                                  ? formatScenarioCfAmount(plan26)
+                                                  : '-'}
                                             </td>
                                             <td className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_BLK_R} text-slate-600`}>
-                                              {formatScenarioCfYoyDiff(plan26, actual25)}
+                                              {isCfSimExpenseAdjustRow ? '-' : formatScenarioCfYoyDiff(plan26, actual25)}
                                             </td>
                                           </Fragment>
                                         );
+                                      }
+                                      if (
+                                        (scKey === 'negative' || scKey === 'positive') &&
+                                        row.대분류 === '영업활동' &&
+                                        row.account === '비용' &&
+                                        row.isGroup &&
+                                        row.level === 1
+                                      ) {
+                                        const adjPn = cfSimPosNegAdjustYuan(scKey, scenarioData);
+                                        const adjTax = cfSimCorpTaxAdjustYuan(scKey, scenarioData);
+                                        if (plan26 != null && adjPn != null && adjTax != null) {
+                                          const expTotal = plan26 + adjPn + adjTax;
+                                          return (
+                                            <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                              <td
+                                                className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_THIN_R} ${expTotal < 0 ? 'text-red-600' : 'text-slate-700'}`}
+                                              >
+                                                {formatScenarioCfAmount(expTotal)}
+                                              </td>
+                                              <td className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_THIN_R} text-slate-600`}>
+                                                {formatScenarioCfYoyDiff(expTotal, actual25)}
+                                              </td>
+                                              <td
+                                                className={`${cfTdNumCore} text-slate-600 ${scKey === 'positive' ? 'border-r-0' : SCENARIO_COL_DIVIDER_BLK_R}`}
+                                              >
+                                                {formatScenarioCfVsBase(expTotal, plan26)}
+                                              </td>
+                                            </Fragment>
+                                          );
+                                        }
+                                      }
+                                      if ((scKey === 'negative' || scKey === 'positive') && isCfSimExpenseAdjustRow) {
+                                        const adjSim =
+                                          row.account === SCENARIO_CF_POS_NEG_ADJUST_ACCOUNT
+                                            ? cfSimPosNegAdjustYuan(scKey, scenarioData)
+                                            : cfSimCorpTaxAdjustYuan(scKey, scenarioData);
+                                        if (adjSim != null) {
+                                          return (
+                                            <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                              <td
+                                                className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_THIN_R} ${adjSim < 0 ? 'text-red-600' : 'text-slate-700'}`}
+                                              >
+                                                {formatScenarioCfAmount(adjSim)}
+                                              </td>
+                                              <td className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_THIN_R} text-slate-600`}>
+                                                {formatScenarioCfYoyDiff(adjSim, actual25)}
+                                              </td>
+                                              <td
+                                                className={`${cfTdNumCore} text-slate-600 ${scKey === 'positive' ? 'border-r-0' : SCENARIO_COL_DIVIDER_BLK_R}`}
+                                              >
+                                                {formatScenarioCfVsBase(adjSim, plan26)}
+                                              </td>
+                                            </Fragment>
+                                          );
+                                        }
+                                        return (
+                                          <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                            <td className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_THIN_R} text-slate-400`}>-</td>
+                                            <td className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_THIN_R} text-slate-400`}>-</td>
+                                            <td
+                                              className={`${cfTdNumCore} text-slate-600 ${scKey === 'positive' ? 'border-r-0' : SCENARIO_COL_DIVIDER_BLK_R}`}
+                                            >
+                                              -
+                                            </td>
+                                          </Fragment>
+                                        );
+                                      }
+                                      if (
+                                        (scKey === 'negative' || scKey === 'positive') &&
+                                        row.account === '차입금' &&
+                                        row.level === 0 &&
+                                        !row.isGroup
+                                      ) {
+                                        const borrowSc = cfBorrowScenarioFlowYuan(
+                                          scenarioCfRows,
+                                          scKey,
+                                          scenarioData,
+                                        );
+                                        if (borrowSc != null) {
+                                          return (
+                                            <Fragment key={`cf-sc-${row.account}-${scKey}`}>
+                                              <td
+                                                className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_THIN_R} ${borrowSc < 0 ? 'text-red-600' : 'text-slate-700'}`}
+                                              >
+                                                {formatScenarioCfAmount(borrowSc)}
+                                              </td>
+                                              <td className={`${cfTdNumCore} ${SCENARIO_COL_DIVIDER_THIN_R} text-slate-600`}>
+                                                {formatScenarioCfYoyDiff(borrowSc, actual25)}
+                                              </td>
+                                              <td
+                                                className={`${cfTdNumCore} text-slate-600 ${scKey === 'positive' ? 'border-r-0' : SCENARIO_COL_DIVIDER_BLK_R}`}
+                                              >
+                                                {plan26 != null
+                                                  ? formatScenarioCfVsBase(borrowSc, plan26)
+                                                  : '-'}
+                                              </td>
+                                            </Fragment>
+                                          );
+                                        }
                                       }
                                       if (scenarioCfRowMirrorsBasePlan(row)) {
                                         return (
@@ -4238,7 +4392,6 @@ export default function PLForecastTab() {
                                       ) {
                                         const opSum = cfOperatingActivityScenarioYuan(
                                           scenarioCfRows,
-                                          scenarioWcData,
                                           scKey,
                                           scenarioData,
                                         );
@@ -4270,7 +4423,6 @@ export default function PLForecastTab() {
                                       ) {
                                         const ncSum = cfNetCashScenarioYuan(
                                           scenarioCfRows,
-                                          scenarioWcData,
                                           scKey,
                                           scenarioData,
                                         );
@@ -4298,7 +4450,7 @@ export default function PLForecastTab() {
                                       }
                                       const cfWcAdj =
                                         scKey === 'negative' || scKey === 'positive'
-                                          ? cfWcLinkedPlanYuan(row, scKey, plan26, scenarioWcData, scenarioData)
+                                          ? cfWcLinkedPlanYuan(row, scKey, plan26, scenarioData)
                                           : null;
                                       if (cfWcAdj != null) {
                                         return (
@@ -4346,50 +4498,37 @@ export default function PLForecastTab() {
                             <span className="inline-flex w-4 shrink-0 justify-center text-[10px] text-slate-500 tabular-nums">
                               {scenarioCfLegendOpen ? '▼' : '▶'}
                             </span>
-                            <span>데이터 출처 · 열 정의</span>
+                            <span>계산로직 (부정 / 기존계획 / 긍정)</span>
                           </button>
                           {scenarioCfLegendOpen && (
-                            <div className="mt-2 space-y-2 rounded-none border border-slate-200 bg-slate-50/95 px-3 py-2.5 text-[11px] leading-snug text-slate-700">
-                              <p className="text-slate-600">
-                                <span className="font-semibold text-slate-800">표 요약:</span> 연간 합계 · 단위 K CNY · 계층은 메인 탭 현금흐름과 동일.
+                            <div className="mt-2 space-y-2 rounded-none border border-slate-200 bg-slate-50/95 px-3 py-2.5 text-[11px] leading-relaxed text-slate-700">
+                              <p className="text-[10px] text-blue-700">
+                                ※ 영업활동 중요가정: 매출증감은 매출수금에 직접 반영 | 매출원가 증감은 물품대에 직접 반영 | 직접비·영업비·법인세 증감은 비용에 반영 [법인세율 25%]
                               </p>
-                              <p>
-                                <span className="font-semibold text-slate-800">출처:</span>{' '}
-                                <span className="font-mono text-[10px]">GET /api/fs/cf-hierarchy?year=2026</span> ·{' '}
-                                <span className="font-mono text-[10px]">파일/cashflow</span> 연도별 CSV (메인 현금흐름표와 동일).
+                              <p className="text-[10px] text-slate-600">
+                                <span className="font-semibold text-slate-800">(1) 매출수금(부정/긍정)</span>{' '}
+                                = 기존계획 매출수금 + (부정/긍정) PL 실판매출(V-)의 기존계획대비 증감
                               </p>
-                              <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
-                                <li>
-                                  <span className="font-medium">2025년 실적</span>: API 행의 전년 합계(<span className="font-mono text-[10px]">values[0]</span>).
-                                </li>
-                                <li>
-                                  열 순서: <span className="font-medium">부정계획</span>(값·전년대비·기존계획대비) → <span className="font-medium">기존계획</span>(값·전년대비만) →{' '}
-                                  <span className="font-medium">긍정계획</span>(값·전년대비·기존계획대비).
-                                </li>
-                                <li>
-                                  <span className="font-medium">기존계획</span>: 2026년 연간 합계(<span className="font-mono text-[10px]">values[13]</span>), 메인 탭 당년 합계와 동일.
-                                </li>
-                                <li>
-                                  <span className="font-medium">전년대비</span>(각 시나리오 옆): 해당 연간(원) − <span className="font-mono text-[10px]">values[0]</span> 후 ÷ 1000 정수(K), 양수는 + 표기.
-                                </li>
-                                <li>
-                                  <span className="font-medium">기존계획대비</span>(부정·긍정만): 해당 시나리오 연간(원) − 기존계획(<span className="font-mono text-[10px]">values[13]</span>) 후 ÷ 1000 정수(K). 미연동 시 <span className="font-mono text-[10px]">-</span>.
-                                </li>
-                                <li>
-                                  <span className="font-medium">PL 미연동 행</span>(부정·긍정): 자산성지출(합계·하위), 기타수익, 차입금, 영업활동의 비용(합계·하위)·본사선급금은 기존계획 열과 동일 금액·전년대비로 채우며 기존계획대비는 <span className="font-mono text-[10px]">0</span>.
-                                </li>
-                                <li>
-                                  <span className="font-medium">운전자본·PL 연동</span>(부정·긍정): 영업활동의 <span className="font-medium">매출수금</span>·<span className="font-medium">물품대</span> 그룹 행만. <span className="font-medium">매출수금</span> 연간 = 기존계획(<span className="font-mono text-[10px]">values[13]</span>) + 운전자본표 매출채권 기존계획대비(K)×1,000원 + <span className="font-medium">법인 영업이익</span> 기존계획대비(K)×1,000원(시나리오 PL 월별 영업이익 합 − 기존계획 합을 K로 반올림 후 ×1,000). <span className="font-medium">물품대</span>는 매입채무 기존계획대비(K)×1,000만 가산. 하위 행은 미연동.
-                                </li>
-                                <li>
-                                  <span className="font-medium">영업활동</span> 합계(부정·긍정): 위 표에서 쓰는 값과 동일하게{' '}
-                                  <span className="font-medium">매출수금·물품대·본사선급금·비용</span> 네 그룹 행의 연간을 합산(매출수금은 WC+법인영업이익 연동, 물품대는 WC만, 본사선급금·비용은 기존계획 연간). 운전자본·PL을 맞출 수 없으면 <span className="font-mono text-[10px]">-</span>.
-                                </li>
-                                <li>
-                                  <span className="font-medium">net cash</span>(부정·긍정):{' '}
-                                  <span className="font-medium">영업활동</span> 시나리오 연간 + <span className="font-medium">자산성지출</span> + <span className="font-medium">기타수익</span> + <span className="font-medium">차입금</span> 연간(각각 위 표와 동일 규칙·기존계획 <span className="font-mono text-[10px]">values[13]</span> 기준). 영업활동 합을 못 구하면 <span className="font-mono text-[10px]">-</span>.
-                                </li>
-                              </ul>
+                              <p className="text-[10px] text-slate-600">
+                                <span className="font-semibold text-slate-800">(2) 물품대(부정/긍정)</span>{' '}
+                                = 기존계획 물품대 − (부정/긍정) PL 매출원가의 기존계획대비 증감
+                              </p>
+                              <p className="text-[10px] text-slate-600">
+                                <span className="font-semibold text-slate-800">(3) 비용</span>{' '}
+                                기존계획 CF 없음·차액만.{' '}
+                                <span className="font-medium text-slate-700">부정/긍정 조정</span> 연간 = −(해당 PL 직접비+영업비 기존계획대비 증감).{' '}
+                                <span className="font-medium text-slate-700">법인세 조정</span> 연간 = −(PL 영업이익 기존계획대비 증감 × 법인세율 25%, K 반올림).
+                              </p>
+                              <p className="border-t border-slate-200 pt-2 text-[10px] text-slate-600">
+                                <span className="font-semibold text-slate-800">차입금(부정·긍정)</span>{' '}
+                                = 기존계획 차입금 − (△영업활동 + △자산성지출 + △기타수익).{' '}
+                                <span className="text-slate-500">※ △: 기존계획대비 증감. 자산성·기타는 기존계획 미러이므로 Δ=0.</span>{' '}
+                                <span className="text-blue-600">※ 기말차입금잔액 0 하한: 창출 현금이 잔액 한도를 초과하면 차입금 = 0, 초과분은 기말현금에 반영.</span>
+                              </p>
+                              <p className="text-[10px] text-slate-600">
+                                <span className="font-semibold text-slate-800">net cash</span>{' '}
+                                = 영업활동 + 자산성지출 + 기타수익 + 차입금 (4개 항목 합산).
+                              </p>
                             </div>
                           )}
                         </div>
@@ -4402,7 +4541,7 @@ export default function PLForecastTab() {
                       <thead className="sticky top-0 z-20">
                         <tr>
                           <th className="sticky left-0 z-30 min-w-[200px] border-b border-r border-slate-200 bg-gradient-to-r from-[#2f4f7f] to-[#3b5f93] px-3 py-2.5 text-center font-semibold text-white">
-                            현금 &amp; 차입금
+                            현금 &amp; 차입금 (법인전체, K단위)
                           </th>
                           <th className="min-w-[88px] border-b border-b-slate-200 border-r border-r-slate-200 bg-slate-700 px-3 py-2.5 text-center font-semibold text-slate-100">
                             기초잔액
@@ -4496,19 +4635,15 @@ export default function PLForecastTab() {
                     </table>
                     <div className="mt-2 space-y-1.5 text-[10px] text-slate-500">
                       <p>
-                        법인 전체 · 단위: K CNY · 기존계획 기말잔액은{' '}
-                        <span className="font-mono text-[10px]">GET /api/fs/cash-borrowing?year=2026</span> 시리즈 기말(인덱스 13)
+                        csv파일: <span className="font-mono text-[10px]">파일/현금차입금잔액/2026.csv</span> 기말잔액, 페이지 새로고침 하면 즉시 반영
                       </p>
                       <p className="leading-snug">
-                        <span className="font-semibold text-slate-600">부정·긍정 기말(현금·차입)</span>: (1) 잠정현금K = 기존계획 기말현금K + 위 현금흐름표{' '}
-                        <span className="font-medium">net cash</span>의 시나리오−기존계획(원)을 ÷1000 반올림한 K. (2) 목표구간{' '}
-                        {SCENARIO_CASH_BAND_LOW_K.toLocaleString()}K~{SCENARIO_CASH_BAND_HIGH_K.toLocaleString()}K — 잠정현금이 하한 미만이면 그만큼{' '}
-                        <span className="font-medium">차입 증가</span>, 상한 초과분(잠정현금 − 상한)은 상환 후보이나{' '}
-                        <span className="font-medium">실제상환K = min(기존계획 차입잔액K, 그 초과분)</span>
-                        (차입보다 많이 갚을 수 없음, 나머지는 현금 잔류). (3){' '}
-                        <span className="font-medium">기말현금K</span> = 잠정현금 + 차입증가 − 실제상환,{' '}
-                        <span className="font-medium">기말차입K</span> = 기존계획 차입 + 차입증가 − 실제상환. net cash를 산출할 수 없으면{' '}
-                        <span className="font-mono">-</span>.
+                        <span className="font-semibold text-slate-600">차입금잔액(부정/긍정)</span>{' '}
+                        = 기존계획 차입금잔액 + 현금흐름표 차입금의 기존계획대비 증감.{' '}
+                        <span className="text-blue-600">※ 긍정 시나리오 상환 한도 = 기존계획 차입금잔액 (초과 상환분은 현금잔액에 가산)</span>
+                        {' | '}
+                        <span className="font-semibold text-slate-600">기말현금(부정/긍정)</span>{' '}
+                        = 기존계획 기말현금 (통상 변동 없음. 긍정 시나리오에서 차입금 전액 상환 후 잉여 발생 시 해당 금액 반영)
                       </p>
                     </div>
                   </div>
