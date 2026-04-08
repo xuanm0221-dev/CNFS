@@ -27,11 +27,11 @@ export default function Home() {
   const [plBrand, setPlBrand] = useState<string | null>(null); // null=踰뺤씤, 'mlb', 'kids' ??
   const [bsYear, setBsYear] = useState<number>(2026);
   const [cfYear, setCfYear] = useState<number>(2026);
-  const [baseMonth, setBaseMonth] = useState<number>(2); // 湲곗???(湲곕낯 1?? 2026??湲곕낯媛?
-  const [bsMonthsCollapsed, setBsMonthsCollapsed] = useState<boolean>(true); // ?щТ?곹깭??& ?댁쟾?먮낯 ?붾퀎 ?묎린
-  const [cfMonthsCollapsed, setCfMonthsCollapsed] = useState<boolean>(true); // ?꾧툑?먮쫫???붾퀎 ?묎린 (2025??湲곕낯媛? ?묓옒)
-  // 釉뚮옖?쒕퀎 ?먯씡 蹂닿린????긽 ?쒖꽦??(踰뺤씤 ?좏깮 ??
-  const [hideYtd, setHideYtd] = useState<boolean>(true); // YTD ?④린湲?(湲곗???12?붿씪 ?? 湲곕낯媛? ?④?)
+  const [baseMonth, setBaseMonth] = useState<number>(3); // 기준월 (기본 3월, 2026년 기준달)
+  const [bsMonthsCollapsed, setBsMonthsCollapsed] = useState<boolean>(true); // 재무상태표 & 운전자본분석 월별 접기
+  const [cfMonthsCollapsed, setCfMonthsCollapsed] = useState<boolean>(true); // 현금흐름표 월별 접기 (2025년 기준달 미정)
+  // 브랜드별 손익 비교컬럼 표시 여부 (법인 상단용)
+  const [hideYtd, setHideYtd] = useState<boolean>(true); // YTD 숨기기 (기준월 12월일 때 기본값 숨김)
   const [summaryData, setSummaryData] = useState<ExecutiveSummaryData | null>(null);
   const [plData, setPlData] = useState<TableRow[] | null>(null);
   const [bsData, setBsData] = useState<TableRow[] | null>(null);
@@ -597,7 +597,7 @@ export default function Home() {
           />
         )}
 
-        {/* PL - ?먯씡怨꾩궛??*/}
+        {/* PL - 손익계산서 */}
         {activeTab === 1 && (
           <div>
             <div className="sticky top-16 z-30 bg-gray-100 border-b border-gray-300">
@@ -678,7 +678,7 @@ export default function Home() {
                     data={bsData} 
                     columns={monthColumns} 
                     showComparisons={bsYear === 2025 || bsYear === 2026}
-                    baseMonth={12}
+                    baseMonth={3}
                     isBalanceSheet={true}
                     currentYear={bsYear}
                     monthsCollapsed={bsMonthsCollapsed}
@@ -705,7 +705,7 @@ export default function Home() {
                       data={workingCapitalData} 
                       columns={monthColumns} 
                       showComparisons={bsYear === 2025 || bsYear === 2026}
-                      baseMonth={12}
+                      baseMonth={3}
                       isBalanceSheet={true}
                       currentYear={bsYear}
                       monthsCollapsed={bsMonthsCollapsed}
@@ -855,7 +855,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* ?ш퀬?먯궛 */}
+        {/* 재고자산 */}
         {inventoryTabMounted && <div className={activeTab === 5 ? '' : 'hidden'}><InventoryDashboard /></div>}
         <div className={activeTab === 6 ? '' : 'hidden'}><PLForecastTab /></div>
         {activeTab === 7 && <PLCashFlowTab />}
