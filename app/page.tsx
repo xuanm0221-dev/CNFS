@@ -21,7 +21,7 @@ import PLForecastTab from '@/components/pl-forecast/PLForecastTab';
 import PLCashFlowTab from '@/components/pl-forecast/PLCashFlowTab';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<number>(2);
+  const [activeTab, setActiveTab] = useState<number>(7);
   const [inventoryTabMounted, setInventoryTabMounted] = useState<boolean>(true);
   const [plYear, setPlYear] = useState<number>(2026);
   const [plBrand, setPlBrand] = useState<string | null>(null); // null=踰뺤씤, 'mlb', 'kids' ??
