@@ -43,22 +43,39 @@ export async function GET(request: NextRequest) {
     // 브랜드별 CSV 파일 경로
     const filePath = path.join(process.cwd(), '파일', 'PL_brand', brand, `${year}.csv`);
     const data = await readCSV(filePath, year);
-    
+
+    // MLB일 때만 재무조정 데이터 반영
+    let adjustData: Awaited<ReturnType<typeof readCSV>> | undefined;
+    if (brand === 'mlb') {
+      const adjustFilePath = path.join(process.cwd(), '파일', '재무조정', `${year}.csv`);
+      try { adjustData = await readCSV(adjustFilePath, year); } catch { /* 파일 없으면 무시 */ }
+    }
+
     // 브랜드 모드로 PL 계산
-    let tableRows = calculatePL(data, true);
-    
+    let tableRows = calculatePL(data, true, adjustData);
+
     // 2025년인 경우 2024년 대비 비교 데이터 추가
     if (year === 2025) {
       const filePath2024 = path.join(process.cwd(), '파일', 'PL_brand', brand, '2024.csv');
       const data2024 = await readCSV(filePath2024, 2024);
-      const rows2024 = calculatePL(data2024, true);
+      let adjustData2024: Awaited<ReturnType<typeof readCSV>> | undefined;
+      if (brand === 'mlb') {
+        const adjustFilePath2024 = path.join(process.cwd(), '파일', '재무조정', '2024.csv');
+        try { adjustData2024 = await readCSV(adjustFilePath2024, 2024); } catch { /* 무시 */ }
+      }
+      const rows2024 = calculatePL(data2024, true, adjustData2024);
       tableRows = calculateComparisonData(tableRows, rows2024, baseMonth);
     }
     // 2026년인 경우 2025년 대비 비교 데이터 추가
     if (year === 2026) {
       const filePath2025 = path.join(process.cwd(), '파일', 'PL_brand', brand, '2025.csv');
       const data2025 = await readCSV(filePath2025, 2025);
-      const rows2025 = calculatePL(data2025, true);
+      let adjustData2025: Awaited<ReturnType<typeof readCSV>> | undefined;
+      if (brand === 'mlb') {
+        const adjustFilePath2025 = path.join(process.cwd(), '파일', '재무조정', '2025.csv');
+        try { adjustData2025 = await readCSV(adjustFilePath2025, 2025); } catch { /* 무시 */ }
+      }
+      const rows2025 = calculatePL(data2025, true, adjustData2025);
       tableRows = calculateComparisonData(tableRows, rows2025, baseMonth);
     }
     

@@ -1943,6 +1943,9 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     const allRetailHqMonthly: Record<ScenarioKey, Partial<Record<SalesBrand, (number | null)[]>>> = {
       negative: {}, base: {}, positive: {},
     };
+    const allRetailDealerMonthly: Record<ScenarioKey, Partial<Record<SalesBrand, (number | null)[]>>> = {
+      negative: {}, base: {}, positive: {},
+    };
 
     for (const scKey of SCENARIO_ORDER) {
       setScenarioInvStatus((prev) => ({ ...prev, [scKey]: 'computing' }));
@@ -1975,10 +1978,14 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
               rData = json;
             }
 
-            // 본사 리테일 판매 월별 데이터 추출 → PL(sim) 시나리오에서 사용
+            // 본사/대리상 리테일 판매 월별 데이터 추출 → PL(sim) 시나리오에서 사용
             const hqTotalRow = rData.hq?.rows?.find((r) => r.isTotal);
             if (hqTotalRow?.monthly) {
               allRetailHqMonthly[scKey][b as SalesBrand] = hqTotalRow.monthly;
+            }
+            const dealerTotalRow = rData.dealer?.rows?.find((r) => r.isTotal);
+            if (dealerTotalRow?.monthly) {
+              allRetailDealerMonthly[scKey][b as SalesBrand] = dealerTotalRow.monthly;
             }
 
             const otbDealerSellIn = otbToDealerSellInPlan(otbData, b);
@@ -2022,6 +2029,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     onScenarioRecalc?.({
       closing: allClosing,
       retailHqMonthly: allRetailHqMonthly as ScenarioInventoryPayload['retailHqMonthly'],
+      retailDealerMonthly: allRetailDealerMonthly as ScenarioInventoryPayload['retailDealerMonthly'],
       savedAt,
       version,
     });
@@ -4776,7 +4784,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
           </button>
           {year === 2026 && shipmentPlanFromMonth != null && (
             <div className="mt-1 pl-7 text-xs text-red-600">
-              본사 매입상품은 1월 실적 유지, 2월(F)부터는 남은 연간매입계획(연간합계-1월 실적)을 본사→대리상 출고매출의 2~12월 행별 비중으로 배분
+              본사 매입상품은 {plLatestActualMonth}월까지 실적 유지, {shipmentPlanFromMonth}월(F)부터는 남은 연간매입계획(연간합계-{plLatestActualMonth > 1 ? `1~${plLatestActualMonth}월` : '1월'} 실적)을 본사→대리상 출고매출의 {shipmentPlanFromMonth}~12월 행별 비중으로 배분
             </div>
           )}
           {purchaseError && !purchaseOpen && (

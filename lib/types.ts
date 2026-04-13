@@ -12,7 +12,7 @@ export interface TableRow {
   level: number; // 인덴트 레벨 (0=최상위)
   isGroup: boolean; // 그룹(접기/펼치기 가능)인지
   isCalculated: boolean; // 계산된 값인지
-  isHighlight?: 'sky' | 'yellow' | 'gray' | 'none'; // 배경색 강조
+  isHighlight?: 'sky' | 'yellow' | 'gray' | 'mint' | 'none'; // 배경색 강조
   isBold?: boolean; // 볼드 처리
   values: (number | null)[]; // 12개월 또는 13개(합계 포함)
   children?: TableRow[];

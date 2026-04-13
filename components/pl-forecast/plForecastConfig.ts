@@ -70,6 +70,9 @@ export const OPERATING_EXPENSE_ACCOUNTS: string[] = [
 ];
 
 export const ROWS_CORPORATE: ForecastRowDef[] = [
+  { account: '리테일매출', level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
+  { account: '리테일매출_대리상', level: 1, isGroup: false, isCalculated: true, format: 'number' },
+  { account: '리테일매출_직영', level: 1, isGroup: false, isCalculated: true, format: 'number' },
   { account: 'Tag매출', level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
   { account: 'Tag매출_대리상', level: 1, isGroup: true, isCalculated: true, format: 'number' },
   { account: 'Tag매출_의류', level: 2, isGroup: false, isCalculated: true, format: 'number' },
@@ -107,13 +110,29 @@ export const ROWS_CORPORATE: ForecastRowDef[] = [
   { account: '감가상각비(영업비)', level: 1, isGroup: false, isCalculated: false, format: 'number' },
   { account: '세금과공과', level: 1, isGroup: false, isCalculated: false, format: 'number' },
   { account: '기타(영업비)', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '영업이익', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
-  { account: '영업이익률', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
+  { account: '영업이익(관리식)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
+  { account: '영업이익률(관리식)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
+  { account: '재무&관리차이(-)', level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
+  { account: '사용권자산', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '재무비용', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '이연수익', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '반품충당부채', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '매출원가조정(credit)', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '기타', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '리베이트', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '정부보조금', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '영업이익(재무식)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
+  { account: '영업이익률(재무식)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
 ];
 
 export const ROWS_BRAND: ForecastRowDef[] = ROWS_CORPORATE.filter(
   (row) => !['MLB', 'KIDS', 'DISCOVERY'].includes(row.account),
 ).map((row) => ({ ...row }));
+
+export const FINANCIAL_ADJUST_ACCOUNTS: string[] = [
+  '사용권자산', '재무비용', '이연수익', '반품충당부채',
+  '매출원가조정(credit)', '기타', '리베이트', '정부보조금',
+];
 
 // ─── 시나리오 공용 타입 & 상수 ───────────────────────────────────────────────
 export type SalesBrand = 'MLB' | 'MLB KIDS' | 'DISCOVERY';
@@ -124,6 +143,7 @@ export type ScenarioKey = 'negative' | 'base' | 'positive';
 export type ScenarioInventoryPayload = {
   closing: Record<ScenarioKey, Partial<Record<SalesBrand, number>>>;
   retailHqMonthly: Record<ScenarioKey, Partial<Record<SalesBrand, (number | null)[]>>>;
+  retailDealerMonthly: Record<ScenarioKey, Partial<Record<SalesBrand, (number | null)[]>>>;
   savedAt: string;
   version: string;
 };
@@ -135,6 +155,8 @@ export interface ScenarioDef {
   color: string;
   bgColor: string;
   borderColor: string;
+  headerBgColor?: string;
+  headerColor?: string;
   dealerGrowthRate: Record<SalesBrand, number>;
   hqGrowthRate: Record<SalesBrand, number>;
 }
@@ -147,6 +169,8 @@ export const SCENARIO_DEFS: Record<ScenarioKey, ScenarioDef> = {
     color: '#3b5f93',
     bgColor: '#eff3fb',
     borderColor: '#3b5f93',
+    headerBgColor: '#2f4f7f',
+    headerColor: '#ffffff',
     dealerGrowthRate: { MLB: 5, 'MLB KIDS': -3, DISCOVERY: 280 },
     hqGrowthRate: { MLB: 15, 'MLB KIDS': 8, DISCOVERY: 137 },
   },

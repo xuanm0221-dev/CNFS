@@ -137,10 +137,11 @@ export default function FinancialTable({
   };
 
   // 배경색 클래스
-  const getHighlightClass = (highlight?: 'sky' | 'yellow' | 'gray' | 'none') => {
+  const getHighlightClass = (highlight?: 'sky' | 'yellow' | 'gray' | 'mint' | 'none') => {
     if (highlight === 'sky') return 'bg-highlight-sky';
     if (highlight === 'yellow') return 'bg-highlight-yellow';
     if (highlight === 'gray') return 'bg-highlight-gray';
+    if (highlight === 'mint') return 'bg-emerald-100';
     return '';
   };
 
@@ -794,7 +795,7 @@ export default function FinancialTable({
                             ? row.comparisons.currYearMonth / row.comparisons.prevYearMonth 
                             : null;
                           // 영업이익 흑자전환 체크
-                          const isProfitTurnaround = row.account === '영업이익' 
+                          const isProfitTurnaround = row.account === '영업이익(관리식)' 
                             && row.comparisons.currYearMonth !== null 
                             && row.comparisons.prevYearMonth !== null
                             && row.comparisons.currYearMonth > 0 
@@ -816,7 +817,7 @@ export default function FinancialTable({
                                       <span className="mx-1">,</span>
                                       <span className="text-green-600 font-semibold">흑자전환</span>
                                     </>
-                                  ) : monthYoYPercent !== null && row.account !== '영업이익률' && row.account !== '(Tag 대비 원가율)' && (
+                                  ) : monthYoYPercent !== null && row.account !== '영업이익률(관리식)' && row.account !== '영업이익률(재무식)' && row.account !== '(Tag 대비 원가율)' && (
                                     <>
                                       <span className="mx-1">,</span>
                                       <span className={monthYoYPercent < 1 ? 'text-red-600' : monthYoYPercent > 1 ? 'text-green-600' : ''}>
@@ -860,7 +861,7 @@ export default function FinancialTable({
                             ? row.comparisons.currYearYTD / row.comparisons.prevYearYTD 
                             : null;
                           // 영업이익 흑자전환 체크
-                          const isProfitTurnaround = row.account === '영업이익' 
+                          const isProfitTurnaround = row.account === '영업이익(관리식)' 
                             && row.comparisons.currYearYTD !== null 
                             && row.comparisons.prevYearYTD !== null
                             && row.comparisons.currYearYTD > 0 
@@ -882,7 +883,7 @@ export default function FinancialTable({
                                       <span className="mx-1">,</span>
                                       <span className="text-green-600 font-semibold">흑자전환</span>
                                     </>
-                                  ) : ytdYoYPercent !== null && row.account !== '영업이익률' && row.account !== '(Tag 대비 원가율)' && (
+                                  ) : ytdYoYPercent !== null && row.account !== '영업이익률(관리식)' && row.account !== '영업이익률(재무식)' && row.account !== '(Tag 대비 원가율)' && (
                                     <>
                                       <span className="mx-1">,</span>
                                       <span className={ytdYoYPercent < 1 ? 'text-red-600' : ytdYoYPercent > 1 ? 'text-green-600' : ''}>
@@ -918,7 +919,7 @@ export default function FinancialTable({
                             ? row.comparisons.currYearAnnual / row.comparisons.prevYearAnnual 
                             : null;
                           // 영업이익 흑자전환 체크
-                          const isProfitTurnaround = row.account === '영업이익' 
+                          const isProfitTurnaround = row.account === '영업이익(관리식)' 
                             && row.comparisons.currYearAnnual !== null 
                             && row.comparisons.prevYearAnnual !== null
                             && row.comparisons.currYearAnnual > 0 
@@ -940,7 +941,7 @@ export default function FinancialTable({
                                       <span className="mx-1">,</span>
                                       <span className="text-green-600 font-semibold">흑자전환</span>
                                     </>
-                                  ) : annualYoYPercent !== null && row.account !== '영업이익률' && row.account !== '(Tag 대비 원가율)' && (
+                                  ) : annualYoYPercent !== null && row.account !== '영업이익률(관리식)' && row.account !== '영업이익률(재무식)' && row.account !== '(Tag 대비 원가율)' && (
                                     <>
                                       <span className="mx-1">,</span>
                                       <span className={annualYoYPercent < 1 ? 'text-red-600' : annualYoYPercent > 1 ? 'text-green-600' : ''}>

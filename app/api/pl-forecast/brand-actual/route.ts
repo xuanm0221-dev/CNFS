@@ -18,6 +18,7 @@ interface BrandActualData {
     dealerCloth: (number | null)[];
     dealerAcc: (number | null)[];
   };
+  retail: Record<SalesChannel, (number | null)[]>;
   accounts: Record<string, (number | null)[]>;
 }
 
@@ -38,6 +39,7 @@ function makeBrandData(): BrandActualData {
   return {
     tag: { dealer: empty12(), direct: empty12(), dealerCloth: empty12(), dealerAcc: empty12() },
     sales: { dealer: empty12(), direct: empty12(), dealerCloth: empty12(), dealerAcc: empty12() },
+    retail: { dealer: empty12(), direct: empty12() },
     accounts: {},
   };
 }
@@ -110,6 +112,11 @@ export async function GET(req: NextRequest) {
           if (raw === null) continue;
           const value = raw * 1000; // CSV is CNY K; PL internal uses base CNY.
 
+          if (level1 === '리테일매출') {
+            if (level2 === '대리상') result.brands[brand].retail.dealer[monthIdx] = value;
+            if (level2 === '직영') result.brands[brand].retail.direct[monthIdx] = value;
+            continue;
+          }
           if (level1 === 'Tag매출') {
             if (level2 === '대리상') result.brands[brand].tag.dealer[monthIdx] = value;
             if (level2 === '대리상(의류)') result.brands[brand].tag.dealerCloth[monthIdx] = value;

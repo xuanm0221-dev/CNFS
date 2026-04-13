@@ -29,20 +29,34 @@ export async function GET(request: NextRequest) {
     
     const filePath = path.join(process.cwd(), '파일', 'PL', `${year}.csv`);
     const data = await readCSV(filePath, year);
-    let tableRows = calculatePL(data);
-    
+
+    // 재무조정 데이터 읽기 (법인 전체 = MLB에 반영)
+    const adjustFilePath = path.join(process.cwd(), '파일', '재무조정', `${year}.csv`);
+    let adjustData: Awaited<ReturnType<typeof readCSV>> | undefined;
+    try {
+      adjustData = await readCSV(adjustFilePath, year);
+    } catch { /* 파일 없으면 무시 */ }
+
+    let tableRows = calculatePL(data, false, adjustData);
+
     // 2025년인 경우 2024년 대비 비교 데이터 추가
     if (year === 2025) {
       const filePath2024 = path.join(process.cwd(), '파일', 'PL', '2024.csv');
       const data2024 = await readCSV(filePath2024, 2024);
-      const rows2024 = calculatePL(data2024);
+      const adjustFilePath2024 = path.join(process.cwd(), '파일', '재무조정', '2024.csv');
+      let adjustData2024: Awaited<ReturnType<typeof readCSV>> | undefined;
+      try { adjustData2024 = await readCSV(adjustFilePath2024, 2024); } catch { /* 무시 */ }
+      const rows2024 = calculatePL(data2024, false, adjustData2024);
       tableRows = calculateComparisonData(tableRows, rows2024, baseMonth);
     }
     // 2026년인 경우 2025년 대비 비교 데이터 추가
     if (year === 2026) {
       const filePath2025 = path.join(process.cwd(), '파일', 'PL', '2025.csv');
       const data2025 = await readCSV(filePath2025, 2025);
-      const rows2025 = calculatePL(data2025);
+      const adjustFilePath2025 = path.join(process.cwd(), '파일', '재무조정', '2025.csv');
+      let adjustData2025: Awaited<ReturnType<typeof readCSV>> | undefined;
+      try { adjustData2025 = await readCSV(adjustFilePath2025, 2025); } catch { /* 무시 */ }
+      const rows2025 = calculatePL(data2025, false, adjustData2025);
       tableRows = calculateComparisonData(tableRows, rows2025, baseMonth);
     }
     

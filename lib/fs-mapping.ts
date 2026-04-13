@@ -21,7 +21,7 @@ export function getAccountValues(map: Map<string, number[]>, account: string): n
 }
 
 // ==================== PL (손익계산서) ====================
-export function calculatePL(data: FinancialData[], isBrand: boolean = false): TableRow[] {
+export function calculatePL(data: FinancialData[], isBrand: boolean = false, adjustData?: FinancialData[]): TableRow[] {
   const map = createMonthDataMap(data);
   
   // Tag매출
@@ -182,7 +182,7 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false): Ta
       format: 'number' as const,
     })),
     {
-      account: '영업이익',
+      account: '영업이익(관리식)',
       level: 0,
       isGroup: false,
       isCalculated: true,
@@ -192,7 +192,7 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false): Ta
       format: 'number',
     },
     {
-      account: '영업이익률',
+      account: '영업이익률(관리식)',
       level: 0,
       isGroup: false,
       isCalculated: true,
@@ -202,7 +202,63 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false): Ta
       format: 'percent',
     },
   ];
-  
+
+  // 재무조정 데이터가 있으면 재무&관리차이(-) + 영업이익(재무식) 행 추가
+  if (adjustData) {
+    const adjMap = createMonthDataMap(adjustData);
+    const 재무조정항목 = [
+      '사용권자산', '재무비용', '이연수익', '반품충당부채',
+      '매출원가조정(credit)', '기타', '리베이트', '정부보조금',
+    ];
+    const 재무조정values = 재무조정항목.map(acc => getAccountValues(adjMap, acc));
+    const 재무관리차이 = 재무조정values[0].map((_, i) =>
+      재무조정values.reduce((sum, arr) => sum + arr[i], 0)
+    );
+    const 영업이익재무식 = 영업이익.map((v, i) => v - 재무관리차이[i]);
+    const 영업이익률재무식 = 실판매출.map((v, i) => (v !== 0 ? 영업이익재무식[i] / v : null));
+
+    rows.push(
+      {
+        account: '재무&관리차이(-)',
+        level: 0,
+        isGroup: true,
+        isCalculated: true,
+        isBold: true,
+        isHighlight: 'gray',
+        values: 재무관리차이,
+        format: 'number',
+      },
+      ...재무조정항목.map((acc, idx) => ({
+        account: acc,
+        level: 1,
+        isGroup: false,
+        isCalculated: false,
+        values: 재무조정values[idx],
+        format: 'number' as const,
+      })),
+      {
+        account: '영업이익(재무식)',
+        level: 0,
+        isGroup: false,
+        isCalculated: true,
+        isBold: true,
+        isHighlight: 'mint' as const,
+        values: 영업이익재무식,
+        format: 'number',
+      },
+      {
+        account: '영업이익률(재무식)',
+        level: 0,
+        isGroup: false,
+        isCalculated: true,
+        isBold: true,
+        isHighlight: 'mint' as const,
+        values: 영업이익률재무식,
+        format: 'percent',
+      },
+    );
+  }
+
   return rows;
 }
 
@@ -271,8 +327,8 @@ export function calculateComparisonData(
     const monthYoY = calculateYoY(currYearMonth, prevYearMonth);
     
     // 비율 항목인지 확인
-    const isRatioAccount = row.account === '(Tag 대비 원가율)' || row.account === '영업이익률';
-    
+    const isRatioAccount = row.account === '(Tag 대비 원가율)' || row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)';
+
     let prevYearYTD: number | null = null;
     let currYearYTD: number | null = null;
     let prevYearAnnual: number | null = null;
@@ -306,10 +362,10 @@ export function calculateComparisonData(
           currYearAnnual = currAnnualTag매출 !== 0 ? (currAnnual매출원가 * 1.13) / currAnnualTag매출 : null;
           prevYearAnnual = prevAnnualTag매출 !== 0 ? (prevAnnual매출원가 * 1.13) / prevAnnualTag매출 : null;
         }
-      } else if (row.account === '영업이익률') {
+      } else if (row.account === '영업이익률(관리식)') {
         // 영업이익률 = 영업이익 / 실판매출
-        const curr영업이익 = currAccountMap.get('영업이익');
-        const prev영업이익 = prevAccountMap.get('영업이익');
+        const curr영업이익 = currAccountMap.get('영업이익(관리식)');
+        const prev영업이익 = prevAccountMap.get('영업이익(관리식)');
         const curr실판매출 = currAccountMap.get('실판매출');
         const prev실판매출 = prevAccountMap.get('실판매출');
         
@@ -331,6 +387,30 @@ export function calculateComparisonData(
           
           currYearAnnual = currAnnual실판매출 !== 0 ? currAnnual영업이익 / currAnnual실판매출 : null;
           prevYearAnnual = prevAnnual실판매출 !== 0 ? prevAnnual영업이익 / prevAnnual실판매출 : null;
+        }
+      } else if (row.account === '영업이익률(재무식)') {
+        // 영업이익률(재무식) = 영업이익(재무식) / 실판매출
+        const curr영업이익재무 = currAccountMap.get('영업이익(재무식)');
+        const prev영업이익재무 = prevAccountMap.get('영업이익(재무식)');
+        const curr실판매출 = currAccountMap.get('실판매출');
+        const prev실판매출 = prevAccountMap.get('실판매출');
+
+        if (curr영업이익재무 && prev영업이익재무 && curr실판매출 && prev실판매출) {
+          const currYTD영업이익재무 = calculateYTD(curr영업이익재무.values);
+          const prevYTD영업이익재무 = calculateYTD(prev영업이익재무.values);
+          const currYTD실판매출 = calculateYTD(curr실판매출.values);
+          const prevYTD실판매출 = calculateYTD(prev실판매출.values);
+
+          currYearYTD = currYTD실판매출 !== 0 ? currYTD영업이익재무 / currYTD실판매출 : null;
+          prevYearYTD = prevYTD실판매출 !== 0 ? prevYTD영업이익재무 / prevYTD실판매출 : null;
+
+          const currAnnual영업이익재무 = calculateAnnual(curr영업이익재무.values);
+          const prevAnnual영업이익재무 = calculateAnnual(prev영업이익재무.values);
+          const currAnnual실판매출 = calculateAnnual(curr실판매출.values);
+          const prevAnnual실판매출 = calculateAnnual(prev실판매출.values);
+
+          currYearAnnual = currAnnual실판매출 !== 0 ? currAnnual영업이익재무 / currAnnual실판매출 : null;
+          prevYearAnnual = prevAnnual실판매출 !== 0 ? prevAnnual영업이익재무 / prevAnnual실판매출 : null;
         }
       }
     } else {

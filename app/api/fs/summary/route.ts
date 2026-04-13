@@ -55,8 +55,8 @@ function generateSummary(
   const 실판매출26 = getValueAnnual(pl2026, '실판매출');
   const 매출총이익25 = getValueAnnual(pl2025, '매출총이익');
   const 매출총이익26 = getValueAnnual(pl2026, '매출총이익');
-  const 영업이익25 = getValueAnnual(pl2025, '영업이익');
-  const 영업이익26 = getValueAnnual(pl2026, '영업이익');
+  const 영업이익25 = getValueAnnual(pl2025, '영업이익(관리식)');
+  const 영업이익26 = getValueAnnual(pl2026, '영업이익(관리식)');
   const 직접비25 = getValueAnnual(pl2025, '직접비');
   const 직접비26 = getValueAnnual(pl2026, '직접비');
   const 영업비25 = getValueAnnual(pl2025, '영업비');
