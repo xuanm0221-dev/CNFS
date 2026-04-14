@@ -1,13 +1,13 @@
 {
   "MLB": {
     "arrival": 1009.77,
-    "order": 1861.5,
+    "order": 1914.28,
     "arrivalThroughMonth": 3,
     "orderThroughMonth": 9
   },
   "MLB KIDS": {
     "arrival": 39.5,
-    "order": 97.44,
+    "order": 97.45,
     "arrivalThroughMonth": 3,
     "orderThroughMonth": 10
   },

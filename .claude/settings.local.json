@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(curl -s \"http://localhost:3000/api/pl-forecast/prev-year-discount\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); mlb=d['brands']['MLB']; print\\('할인율_대리상:', mlb['dealer']\\); print\\('할인율_직영:', mlb['direct']\\)\")",
+      "Bash(curl -s \"http://localhost:3000/api/inventory/retail-sales?year=2026&brand=MLB&growthRate=5&growthRateHq=15\")",
+      "Bash(python -c \" import sys,json d=json.load\\(sys.stdin\\) print\\('=== dealer rows ==='\\) for r in \\(d.get\\('dealer'\\) or {}\\).get\\('rows', []\\): if r.get\\('isTotal'\\): print\\('매출합계:', r['monthly']\\) print\\('=== hq rows ==='\\) for r in \\(d.get\\('hq'\\) or {}\\).get\\('rows', []\\): if r.get\\('isTotal'\\): print\\('매출합계:', r['monthly']\\) \")",
+      "Bash(xargs grep:*)",
+      "Bash(grep -E \"\\\\.ts$\")"
+    ]
+  }
+}
