@@ -4246,7 +4246,8 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
                   <span className="mx-2 text-gray-300">|</span>
                   {TXT_OTB_SECTION}
                 </span>
-                <span className="ml-auto text-gray-400 text-xs shrink-0">
+                <span className="ml-auto text-xs font-semibold text-slate-700">🟢 Live</span>
+                <span className="ml-3 text-gray-400 text-xs shrink-0">
                   {annualPlanOpen ? TXT_COLLAPSE : TXT_EXPAND}
                 </span>
               </button>
@@ -4419,7 +4420,8 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
                 <span className="text-lg">◫</span>
               </SectionIcon>
               <span className="text-sm font-bold text-slate-900">종속변수 계획값</span>
-              <span className="ml-auto text-gray-400 text-xs shrink-0">
+              <span className="ml-auto text-xs font-semibold text-slate-700">🟢 Live</span>
+              <span className="ml-3 text-gray-400 text-xs shrink-0">
                 {dependentPlanOpen ? TXT_COLLAPSE : TXT_EXPAND}
               </span>
             </button>
@@ -4474,7 +4476,8 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
               </SectionIcon>
               <span className="text-sm font-bold text-gray-700">대리상 리테일매출</span>
               <span className="text-xs font-normal text-gray-400">(단위: CNY K / 실적: 1~12월)</span>
-              <span className="ml-auto text-gray-400 text-xs shrink-0">
+              <span className="ml-auto text-xs font-semibold text-rose-600">🔴 전처리</span>
+              <span className="ml-3 text-gray-400 text-xs shrink-0">
                 {adjustedRetailOpen ? '접기' : '펼치기'}
               </span>
             </button>
@@ -4525,7 +4528,8 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
                 {`python scripts/refresh_2026_monthly_stock.py --baseMonth ${monthlyData?.closedThrough ? parseInt(monthlyData.closedThrough.slice(-2)) : 2}`}
               </code>
             )}
-            <span className="ml-auto text-gray-400 text-xs shrink-0">
+            <span className="ml-auto text-xs font-semibold text-rose-600">🔴 전처리</span>
+            <span className="ml-3 text-gray-400 text-xs shrink-0">
               {monthlyOpen ? '접기' : '펼치기'}
             </span>
           </button>
@@ -4611,7 +4615,8 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
                 {`python scripts/refresh_2026_retail_sales.py --baseMonth ${retailData?.closedThrough ? parseInt(retailData.closedThrough.slice(-2)) : 2}`}
               </code>
             )}
-            <span className="ml-auto text-gray-400 text-xs shrink-0">
+            <span className="ml-auto text-xs font-semibold text-rose-600">🔴 전처리</span>
+            <span className="ml-3 text-gray-400 text-xs shrink-0">
               {retailOpen ? '접기' : '펼치기'}
             </span>
           </button>
@@ -4700,7 +4705,8 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
                 {`python scripts/refresh_2026_shipment_sales.py --baseMonth ${shipmentData?.closedThrough ? parseInt(shipmentData.closedThrough.slice(-2)) : 2}`}
               </code>
             )}
-            <span className="ml-auto text-gray-400 text-xs shrink-0">
+            <span className="ml-auto text-xs font-semibold text-rose-600">🔴 전처리</span>
+            <span className="ml-3 text-gray-400 text-xs shrink-0">
               {shipmentOpen ? '접기' : '펼치기'}
             </span>
           </button>
@@ -4778,7 +4784,8 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
                 {`python scripts/refresh_2026_purchase.py --baseMonth ${purchaseData?.closedThrough ? parseInt(purchaseData.closedThrough.slice(-2)) : 2}`}
               </code>
             )}
-            <span className="ml-auto text-gray-400 text-xs shrink-0">
+            <span className="ml-auto text-xs font-semibold text-rose-600">🔴 전처리</span>
+            <span className="ml-3 text-gray-400 text-xs shrink-0">
               {purchaseOpen ? '접기' : '펼치기'}
             </span>
           </button>

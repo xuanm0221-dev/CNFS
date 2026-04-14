@@ -613,6 +613,7 @@ export default function Home() {
                 )}
                 <div className="h-8 w-px bg-gray-400 mx-2"></div>
                 <BrandTabs brands={brands} activeBrand={plBrand} onChange={setPlBrand} />
+                <span className="ml-auto text-sm font-semibold text-slate-700">🟢 Live</span>
               </div>
             </div>
             {loading && <div className="p-6 text-center">로딩 중...</div>}
@@ -640,28 +641,31 @@ export default function Home() {
             <div className="bg-gray-100 border-b border-gray-300">
               <div className="flex justify-between items-center gap-4 px-6 py-3">
                 <YearTabs years={[2024, 2025, 2026]} activeYear={bsYear} onChange={setBsYear} />
-                {(bsYear === 2025 || bsYear === 2026) && (
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={saveRemarksToServer}
-                      className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
-                    >
-                      저장
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm('비고를 초기값으로 초기화하시겠습니까?')) {
-                          resetRemarksData();
-                        }
-                      }}
-                      className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-colors shadow-sm"
-                    >
-                      초기값으로
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {(bsYear === 2025 || bsYear === 2026) && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={saveRemarksToServer}
+                        className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
+                      >
+                        저장
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm('비고를 초기값으로 초기화하시겠습니까?')) {
+                            resetRemarksData();
+                          }
+                        }}
+                        className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-colors shadow-sm"
+                      >
+                        초기값으로
+                      </button>
+                    </>
+                  )}
+                  <span className="text-sm font-semibold text-slate-700 ml-2">🟢 Live</span>
+                </div>
               </div>
             </div>
             {loading && (
@@ -754,6 +758,7 @@ export default function Home() {
                 >
                   {cfMonthsCollapsed ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
                 </button>
+                <span className="ml-auto text-sm font-semibold text-slate-700">🟢 Live</span>
               </div>
             </div>
             {cfHierarchyLoading && (
@@ -847,8 +852,9 @@ export default function Home() {
         {/* ?ъ떊?ъ슜?꾪솴 */}
         {activeTab === 4 && (
           <div>
-            <div className="bg-gray-100 border-b border-gray-300 px-6 py-3">
+            <div className="bg-gray-100 border-b border-gray-300 px-6 py-3 flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">2026년 3월 기준</span>
+              <span className="text-sm font-semibold text-slate-700">🟢 Live</span>
             </div>
             {loading && <div className="p-6 text-center">로딩 중...</div>}
             {error && <div className="p-6 text-center text-red-500">{error}</div>}

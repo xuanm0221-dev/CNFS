@@ -3399,7 +3399,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             </span>
             <div className="flex-1 flex items-center gap-6">
               <div className="shrink-0">
-                <div className="text-sm font-semibold text-slate-800">매출 보조지표</div>
+                <div className="text-sm font-semibold text-slate-800">매출 보조지표 🟢Live</div>
                 <div className="text-xs text-slate-500">브랜드/채널/시즌별 월 매출 계획 (OTB 연동)</div>
               </div>
               <div className="text-left text-xs text-slate-800 leading-relaxed">
@@ -3656,7 +3656,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             </span>
             <div className="flex-1 flex items-center gap-6">
               <div className="shrink-0">
-                <div className="text-sm font-semibold text-slate-800">직접비율 보조지표</div>
+                <div className="text-sm font-semibold text-slate-800">직접비율 보조지표 🟢Live</div>
                 <div className="text-xs text-slate-500">실적월까지 공백, 익월부터 12월까지 CSV 원천값 표시</div>
               </div>
               <div className="text-left text-xs text-slate-800 leading-relaxed">
@@ -3765,7 +3765,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             </span>
             <div className="flex-1 flex items-center gap-6">
               <div className="shrink-0">
-                <div className="text-sm font-semibold text-slate-800">Tag대비원가율 보조지표</div>
+                <div className="text-sm font-semibold text-slate-800">Tag대비원가율 보조지표 🟢Live</div>
                 <div className="text-xs text-slate-500">실적월까지 공백, 익월부터 12월까지 CSV 원천값 표시</div>
               </div>
               <div className="font-mono font-semibold text-blue-600 text-xs">보조파일(simu)/Tag대비원가율.csv</div>
@@ -3847,7 +3847,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             </span>
             <div className="flex-1 flex items-center gap-6">
               <div className="shrink-0">
-                <div className="text-sm font-semibold text-slate-800">전년 할인율</div>
+                <div className="text-sm font-semibold text-slate-800">전년 할인율 🟢Live</div>
                 <div className="text-xs text-slate-500">실적월까지 공백, 익월부터 12월까지 CSV 원천값 표시</div>
               </div>
               <div className="font-mono font-semibold text-blue-600 text-xs">보조파일(simu)/전년할인율.csv</div>
