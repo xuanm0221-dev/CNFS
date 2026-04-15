@@ -3855,8 +3855,11 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
                       // ACC 예산 draft (이 브랜드)
                       const accDraft = hqAccBudgetDraft[b] ?? DEFAULT_HQ_ACC_BUDGET[b];
                       const accTextRow = hqAccAmountText[b] ?? { arrival: '', order: '' };
+                      const accSellInM = Math.round(((hqRows?.find((r) => r.key === 'ACC합계')?.sellInTotal ?? 0) / 1000));
                       const remaining =
-                        parseHqAccMillionField(accTextRow.order) - parseHqAccMillionField(accTextRow.arrival);
+                        accSellInM
+                        - parseHqAccMillionField(accTextRow.arrival)
+                        - parseHqAccMillionField(accTextRow.order);
 
                       return (
                         <div className="flex gap-2">
@@ -4120,7 +4123,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
                                         </span>
                                       </td>
                                     </tr>
-                                    {/* 잔여예산 – 자동 계산 (발주 - 입고) */}
+                                    {/* 잔여예산 – 자동 계산 (ACC매입 - 입고완료 - 발주완료) */}
                                     <tr className="bg-amber-100">
                                       <td className={`${accTdLabel} text-amber-800`}>잔여예산</td>
                                       <td className={`${accTdAmount} font-semibold ${remaining >= 0 ? 'text-sky-700' : 'text-rose-600'}`}>
