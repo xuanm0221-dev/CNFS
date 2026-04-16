@@ -215,7 +215,10 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false, adj
       재무조정values.reduce((sum, arr) => sum + arr[i], 0)
     );
     const 영업이익재무식 = 영업이익.map((v, i) => v - 재무관리차이[i]);
-    const 영업이익률재무식 = 실판매출.map((v, i) => (v !== 0 ? 영업이익재무식[i] / v : null));
+    // 매출(재무식) = 실판매출 + 매출조정(재무식) (CSV 2개 행은 readCSV에서 이미 합산됨)
+    const 매출조정재무식 = getAccountValues(adjMap, '매출조정(재무식)');
+    const 매출재무식 = 실판매출.map((v, i) => v + 매출조정재무식[i]);
+    const 영업이익률재무식 = 매출재무식.map((v, i) => (v !== 0 ? 영업이익재무식[i] / v : null));
 
     rows.push(
       {
@@ -236,6 +239,16 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false, adj
         values: 재무조정values[idx],
         format: 'number' as const,
       })),
+      {
+        account: '매출(재무식)',
+        level: 0,
+        isGroup: false,
+        isCalculated: true,
+        isBold: true,
+        isHighlight: 'mint' as const,
+        values: 매출재무식,
+        format: 'number',
+      },
       {
         account: '영업이익(재무식)',
         level: 0,
@@ -389,28 +402,28 @@ export function calculateComparisonData(
           prevYearAnnual = prevAnnual실판매출 !== 0 ? prevAnnual영업이익 / prevAnnual실판매출 : null;
         }
       } else if (row.account === '영업이익률(재무식)') {
-        // 영업이익률(재무식) = 영업이익(재무식) / 실판매출
+        // 영업이익률(재무식) = 영업이익(재무식) / 매출(재무식)
         const curr영업이익재무 = currAccountMap.get('영업이익(재무식)');
         const prev영업이익재무 = prevAccountMap.get('영업이익(재무식)');
-        const curr실판매출 = currAccountMap.get('실판매출');
-        const prev실판매출 = prevAccountMap.get('실판매출');
+        const curr매출재무 = currAccountMap.get('매출(재무식)');
+        const prev매출재무 = prevAccountMap.get('매출(재무식)');
 
-        if (curr영업이익재무 && prev영업이익재무 && curr실판매출 && prev실판매출) {
+        if (curr영업이익재무 && prev영업이익재무 && curr매출재무 && prev매출재무) {
           const currYTD영업이익재무 = calculateYTD(curr영업이익재무.values);
           const prevYTD영업이익재무 = calculateYTD(prev영업이익재무.values);
-          const currYTD실판매출 = calculateYTD(curr실판매출.values);
-          const prevYTD실판매출 = calculateYTD(prev실판매출.values);
+          const currYTD매출재무 = calculateYTD(curr매출재무.values);
+          const prevYTD매출재무 = calculateYTD(prev매출재무.values);
 
-          currYearYTD = currYTD실판매출 !== 0 ? currYTD영업이익재무 / currYTD실판매출 : null;
-          prevYearYTD = prevYTD실판매출 !== 0 ? prevYTD영업이익재무 / prevYTD실판매출 : null;
+          currYearYTD = currYTD매출재무 !== 0 ? currYTD영업이익재무 / currYTD매출재무 : null;
+          prevYearYTD = prevYTD매출재무 !== 0 ? prevYTD영업이익재무 / prevYTD매출재무 : null;
 
           const currAnnual영업이익재무 = calculateAnnual(curr영업이익재무.values);
           const prevAnnual영업이익재무 = calculateAnnual(prev영업이익재무.values);
-          const currAnnual실판매출 = calculateAnnual(curr실판매출.values);
-          const prevAnnual실판매출 = calculateAnnual(prev실판매출.values);
+          const currAnnual매출재무 = calculateAnnual(curr매출재무.values);
+          const prevAnnual매출재무 = calculateAnnual(prev매출재무.values);
 
-          currYearAnnual = currAnnual실판매출 !== 0 ? currAnnual영업이익재무 / currAnnual실판매출 : null;
-          prevYearAnnual = prevAnnual실판매출 !== 0 ? prevAnnual영업이익재무 / prevAnnual실판매출 : null;
+          currYearAnnual = currAnnual매출재무 !== 0 ? currAnnual영업이익재무 / currAnnual매출재무 : null;
+          prevYearAnnual = prevAnnual매출재무 !== 0 ? prevAnnual영업이익재무 / prevAnnual매출재무 : null;
         }
       }
     } else {
