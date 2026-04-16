@@ -3110,7 +3110,14 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
           const pDCloth = applyRate(scSC[brand].dealerCloth, SHIPMENT_RATE_PERCENT_BY_CHANNEL.dealerCloth[brand]);
           const pDAcc = applyRate(scSC[brand].dealerAcc, SHIPMENT_RATE_PERCENT_BY_CHANNEL.dealerAcc[brand]);
           const pDealer = sumSeries(pDCloth, pDAcc);
-          const pDirect = applyRate(scSC[brand].direct, SHIPMENT_RATE_PERCENT_BY_CHANNEL.direct[brand]);
+          // 직영 계획: Tag직영 × (1 - 전년할인율_직영) / 1.13 — 본 테이블과 동일 공식
+          const scDiscountDirect = prevYearDiscountByBrand[brand]?.direct ?? new Array(12).fill(null);
+          const pDirect: (number | null)[] = scSC[brand].direct.map((tag, i) => {
+            if (tag === null) return null;
+            const d = scDiscountDirect[i];
+            if (d === null || d === undefined) return null;
+            return (tag * (1 - d)) / 1.13;
+          });
           const dealerCloth = be(); const dealerAcc = be(); const dealer = be(); const direct = be();
           for (let i = 0; i < 12; i++) {
             const aDealer = brandActualByBrand[brand]?.sales?.dealer?.[i] ?? null;
