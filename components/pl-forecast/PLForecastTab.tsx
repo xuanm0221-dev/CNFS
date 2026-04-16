@@ -2449,7 +2449,14 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       const plannedDealerCloth = applyRate(salesChannelByBrand[brand].dealerCloth, SHIPMENT_RATE_PERCENT_BY_CHANNEL.dealerCloth[brand]);
       const plannedDealerAcc = applyRate(salesChannelByBrand[brand].dealerAcc, SHIPMENT_RATE_PERCENT_BY_CHANNEL.dealerAcc[brand]);
       const plannedDealer = sumSeries(plannedDealerCloth, plannedDealerAcc);
-      const plannedDirect = applyRate(salesChannelByBrand[brand].direct, SHIPMENT_RATE_PERCENT_BY_CHANNEL.direct[brand]);
+      // 직영 계획: Tag직영 × (1 - 전년할인율_직영) / 1.13
+      const discountDirect = prevYearDiscountByBrand[brand]?.direct ?? new Array(12).fill(null);
+      const plannedDirect: (number | null)[] = salesChannelByBrand[brand].direct.map((tag, i) => {
+        if (tag === null) return null;
+        const d = discountDirect[i];
+        if (d === null || d === undefined) return null;
+        return (tag * (1 - d)) / 1.13;
+      });
 
       const dealerCloth = buildEmpty();
       const dealerAcc = buildEmpty();
@@ -2485,7 +2492,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       };
     }
     return result;
-  }, [salesChannelByBrand, brandActualByBrand]);
+  }, [salesChannelByBrand, brandActualByBrand, prevYearDiscountByBrand]);
 
   const corporateActualSalesChannel = useMemo(() => {
     const sumAll = (key: 'dealerCloth' | 'dealerAcc' | 'dealer' | 'direct' | 'total') =>
