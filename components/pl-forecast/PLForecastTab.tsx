@@ -712,24 +712,24 @@ function deriveCalculated(
     monthly['재무&관리차이(-)'] = makeMonthlyArray((idx) =>
       FINANCIAL_ADJUST_ACCOUNTS.reduce((sum, acc) => sum + ((monthly[acc]?.[idx]) ?? 0), 0)
     );
-    // 매출(재무식) = 실판매출 + 매출조정(재무식)
+    // 매출(IFRS) = 실판매출 + 매출조정(재무식)
     const 매출조정재무식Arr26 = adjustData26['매출조정(재무식)'] ?? new Array(12).fill(0);
-    monthly['매출(재무식)'] = makeMonthlyArray((idx) => {
+    monthly['매출(IFRS)'] = makeMonthlyArray((idx) => {
       const sales = monthly['실판매출']?.[idx] ?? null;
       if (sales === null) return null;
       return sales + ((매출조정재무식Arr26[idx] as number | null) ?? 0);
     });
-    // 영업이익(재무식) = 영업이익(관리식) - 재무&관리차이(-)
-    monthly['영업이익(재무식)'] = makeMonthlyArray((idx) => {
+    // 영업이익(IFRS) = 영업이익(관리식) - 재무&관리차이(-)
+    monthly['영업이익(IFRS)'] = makeMonthlyArray((idx) => {
       const oi = monthly['영업이익(관리식)']?.[idx] ?? null;
       const adj = monthly['재무&관리차이(-)']?.[idx] ?? 0;
       if (oi === null) return null;
       return oi - adj;
     });
-    // 영업이익률(재무식) = 영업이익(재무식) / 매출(재무식)
-    monthly['영업이익률(재무식)'] = makeMonthlyArray((idx) => {
-      const oi = monthly['영업이익(재무식)']?.[idx] ?? null;
-      const sales = monthly['매출(재무식)']?.[idx] ?? null;
+    // 영업이익률(IFRS) = 영업이익(IFRS) / 매출(IFRS)
+    monthly['영업이익률(IFRS)'] = makeMonthlyArray((idx) => {
+      const oi = monthly['영업이익(IFRS)']?.[idx] ?? null;
+      const sales = monthly['매출(IFRS)']?.[idx] ?? null;
       if (oi === null || sales === null || sales === 0) return null;
       return oi / sales;
     });
@@ -745,15 +745,15 @@ function deriveCalculated(
       for (const acc of FINANCIAL_ADJUST_ACCOUNTS) annual2025[acc] = 0;
       annual2025['재무&관리차이(-)'] = 0;
     }
-    annual2025['영업이익(재무식)'] = ((annual2025['영업이익(관리식)'] ?? 0) as number) - ((annual2025['재무&관리차이(-)'] ?? 0) as number);
-    // 매출(재무식) 연간 = 실판매출 + 매출조정(재무식) 연간 합계
+    annual2025['영업이익(IFRS)'] = ((annual2025['영업이익(관리식)'] ?? 0) as number) - ((annual2025['재무&관리차이(-)'] ?? 0) as number);
+    // 매출(IFRS) 연간 = 실판매출 + 매출조정(재무식) 연간 합계
     const 매출조정재무식Annual25 = adjustData25 && adjustData25['매출조정(재무식)']
       ? (adjustData25['매출조정(재무식)'] as (number | null)[]).reduce((s: number, v) => s + ((v as number) ?? 0), 0)
       : 0;
-    annual2025['매출(재무식)'] = ((annual2025['실판매출'] ?? 0) as number) + 매출조정재무식Annual25;
-    annual2025['영업이익률(재무식)'] =
-      (annual2025['매출(재무식)'] ?? 0) !== 0
-        ? (annual2025['영업이익(재무식)'] as number) / (annual2025['매출(재무식)'] as number)
+    annual2025['매출(IFRS)'] = ((annual2025['실판매출'] ?? 0) as number) + 매출조정재무식Annual25;
+    annual2025['영업이익률(IFRS)'] =
+      (annual2025['매출(IFRS)'] ?? 0) !== 0
+        ? (annual2025['영업이익(IFRS)'] as number) / (annual2025['매출(IFRS)'] as number)
         : null;
   }
 
@@ -1699,7 +1699,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
   }, [monthlyInputs, financialAdjust26, financialAdjust25]);
 
   const ADJUST_ROW_ACCOUNTS = new Set([
-    '재무&관리차이(-)', ...FINANCIAL_ADJUST_ACCOUNTS, '매출(재무식)', '영업이익(재무식)', '영업이익률(재무식)',
+    '재무&관리차이(-)', ...FINANCIAL_ADJUST_ACCOUNTS, '매출(IFRS)', '영업이익(IFRS)', '영업이익률(IFRS)',
   ]);
   const rowDefs = useMemo(() => {
     const base = activeBrand === null ? ROWS_CORPORATE : ROWS_BRAND;
@@ -1708,7 +1708,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     return base.filter((r) => !ADJUST_ROW_ACCOUNTS.has(r.account));
   }, [activeBrand]);
 
-  const SCENARIO_SUMMARY_ACCOUNTS = ['리테일매출', '실판매출(V+)', '영업이익(관리식)', '영업이익률(관리식)', '영업이익(재무식)', '영업이익률(재무식)'];
+  const SCENARIO_SUMMARY_ACCOUNTS = ['리테일매출', '실판매출(V+)', '영업이익(관리식)', '영업이익률(관리식)', '영업이익(IFRS)', '영업이익률(IFRS)'];
 
   // 시나리오 모달: 계층구조 접기/펼치기 적용한 visible rows
   const scenarioVisibleRows = useMemo(() => {
@@ -1906,9 +1906,9 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       return annualOi / annualSales;
     }
 
-    if (account === '영업이익률(재무식)') {
-      const annualOiF = sumOrNull(getRowSeries('영업이익(재무식)').monthly);
-      const annualSales = sumOrNull(getRowSeries('매출(재무식)').monthly);
+    if (account === '영업이익률(IFRS)') {
+      const annualOiF = sumOrNull(getRowSeries('영업이익(IFRS)').monthly);
+      const annualSales = sumOrNull(getRowSeries('매출(IFRS)').monthly);
       if (annualOiF === null || annualSales === null || annualSales === 0) return null;
       return annualOiF / annualSales;
     }
@@ -2711,9 +2711,9 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       if (oi === null || sales === null || sales === 0) return null;
       return oi / sales;
     }
-    if (account === '영업이익률(재무식)') {
-      const oiF = sumOrNull(gs('영업이익(재무식)'));
-      const sales = sumOrNull(gs('매출(재무식)'));
+    if (account === '영업이익률(IFRS)') {
+      const oiF = sumOrNull(gs('영업이익(IFRS)'));
+      const sales = sumOrNull(gs('매출(IFRS)'));
       if (oiF === null || sales === null || sales === 0) return null;
       return oiF / sales;
     }
@@ -3367,14 +3367,14 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
               {visibleRows.map((row) => {
                 const series = getRowSeries(row.account);
                 const annual26 = getAnnual26Value(row.account);
-                const isRateYoY = row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)' || row.account === '(Tag 대비 원가율)';
+                const isRateYoY = row.account === '영업이익률(관리식)' || row.account === '영업이익률(IFRS)' || row.account === '(Tag 대비 원가율)';
                 const yoyText = isRateYoY
                   ? (annual26 !== null && series.annual2025 !== null ? `${(annual26 - series.annual2025) * 100 >= 0 ? '+' : ''}${((annual26 - series.annual2025) * 100).toFixed(1)}%p` : '-')
                   : formatYoYByAnnual(annual26, series.annual2025);
                 const isGroupCollapsed = row.isGroup && collapsed.has(row.account);
                 const accountLabel = ACCOUNT_LABEL_OVERRIDES[row.account] ?? row.account;
                 const isProfitFocusRow = ['매출총이익', '영업이익(관리식)', '영업이익률(관리식)'].includes(row.account);
-                const isMintRow = ['매출(재무식)', '영업이익(재무식)', '영업이익률(재무식)'].includes(row.account);
+                const isMintRow = ['매출(IFRS)', '영업이익(IFRS)', '영업이익률(IFRS)'].includes(row.account);
                 const isAdjustGroupRow = row.account === '재무&관리차이(-)';
                 const rowTone =
                   isMintRow
@@ -3434,9 +3434,9 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                             const salesYtd = sumOrNull(getRowSeries('실판매출').monthly.slice(0, latestActualMonth));
                             return oiYtd !== null && salesYtd !== null && salesYtd !== 0 ? formatValue(oiYtd / salesYtd, 'percent') : '';
                           }
-                          if (row.account === '영업이익률(재무식)') {
-                            const oiYtd = sumOrNull(getRowSeries('영업이익(재무식)').monthly.slice(0, latestActualMonth));
-                            const salesYtd = sumOrNull(getRowSeries('매출(재무식)').monthly.slice(0, latestActualMonth));
+                          if (row.account === '영업이익률(IFRS)') {
+                            const oiYtd = sumOrNull(getRowSeries('영업이익(IFRS)').monthly.slice(0, latestActualMonth));
+                            const salesYtd = sumOrNull(getRowSeries('매출(IFRS)').monthly.slice(0, latestActualMonth));
                             return oiYtd !== null && salesYtd !== null && salesYtd !== 0 ? formatValue(oiYtd / salesYtd, 'percent') : '';
                           }
                           if (row.account === '(Tag 대비 원가율)') {
@@ -4513,7 +4513,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                             : scenarioData.base.byBrand[scenarioModalBrand as ForecastLeafBrand].calculated.annual2025[row.account] ?? null;
                         })();
                         const annual26BasePlan = getScenarioAnnual26(row.account, scenarioModalBrand, scenarioData.base);
-                        const isHighlightRow = row.account === '리테일매출' || row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)';
+                        const isHighlightRow = row.account === '리테일매출' || row.account === '영업이익률(관리식)' || row.account === '영업이익률(IFRS)';
                         const bgClass = isHighlightRow ? 'bg-slate-100' : 'bg-white';
                         const isBoldRow = row.isBold ?? row.isGroup;
                         const isAccCollapsed = row.isGroup && scenarioCollapsedAccounts.has(row.account);

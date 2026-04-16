@@ -123,9 +123,9 @@ export const ROWS_CORPORATE: ForecastRowDef[] = [
   { account: '기타', level: 1, isGroup: false, isCalculated: false, format: 'number' },
   { account: '리베이트', level: 1, isGroup: false, isCalculated: false, format: 'number' },
   { account: '정부보조금', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '매출(재무식)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
-  { account: '영업이익(재무식)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
-  { account: '영업이익률(재무식)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
+  { account: '매출(IFRS)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
+  { account: '영업이익(IFRS)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
+  { account: '영업이익률(IFRS)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
 ];
 
 export const ROWS_BRAND: ForecastRowDef[] = ROWS_CORPORATE.filter(

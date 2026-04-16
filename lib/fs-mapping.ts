@@ -203,7 +203,7 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false, adj
     },
   ];
 
-  // 재무조정 데이터가 있으면 재무&관리차이(-) + 영업이익(재무식) 행 추가
+  // 재무조정 데이터가 있으면 재무&관리차이(-) + 영업이익(IFRS) 행 추가
   if (adjustData) {
     const adjMap = createMonthDataMap(adjustData);
     const 재무조정항목 = [
@@ -215,7 +215,7 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false, adj
       재무조정values.reduce((sum, arr) => sum + arr[i], 0)
     );
     const 영업이익재무식 = 영업이익.map((v, i) => v - 재무관리차이[i]);
-    // 매출(재무식) = 실판매출 + 매출조정(재무식) (CSV 2개 행은 readCSV에서 이미 합산됨)
+    // 매출(IFRS) = 실판매출 + 매출조정(재무식) (CSV 2개 행은 readCSV에서 이미 합산됨)
     const 매출조정재무식 = getAccountValues(adjMap, '매출조정(재무식)');
     const 매출재무식 = 실판매출.map((v, i) => v + 매출조정재무식[i]);
     const 영업이익률재무식 = 매출재무식.map((v, i) => (v !== 0 ? 영업이익재무식[i] / v : null));
@@ -240,7 +240,7 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false, adj
         format: 'number' as const,
       })),
       {
-        account: '매출(재무식)',
+        account: '매출(IFRS)',
         level: 0,
         isGroup: false,
         isCalculated: true,
@@ -250,7 +250,7 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false, adj
         format: 'number',
       },
       {
-        account: '영업이익(재무식)',
+        account: '영업이익(IFRS)',
         level: 0,
         isGroup: false,
         isCalculated: true,
@@ -260,7 +260,7 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false, adj
         format: 'number',
       },
       {
-        account: '영업이익률(재무식)',
+        account: '영업이익률(IFRS)',
         level: 0,
         isGroup: false,
         isCalculated: true,
@@ -340,7 +340,7 @@ export function calculateComparisonData(
     const monthYoY = calculateYoY(currYearMonth, prevYearMonth);
     
     // 비율 항목인지 확인
-    const isRatioAccount = row.account === '(Tag 대비 원가율)' || row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)';
+    const isRatioAccount = row.account === '(Tag 대비 원가율)' || row.account === '영업이익률(관리식)' || row.account === '영업이익률(IFRS)';
 
     let prevYearYTD: number | null = null;
     let currYearYTD: number | null = null;
@@ -401,12 +401,12 @@ export function calculateComparisonData(
           currYearAnnual = currAnnual실판매출 !== 0 ? currAnnual영업이익 / currAnnual실판매출 : null;
           prevYearAnnual = prevAnnual실판매출 !== 0 ? prevAnnual영업이익 / prevAnnual실판매출 : null;
         }
-      } else if (row.account === '영업이익률(재무식)') {
-        // 영업이익률(재무식) = 영업이익(재무식) / 매출(재무식)
-        const curr영업이익재무 = currAccountMap.get('영업이익(재무식)');
-        const prev영업이익재무 = prevAccountMap.get('영업이익(재무식)');
-        const curr매출재무 = currAccountMap.get('매출(재무식)');
-        const prev매출재무 = prevAccountMap.get('매출(재무식)');
+      } else if (row.account === '영업이익률(IFRS)') {
+        // 영업이익률(IFRS) = 영업이익(IFRS) / 매출(IFRS)
+        const curr영업이익재무 = currAccountMap.get('영업이익(IFRS)');
+        const prev영업이익재무 = prevAccountMap.get('영업이익(IFRS)');
+        const curr매출재무 = currAccountMap.get('매출(IFRS)');
+        const prev매출재무 = prevAccountMap.get('매출(IFRS)');
 
         if (curr영업이익재무 && prev영업이익재무 && curr매출재무 && prev매출재무) {
           const currYTD영업이익재무 = calculateYTD(curr영업이익재무.values);
