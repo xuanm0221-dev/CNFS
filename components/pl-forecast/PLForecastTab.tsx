@@ -3883,6 +3883,14 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             const v = salesDerived[`dealerS:${b}`]?.monthly?.[mi];
             return v == null ? null : v / 1000;
           });
+          const year1_26K = sumByBrands((b, mi) => {
+            const v = salesDerived[`dealerYear1:${b}`]?.monthly?.[mi];
+            return v == null ? null : v / 1000;
+          });
+          const next_26K = sumByBrands((b, mi) => {
+            const v = salesDerived[`dealerNext:${b}`]?.monthly?.[mi];
+            return v == null ? null : v / 1000;
+          });
           const acc_26K = sumByBrands((b, mi) => {
             const v = salesDerived[`dealerACC:${b}`]?.monthly?.[mi];
             return v == null ? null : v / 1000;
@@ -3890,6 +3898,29 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
           // 25년 (이미 K)
           const currF_25K = sumByBrands((b, mi) => tagSales2025Data.brands[b]?.['대리상(의류)']?.['25F']?.[mi] ?? null);
           const currS_25K = sumByBrands((b, mi) => tagSales2025Data.brands[b]?.['대리상(의류)']?.['25S']?.[mi] ?? null);
+          // 25년 1년차 = 24S + 24F (전년도 시즌 상품을 25년에 판매)
+          const year1_25K = sumByBrands((b, mi) => {
+            const cloth = tagSales2025Data.brands[b]?.['대리상(의류)'] ?? {};
+            const a = cloth['24S']?.[mi] ?? null;
+            const c = cloth['24F']?.[mi] ?? null;
+            if (a == null && c == null) return null;
+            return (a ?? 0) + (c ?? 0);
+          });
+          // 25년 차기시즌 = 연도 ≥ 26 (26년 이후 시즌 상품을 25년에 선판매)
+          const next_25K = sumByBrands((b, mi) => {
+            const cloth = tagSales2025Data.brands[b]?.['대리상(의류)'] ?? {};
+            let s = 0; let any = false;
+            for (const [tag, series] of Object.entries(cloth)) {
+              if (tag === '과시즌') continue;
+              const m = tag.match(/^(\d{2})[SF]$/);
+              if (!m) continue;
+              const yr = Number(m[1]);
+              if (!Number.isFinite(yr) || yr < 26) continue;
+              const v = series?.[mi];
+              if (v != null && Number.isFinite(v)) { s += v; any = true; }
+            }
+            return any ? s : null;
+          });
           const acc_25K = sumByBrands((b, mi) => {
             const accCats = tagSales2025Data.brands[b]?.['대리상(ACC)'] ?? {};
             const firstTag = Object.values(accCats)[0];
@@ -3899,8 +3930,8 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             const defined = parts.filter((v): v is number => v != null);
             return defined.length ? defined.reduce((s, v) => s + v, 0) : null;
           };
-          const total_26K = new Array(12).fill(null).map((_, mi) => sumParts([currF_26K[mi], currS_26K[mi], acc_26K[mi]]));
-          const total_25K = new Array(12).fill(null).map((_, mi) => sumParts([currF_25K[mi], currS_25K[mi], acc_25K[mi]]));
+          const total_26K = new Array(12).fill(null).map((_, mi) => sumParts([currF_26K[mi], currS_26K[mi], acc_26K[mi], year1_26K[mi], next_26K[mi]]));
+          const total_25K = new Array(12).fill(null).map((_, mi) => sumParts([currF_25K[mi], currS_25K[mi], acc_25K[mi], year1_25K[mi], next_25K[mi]]));
           const sumArr = (arr: (number | null)[]): number | null => {
             let s = 0; let any = false;
             for (const v of arr) if (v != null) { s += v; any = true; }
@@ -3928,14 +3959,18 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             num: (number | null)[];
             denom: (number | null)[];
           }> = [
-            { label: '당년F',     num: currF_26K, denom: currF_25K },
-            { label: 'YoY (F)',   num: currF_26K, denom: currF_25K, isYoy: true },
-            { label: '당년S',     num: currS_26K, denom: currS_25K },
-            { label: 'YoY (S)',   num: currS_26K, denom: currS_25K, isYoy: true },
-            { label: 'ACC',       num: acc_26K,   denom: acc_25K },
-            { label: 'YoY (ACC)', num: acc_26K,   denom: acc_25K,   isYoy: true },
-            { label: '합계',      num: total_26K, denom: total_25K, isTotal: true },
-            { label: 'YoY (합계)',num: total_26K, denom: total_25K, isYoy: true, isTotal: true },
+            { label: '당년F',         num: currF_26K, denom: currF_25K },
+            { label: 'YoY (F)',       num: currF_26K, denom: currF_25K, isYoy: true },
+            { label: '당년S',         num: currS_26K, denom: currS_25K },
+            { label: 'YoY (S)',       num: currS_26K, denom: currS_25K, isYoy: true },
+            { label: 'ACC',           num: acc_26K,   denom: acc_25K },
+            { label: 'YoY (ACC)',     num: acc_26K,   denom: acc_25K,   isYoy: true },
+            { label: '1년차',         num: year1_26K, denom: year1_25K },
+            { label: 'YoY (1년차)',   num: year1_26K, denom: year1_25K, isYoy: true },
+            { label: '차기시즌',      num: next_26K,  denom: next_25K },
+            { label: 'YoY (차기시즌)',num: next_26K,  denom: next_25K,  isYoy: true },
+            { label: '합계',          num: total_26K, denom: total_25K, isTotal: true },
+            { label: 'YoY (합계)',    num: total_26K, denom: total_25K, isYoy: true, isTotal: true },
           ];
           return (
             <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-sm">
@@ -3949,11 +3984,16 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                     <tr>
                       <th className="sticky left-0 z-10 min-w-[260px] border-b border-r border-slate-300 bg-slate-800 px-3 py-2 text-center font-semibold text-slate-100">구분</th>
                       <th className="min-w-[130px] border-b border-r border-slate-300 bg-slate-700 px-3 py-2 text-center font-semibold text-slate-100">전년 연간</th>
-                      {(viewMode === '분기' ? QUARTER_HEADERS : MONTH_HEADERS).map((label) => (
-                        <th key={`dealer-ship-h-${label}`} className={`${viewMode === '분기' ? 'min-w-[130px]' : 'min-w-[105px]'} border-b border-r border-slate-300 bg-slate-800 px-3 py-2 text-center font-semibold text-slate-100`}>
-                          {label}
-                        </th>
-                      ))}
+                      {(viewMode === '분기' ? QUARTER_HEADERS : MONTH_HEADERS).map((label, idx) => {
+                        const isForecast = viewMode === '분기'
+                          ? (idx + 1) * 3 > latestActualMonth
+                          : idx >= latestActualMonth;
+                        return (
+                          <th key={`dealer-ship-h-${label}`} className={`${viewMode === '분기' ? 'min-w-[130px]' : 'min-w-[105px]'} border-b border-r border-slate-300 bg-slate-800 px-3 py-2 text-center font-semibold text-slate-100`}>
+                            {label}{isForecast ? ' (F)' : ''}
+                          </th>
+                        );
+                      })}
                       <th className="min-w-[130px] border-b border-r border-slate-300 bg-slate-700 px-3 py-2 text-center font-semibold text-slate-100">연간</th>
                       {viewMode !== '분기' && (
                         <th className="min-w-[120px] border-b border-slate-300 bg-slate-700 px-3 py-2 text-center font-semibold text-slate-100">
