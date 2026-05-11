@@ -3416,7 +3416,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   }, [otbDraft]);
 
   return (
-    <div className="bg-gray-50 overflow-auto h-[calc(100vh-64px)]">
+    <div className="bg-gray-50 overflow-auto h-[calc(100vh-112px)]">
       <InventoryFilterBar
         year={year}
         onYearChange={setYear}
