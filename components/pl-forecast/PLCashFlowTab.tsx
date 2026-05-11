@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, ChevronRight, ChevronLeft } from 'lucide-react';
 import { formatNumber, getRecoveryMonthLabelsAsN월 } from '@/lib/utils';
 import { buildWcPlanByKeyFromBsWorkingCapital } from '@/lib/wc-plan-from-bs';
+import { BASE_YEAR_MONTH } from '@/lib/base-month';
 import type { TableRow } from '@/lib/types';
 import CFExplanationPanel from '@/components/CFExplanationPanel';
 import type { CFExplanationNumbers } from '@/lib/cf-explanation-data';
@@ -157,7 +158,7 @@ export default function PLCashFlowTab() {
   const [cashBorrowingData, setCashBorrowingData] = useState<CashBorrowingApiData>({ cash: [], borrowing: [] });
   const [cashBorrowingLoaded, setCashBorrowingLoaded] = useState(false);
   const [creditRecovery, setCreditRecovery] = useState<PLCreditRecoveryData>({
-    baseYearMonth: '26.03',
+    baseYearMonth: BASE_YEAR_MONTH,
     dealerAdvance: 0,
     dealerReceivable: 0,
     recoveries: [],
@@ -281,7 +282,7 @@ export default function PLCashFlowTab() {
 
     const loadCreditRecovery = async () => {
       try {
-        const res = await fetch('/api/annual-plan/credit-recovery?baseYearMonth=26.03', { cache: 'no-store' });
+        const res = await fetch(`/api/annual-plan/credit-recovery?baseYearMonth=${BASE_YEAR_MONTH}`, { cache: 'no-store' });
         const json = await res.json();
         if (!mounted || !res.ok || !json?.data) return;
         const payload = json.data as Record<string, unknown>;
@@ -292,7 +293,7 @@ export default function PLCashFlowTab() {
           .map((value) => Number(value))
           .filter((value) => Number.isFinite(value));
         setCreditRecovery({
-          baseYearMonth: typeof payload.baseYearMonth === 'string' ? payload.baseYearMonth : '26.03',
+          baseYearMonth: typeof payload.baseYearMonth === 'string' ? payload.baseYearMonth : BASE_YEAR_MONTH,
           dealerAdvance,
           dealerReceivable,
           recoveries,
@@ -1256,7 +1257,7 @@ export default function PLCashFlowTab() {
     hasWorkingCapitalActualMonth(monthIndex) ? month : `${month}(F)`;
 
   return (
-    <div className="h-[calc(100vh-64px)] overflow-auto bg-gray-50">
+    <div className="h-[calc(100vh-112px)] overflow-auto bg-gray-50">
         <div className="flex flex-1 min-h-0">
           <div className={`${monthsCollapsed ? 'w-1/2' : 'flex-1'} min-w-0 overflow-auto p-6`}>
           <div className="flex flex-wrap items-center gap-2 mb-3">

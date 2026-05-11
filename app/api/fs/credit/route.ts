@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import { readCreditCSV } from '@/lib/csv';
 import { CreditData, CreditDealer } from '@/lib/types';
+import { BASE_YEAR_MONTH } from '@/lib/base-month';
 
 export async function GET() {
   try {
-    const filePath = path.join(process.cwd(), '파일', '대리상AR선수금', '26.03.csv');
+    const filePath = path.join(process.cwd(), '파일', '대리상AR선수금', `${BASE_YEAR_MONTH}.csv`);
     const dealers = await readCreditCSV(filePath);
 
     // 합계 행 찾기 또는 자동 계산

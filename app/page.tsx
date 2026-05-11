@@ -17,6 +17,7 @@ import CreditStatus from '@/components/CreditStatus';
 import BSAnalysis from '@/components/BSAnalysis';
 import ExecutiveSummary from '@/components/ExecutiveSummary';
 import { TableRow, CreditData, CreditRecoveryData, TabType, ExecutiveSummaryData } from '@/lib/types';
+import { BASE_MONTH, BASE_YEAR_MONTH, BASE_YEAR_MONTH_LABEL } from '@/lib/base-month';
 import type { CFExplanationNumbers } from '@/lib/cf-explanation-data';
 import InventoryDashboard from '@/components/inventory/InventoryDashboard';
 import PLForecastTab from '@/components/pl-forecast/PLForecastTab';
@@ -30,7 +31,7 @@ export default function Home() {
   const [plBrand, setPlBrand] = useState<string | null>(null); // null=踰뺤씤, 'mlb', 'kids' ??
   const [bsYear, setBsYear] = useState<number>(2026);
   const [cfYear, setCfYear] = useState<number>(2026);
-  const [baseMonth, setBaseMonth] = useState<number>(3); // 기준월 (기본 3월, 2026년 기준달)
+  const [baseMonth, setBaseMonth] = useState<number>(BASE_MONTH); // 기준월 (lib/base-month.ts 하드코딩)
   const [bsMonthsCollapsed, setBsMonthsCollapsed] = useState<boolean>(true); // 재무상태표 & 운전자본분석 월별 접기
   const [cfMonthsCollapsed, setCfMonthsCollapsed] = useState<boolean>(true); // 현금흐름표 월별 접기 (2025년 기준달 미정)
   // 브랜드별 손익 비교컬럼 표시 여부 (법인 상단용)
@@ -438,7 +439,7 @@ export default function Home() {
     } else if (currentType === 'CREDIT') {
       if (!creditData) loadData('CREDIT');
       if (!creditRecoveryData) {
-        fetch('/api/annual-plan/credit-recovery?baseYearMonth=26.03')
+        fetch(`/api/annual-plan/credit-recovery?baseYearMonth=${BASE_YEAR_MONTH}`)
           .then((r) => (r.ok ? r.json() : null))
           .then((res: { data?: CreditRecoveryData } | null) => {
             if (res?.data) setCreditRecoveryData(res.data);
@@ -489,7 +490,7 @@ export default function Home() {
       ];
       if (cfYear === 2026) {
         fetches.push(makeCfFetch(fetch('/api/fs/bs?year=2026'), '재무상태표(2026)'));
-        fetches.push(makeCfFetch(fetch('/api/annual-plan/credit-recovery?baseYearMonth=26.03'), '여신회수 데이터'));
+        fetches.push(makeCfFetch(fetch(`/api/annual-plan/credit-recovery?baseYearMonth=${BASE_YEAR_MONTH}`), '여신회수 데이터'));
       }
       Promise.all(fetches)
         .then((results) => {
@@ -512,9 +513,10 @@ export default function Home() {
             });
           } else setCashBorrowingData(null);
           if (cfYear === 2026) {
-            const bsResult = results[2] as { workingCapital?: TableRow[] } | null;
+            const bsResult = results[2] as { workingCapital?: TableRow[]; planMonth?: number } | null;
             const creditRecoveryRes = results[3] as { data?: CreditRecoveryData } | null;
             setCfWorkingCapitalData(bsResult?.workingCapital ?? null);
+            setBsPlanMonth(bsResult?.planMonth ?? null);
             setCreditRecoveryData(creditRecoveryRes?.data ?? null);
           }
         })
@@ -583,7 +585,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* 상단 헤더 + 탭 (모두 고정) */}
-      <Header baseMonth={baseMonth} onBaseMonthChange={setBaseMonth} />
+      <Header />
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} groups={tabGroups} />
 
       {/* 탭 콘텐츠 - 헤더(56) + 탭바(~56) 높이만큼 오프셋 */}
@@ -742,7 +744,7 @@ export default function Home() {
                     data={bsData} 
                     columns={monthColumns} 
                     showComparisons={bsYear === 2025 || bsYear === 2026}
-                    baseMonth={3}
+                    baseMonth={BASE_MONTH}
                     isBalanceSheet={true}
                     currentYear={bsYear}
                     monthsCollapsed={bsMonthsCollapsed}
@@ -769,7 +771,7 @@ export default function Home() {
                       data={workingCapitalData} 
                       columns={monthColumns} 
                       showComparisons={bsYear === 2025 || bsYear === 2026}
-                      baseMonth={3}
+                      baseMonth={BASE_MONTH}
                       isBalanceSheet={true}
                       currentYear={bsYear}
                       monthsCollapsed={bsMonthsCollapsed}
@@ -917,7 +919,7 @@ export default function Home() {
         {activeTab === 4 && (
           <div>
             <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">2026년 3월 기준</span>
+              <span className="text-sm font-medium text-gray-700">{BASE_YEAR_MONTH_LABEL} 기준</span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>

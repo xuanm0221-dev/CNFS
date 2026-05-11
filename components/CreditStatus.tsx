@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CreditData, CreditRecoveryData } from '@/lib/types';
 import { formatNumber, getRecoveryMonthLabelsAsN월 } from '@/lib/utils';
+import { BASE_YEAR_MONTH } from '@/lib/base-month';
 
 const RECOVERY_PLAN_FALLBACK = '여신회수 계획: (데이터 없음)';
 
@@ -34,7 +35,7 @@ export default function CreditStatus({ data, creditRecoveryData = null }: Credit
     if (creditRecoveryData) return;
     if (selfFetchedRef.current) return;
     selfFetchedRef.current = true;
-    fetch('/api/annual-plan/credit-recovery?baseYearMonth=26.03')
+    fetch(`/api/annual-plan/credit-recovery?baseYearMonth=${BASE_YEAR_MONTH}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((res: { data?: CreditRecoveryData } | null) => {
         if (res?.data) setCsvRecoveryData(res.data);
