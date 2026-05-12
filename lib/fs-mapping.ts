@@ -447,11 +447,12 @@ export function calculateComparisonData(
       prevYearAnnual,
       currYearAnnual,
       annualYoY,
+      prevYearMonthly: prev2024.slice(0, 12),
     };
-    
+
     return { ...row, comparisons };
   });
-  
+
   return result;
 }
 

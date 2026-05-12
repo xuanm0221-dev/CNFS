@@ -28,6 +28,7 @@ interface FinancialTableProps {
   allRowsCollapsed?: boolean; // 모든 행 접기 상태 (외부 제어)
   onAllRowsToggle?: () => void; // 모든 행 접기 토글 핸들러
   hideInternalControls?: boolean; // 내부 컨트롤 버튼(펼치기/월별/YTD) 숨김 — 부모가 외부에서 렌더할 때
+  quarterlyMode?: boolean; // 분기보기 (월별 12개 컬럼 대신 1Q~4Q 4개 컬럼으로 교체, 셀 내부 YoY 인라인)
 }
 
 export default function FinancialTable({ 
@@ -53,6 +54,7 @@ export default function FinancialTable({
   allRowsCollapsed: externalAllRowsCollapsed,
   onAllRowsToggle,
   hideInternalControls = false,
+  quarterlyMode = false,
 }: FinancialTableProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [internalMonthsCollapsed, setInternalMonthsCollapsed] = useState<boolean>(true);
@@ -216,6 +218,63 @@ export default function FinancialTable({
     }
   }, [showComparisons, isBalanceSheet, baseMonth, currentYear]);
 
+  // 분기보기 컬럼 라벨 (당년 4개만 — 전년 비교는 셀 내부 YoY 인라인으로 표시)
+  const quarterlyColumns = useMemo(() => ([
+    '1Q', '2Q', '3Q', '4Q',
+  ]), []);
+
+  // 분기값 계산용 lookup 맵 (비율 행 재계산에 필요)
+  // account → { curr: 12개월, prev: 12개월 }
+  const accountMonthlyMap = useMemo(() => {
+    const m = new Map<string, { curr: (number | null)[]; prev: (number | null)[] }>();
+    for (const row of data) {
+      const prev = row.comparisons?.prevYearMonthly ?? Array(12).fill(null);
+      m.set(row.account, { curr: row.values.slice(0, 12), prev });
+    }
+    return m;
+  }, [data]);
+
+  // 단일 분기 합산: 3개월 합 (null은 0으로 취급하되, 전부 null이면 null)
+  const sumQuarter = (vals: (number | null)[], q: number): number | null => {
+    const start = q * 3;
+    let sum = 0;
+    let hasValue = false;
+    for (let i = start; i < start + 3; i++) {
+      const v = vals[i];
+      if (v !== null && v !== undefined && !Number.isNaN(v)) {
+        sum += v;
+        hasValue = true;
+      }
+    }
+    return hasValue ? sum : null;
+  };
+
+  // 비율 행의 분기 재계산 (분자/분모 account name 매핑)
+  // calculateComparisonData의 로직과 일치시킴
+  const RATIO_RULES: Record<string, { numerator: string; denominator: string; multiplier?: number }> = {
+    '(Tag 대비 원가율)': { numerator: '매출원가', denominator: 'Tag매출', multiplier: 1.13 },
+    '영업이익률(관리식)': { numerator: '영업이익(관리식)', denominator: '실판매출' },
+    '영업이익률(IFRS)': { numerator: '영업이익(IFRS)', denominator: '매출(IFRS)' },
+  };
+
+  // 분기값 산출: 일반 행은 단순 합, 비율 행은 분자/분모 합산 후 비율 재계산
+  const getQuarterValue = (row: TableRow, q: number, useCurrYear: boolean): number | null => {
+    const rule = RATIO_RULES[row.account];
+    if (rule) {
+      const num = accountMonthlyMap.get(rule.numerator);
+      const den = accountMonthlyMap.get(rule.denominator);
+      if (!num || !den) return null;
+      const numVals = useCurrYear ? num.curr : num.prev;
+      const denVals = useCurrYear ? den.curr : den.prev;
+      const numSum = sumQuarter(numVals, q);
+      const denSum = sumQuarter(denVals, q);
+      if (numSum === null || denSum === null || denSum === 0) return null;
+      return ((rule.multiplier ?? 1) * numSum) / denSum;
+    }
+    const vals = useCurrYear ? row.values.slice(0, 12) : (row.comparisons?.prevYearMonthly ?? []);
+    return sumQuarter(vals, q);
+  };
+
   // 실제 표시할 컬럼 (월 토글 고려, 빈 컬럼 포함)
   const displayColumns = useMemo(() => {
     const accountCol = [columns[0]]; // "계정과목"
@@ -287,19 +346,22 @@ export default function FinancialTable({
       } else {
         // 손익계산서: YTD 포함 (hideYtd가 true이면 YTD 제외, 연간은 항상 표시)
         // YoY 컬럼은 제거되었고 당년 컬럼에 통합됨
-        
+
         // 브랜드별 컬럼 추가
         if (showBrandBreakdown) {
           const result: string[] = [];
-          
+
           // 계정과목
           result.push(accountCol[0]);
-          
-          // 월별 데이터 (monthsCollapsed가 false일 때)
-          if (!monthsCollapsed) {
+
+          // 분기보기: 1Q~4Q 4개 컬럼 (당년만, 셀 내부 YoY 인라인)
+          if (quarterlyMode) {
+            result.push(...quarterlyColumns);
+          } else if (!monthsCollapsed) {
+            // 월별 데이터 (monthsCollapsed가 false일 때)
             result.push(...columns.slice(1)); // 1월~12월
           }
-          
+
           // 빈 컬럼
           result.push('');
           
@@ -340,7 +402,15 @@ export default function FinancialTable({
         }
         
         // 브랜드별 컬럼이 없을 때 (일반 모드)
-        const baseCols = monthsCollapsed ? [
+        const baseCols = quarterlyMode ? [
+            ...accountCol,
+            ...quarterlyColumns, // 1Q, 2Q, 3Q, 4Q (당년 + YoY 인라인)
+            '', // 빈 컬럼
+            comparisonColumns[0], comparisonColumns[1], // 전년(N월), 당년(N월)
+          ...(hideYtd ? [] : ['', comparisonColumns[2], comparisonColumns[3]]), // 전년YTD, 당년YTD
+            '', // 빈 컬럼
+          comparisonColumns[4], comparisonColumns[5], // 전년연간, 당년연간
+        ] : monthsCollapsed ? [
             ...accountCol,
             '', // 빈 컬럼
             comparisonColumns[0], comparisonColumns[1], // 전년(12월), 당년(12월)
@@ -356,14 +426,14 @@ export default function FinancialTable({
           '', // 빈 컬럼
           comparisonColumns[4], comparisonColumns[5], // 24년연간, 25년연간
         ];
-        
+
         return baseCols;
       }
     } else {
       // 기본: 모든 컬럼
       return columns;
     }
-  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd]);
+  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd, quarterlyMode, quarterlyColumns]);
 
   return (
     <div>
@@ -489,7 +559,7 @@ export default function FinancialTable({
                     );
                   }
                   
-                  const isComparisonCol = showComparisons && comparisonColumns.includes(col);
+                  const isComparisonCol = showComparisons && (comparisonColumns.includes(col) || quarterlyColumns.includes(col));
                   const isBrandCol = showBrandBreakdown && brands.includes(col);
                   
                   // CF: 기준월 개념 없음 (모든 월 동일하게 표시)
@@ -803,14 +873,57 @@ export default function FinancialTable({
                     
                     for (let i = startIndex; i < displayColumns.length; i++) {
                       const col = displayColumns[i];
-                      
+
                       if (col === '') {
                         cells.push(
                           <td key={`spacer-${i}`} className="bg-white border-0" style={{ minWidth: '16px', maxWidth: '16px', padding: 0 }}></td>
                         );
                         continue;
                       }
-                      
+
+                      // 분기보기 컬럼 (1Q, 2Q, 3Q, 4Q — 당년만 + YoY 인라인)
+                      if (quarterlyMode && quarterlyColumns.includes(col)) {
+                        const q = quarterlyColumns.indexOf(col); // 0..3
+                        const currQ = getQuarterValue(row, q, true);
+                        const prevQ = getQuarterValue(row, q, false);
+                        const qYoY = (currQ !== null && prevQ !== null) ? currQ - prevQ : null;
+                        const qYoYPercent = (currQ !== null && prevQ !== null && prevQ !== 0)
+                          ? currQ / prevQ
+                          : null;
+                        const isProfitTurnaround = row.account === '영업이익(관리식)'
+                          && currQ !== null && prevQ !== null
+                          && currQ > 0 && prevQ < 0;
+                        const isRatioRow = row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)' || row.account === '영업이익률(IFRS)' || row.account === '(Tag 대비 원가율)';
+                        cells.push(
+                          <td key={`q-${i}`} className={`border border-gray-200 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''}`}>
+                            <div className="flex flex-col items-end">
+                              <div className={isNegative(currQ) ? 'text-red-600' : ''}>
+                                {formatValue(currQ, row.format, false, true)}
+                              </div>
+                              <div className="text-xs leading-tight mt-0.5">
+                                <span className={isNegative(qYoY) ? 'text-red-600' : qYoY !== null && qYoY > 0 ? 'text-green-600' : ''}>
+                                  {formatValue(qYoY, row.format, true, false)}
+                                </span>
+                                {isProfitTurnaround ? (
+                                  <>
+                                    <span className="mx-1">,</span>
+                                    <span className="text-green-600 font-semibold">흑자전환</span>
+                                  </>
+                                ) : qYoYPercent !== null && !isRatioRow && (
+                                  <>
+                                    <span className="mx-1">,</span>
+                                    <span className={qYoYPercent < 1 ? 'text-red-600' : qYoYPercent > 1 ? 'text-green-600' : ''}>
+                                      {formatPercent(qYoYPercent, false, false, 0)}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        );
+                        continue;
+                      }
+
                       if (col === comparisonColumns[0]) {
                         // 전년(12월) - 브랜드별 컬럼 없음
                         cells.push(

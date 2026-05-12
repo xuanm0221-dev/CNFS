@@ -33,6 +33,7 @@ export interface ComparisonData {
   prevYearAnnual: number | null; // 24년 연간
   currYearAnnual: number | null; // 25년 연간
   annualYoY: number | null; // 연간 YoY
+  prevYearMonthly?: (number | null)[]; // 전년 12개월 값 (분기보기에서 사용)
   // BS 2026 계획 관련 필드
   currMonthPlan?: number | null; // 당월 계획값
   annualPlan?: number | null; // 연간 계획값

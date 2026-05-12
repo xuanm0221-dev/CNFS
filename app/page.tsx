@@ -25,7 +25,7 @@ import type { ScenarioInventoryPayload } from '@/components/pl-forecast/plForeca
 import PLCashFlowTab from '@/components/pl-forecast/PLCashFlowTab';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<number>(7);
+  const [activeTab, setActiveTab] = useState<number>(5);
   const [inventoryTabMounted, setInventoryTabMounted] = useState<boolean>(true);
   const [plYear, setPlYear] = useState<number>(2026);
   const [plBrand, setPlBrand] = useState<string | null>(null); // null=踰뺤씤, 'mlb', 'kids' ??
@@ -37,6 +37,7 @@ export default function Home() {
   // 브랜드별 손익 비교컬럼 표시 여부 (법인 상단용)
   const [hideYtd, setHideYtd] = useState<boolean>(true); // YTD 숨기기 (기준월 12월일 때 기본값 숨김)
   const [plMonthsCollapsed, setPlMonthsCollapsed] = useState<boolean>(true); // PL 월별 데이터 접기
+  const [plQuarterlyMode, setPlQuarterlyMode] = useState<boolean>(false); // PL 분기보기 (월별 12개 컬럼을 1Q~4Q 4개 컬럼으로 교체)
   const [plAllRowsCollapsed, setPlAllRowsCollapsed] = useState<boolean>(true); // PL 모든 행 접기
   const [summaryData, setSummaryData] = useState<ExecutiveSummaryData | null>(null);
   const [plData, setPlData] = useState<TableRow[] | null>(null);
@@ -631,13 +632,36 @@ export default function Home() {
                   </button>
                   {(plYear === 2025 || plYear === 2026) && (
                     <button
-                      onClick={() => setPlMonthsCollapsed(!plMonthsCollapsed)}
+                      onClick={() => {
+                        const next = !plMonthsCollapsed;
+                        setPlMonthsCollapsed(next);
+                        if (!next) setPlQuarterlyMode(false); // 월별 펼치면 분기보기 해제
+                      }}
                       className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50"
                     >
                       {plMonthsCollapsed ? '월별 데이터 펼치기' : '월별 데이터 접기'}
                       {plMonthsCollapsed
                         ? <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
                         : <ChevronLeft className="h-3.5 w-3.5 text-slate-400" />}
+                    </button>
+                  )}
+                  {(plYear === 2025 || plYear === 2026) && (
+                    <button
+                      onClick={() => {
+                        const next = !plQuarterlyMode;
+                        setPlQuarterlyMode(next);
+                        if (next) setPlMonthsCollapsed(true); // 분기보기 켜면 월별은 접기
+                      }}
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                        plQuarterlyMode
+                          ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      {plQuarterlyMode ? '분기보기 해제' : '분기보기'}
+                      {plQuarterlyMode
+                        ? <ChevronLeft className="h-3.5 w-3.5 text-indigo-400" />
+                        : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
                     </button>
                   )}
                   {(plYear === 2025 || plYear === 2026) && (
@@ -680,6 +704,7 @@ export default function Home() {
                   allRowsCollapsed={plAllRowsCollapsed}
                   onAllRowsToggle={() => setPlAllRowsCollapsed(!plAllRowsCollapsed)}
                   hideInternalControls={true}
+                  quarterlyMode={plQuarterlyMode}
                 />
               </div>
             )}
