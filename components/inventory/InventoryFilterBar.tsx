@@ -326,7 +326,7 @@ export default function InventoryFilterBar({
                 onClick={handleDownloadSnapshot}
                 disabled={snapshotBusy}
                 className="flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 shadow-sm hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
-                title="SCENARIO_DEFS 기본 성장률 기준으로 시나리오 전체를 계산해 scenario_inventory_closing.json 파일로 다운로드합니다. 다운로드 파일을 보조파일(simu)/scenario_inventory_closing.json 에 덮어써 커밋하면 외부 사용자의 기본 스냅샷이 갱신됩니다. (개발자 전용, 재계산·저장과 무관)"
+                title="SCENARIO_DEFS 기본 성장률 기준으로 시나리오 전체를 계산해 보조파일(simu)/scenario_inventory_closing.json 에 직접 저장합니다. 저장 후 git commit/push 하면 외부 사용자의 기본 스냅샷이 갱신됩니다. (개발자 전용, 재계산·저장과 무관)"
               >
                 {snapshotBusy ? (
                   <svg className="animate-spin" width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -337,7 +337,7 @@ export default function InventoryFilterBar({
                     <path d="M5 1v6M2 5l3 3 3-3M1 9h8" />
                   </svg>
                 )}
-                {snapshotBusy ? '생성중…' : '기본 스냅샷 다운로드 (dev)'}
+                {snapshotBusy ? '저장중…' : '기본 스냅샷 저장 (dev)'}
               </button>
             )}
             <span className="text-[11px] font-bold leading-snug text-red-600 max-w-xl pl-0.5">

@@ -2092,9 +2092,9 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     onScenarioRecalc?.(payload);
   }, [computeScenarioPayloadCore, effectiveScenarioGrowthRates, onScenarioRecalc]);
 
-  // 스냅샷 다운로드(dev): SCENARIO_DEFS 기본값으로 계산 → JSON 파일 다운로드.
-  // 메모리/상태에 영향 없음. 다운로드 파일을 보조파일(simu)/scenario_inventory_closing.json 에
-  // 덮어써 커밋하면 외부 사용자의 기본 스냅샷이 갱신됨.
+  // 스냅샷 저장(dev): SCENARIO_DEFS 기본값으로 계산 → 보조파일(simu)/scenario_inventory_closing.json 에 직접 덮어쓰기.
+  // 메모리/상태에 영향 없음. 저장 후 git commit/push 하면 외부 사용자의 기본 스냅샷이 갱신됨.
+  // (이전: 브라우저 다운로드 → 사용자가 수동으로 폴더 이동. 이제: 서버에 직접 저장)
   const downloadDefaultSnapshot = useCallback(async () => {
     const defaultRates: ScenarioRates = {
       negative: { dealer: SCENARIO_DEFS.negative.dealerGrowthRate, hq: SCENARIO_DEFS.negative.hqGrowthRate },
@@ -2103,15 +2103,22 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     };
     const payload = await computeScenarioPayloadCore(defaultRates);
     if (!payload) return;
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'scenario_inventory_closing.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      const res = await fetch('/api/inventory/save-default-snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; filePath?: string; error?: string };
+      if (!res.ok || !json.success) {
+        alert(`스냅샷 저장 실패: ${json.error ?? res.statusText}`);
+        return;
+      }
+      alert(`스냅샷 저장 완료\n→ ${json.filePath}\n\nrepo에 commit/push 하면 다른 사용자에게도 반영됩니다.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`스냅샷 저장 오류: ${message}`);
+    }
   }, [computeScenarioPayloadCore]);
 
   // 브랜드별 당년 top table (buildBrand2026TopTable 이후에 배치)

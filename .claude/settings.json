@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(curl -s -o nul -w \"%{http_code}\" http://localhost:3000/api/inventory/actual-arrival?year=2026^)",
+      "Bash(brand=MLB 2>&1)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/api/inventory/actual-arrival?year=2026&brand=MLB&debug=1\" -UseBasicParsing -TimeoutSec 60; Write-Output $r.Content } catch { Write-Output \"ERROR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/api/inventory/actual-arrival?year=2026&brand=MLB&debug=1\" -UseBasicParsing -TimeoutSec 90; Write-Output $r.Content } catch { $reader = New-Object System.IO.StreamReader\\($_.Exception.Response.GetResponseStream\\(\\)\\); Write-Output $reader.ReadToEnd\\(\\) })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/api/inventory/actual-arrival?year=2026&brand=MLB&debug=1\" -UseBasicParsing -TimeoutSec 120; Write-Output $r.Content } catch { $reader = New-Object System.IO.StreamReader\\($_.Exception.Response.GetResponseStream\\(\\)\\); Write-Output $reader.ReadToEnd\\(\\) })",
+      "PowerShell($brands = @\\(\"MLB KIDS\", \"DISCOVERY\"\\); foreach \\($b in $brands\\) { $encoded = [System.Web.HttpUtility]::UrlEncode\\($b\\); try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/api/inventory/actual-arrival?year=2026&brand=$encoded\" -UseBasicParsing -TimeoutSec 120; Write-Output \"=== $b ===\"; Write-Output $r.Content } catch { Write-Output \"ERROR for $b\" } })",
+      "Bash(python scripts/refresh_2026_actual_arrival.py)",
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; python scripts/refresh_2026_actual_arrival.py)"
     ]
   }
 }
