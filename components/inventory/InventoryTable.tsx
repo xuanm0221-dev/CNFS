@@ -39,6 +39,8 @@ interface Props {
   showLegend?: boolean;
   /** 기말과 증감 사이에 Sell-in (YoY)/Sell-out (YoY)/기말 (YoY) 3컬럼 표시 */
   showYoyColumns?: boolean;
+  /** 기말과 증감 사이에 "vs 시뮬" 컬럼 표시 — 모달 표 기말 - 재고자산(sim) 기말 (row.key → diff) */
+  vsSimByKey?: Record<string, number | null>;
 }
 
 // 헤더 스타일
@@ -207,6 +209,7 @@ export default function InventoryTable({
   use2025Legend = false,
   showLegend = true,
   showYoyColumns = false,
+  vsSimByKey,
 }: Props) {
   const titleMeta = parseTitleMeta(title);
   const isWoiEditable = year === 2026 && !!onWoiChange;
@@ -328,6 +331,12 @@ export default function InventoryTable({
                 기말<br />
                 <span className="font-normal text-[10px] text-slate-500">({year}년기말)</span>
               </th>
+              {vsSimByKey && (
+                <th className={`${TH} !bg-purple-100 !text-purple-800`} style={{ width: '5%', minWidth: 60 }}>
+                  vs 시뮬<br />
+                  <span className="font-normal text-[10px] text-purple-500">(모달 − sim)</span>
+                </th>
+              )}
               {showYoyColumns && (
                 <>
                   <th
@@ -487,6 +496,17 @@ export default function InventoryTable({
                     ? (() => { const v = 'yoyClosing' in row ? row.yoyClosing : yoyClosing; return v != null ? formatPct(v * 100) : '-'; })()
                     : formatKValue((row as InventoryRow).closing)}
                 </td>
+                {/* vs 시뮬 — 모달 표 기말 − 재고자산(sim) 기말 */}
+                {vsSimByKey && (() => {
+                  if (isYoyRow(row)) return <td className={`${cellCls(row)} bg-purple-50/60`}>-</td>;
+                  const diff = vsSimByKey[(row as InventoryRow).key];
+                  const cls = diff == null || diff === 0 ? 'text-purple-400' : 'text-purple-700 font-medium';
+                  return (
+                    <td className={`${cellCls(row)} bg-purple-50/60 ${cls}`}>
+                      {diff == null ? '-' : (diff > 0 ? '+' : '') + formatKValue(diff)}
+                    </td>
+                  );
+                })()}
                 {/* Sell-in (YoY) / Sell-out (YoY) / 기말 (YoY) — 토글로 표시 */}
                 {showYoyColumns && (() => {
                   if (isYoyRow(row)) {

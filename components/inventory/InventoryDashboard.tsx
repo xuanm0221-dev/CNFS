@@ -30,6 +30,7 @@ import {
 } from '@/lib/aggregate-inventory-by-brand';
 import InventoryFilterBar from './InventoryFilterBar';
 import InventoryTable from './InventoryTable';
+import InventoryPLModal from './InventoryPLModal';
 import InventoryMonthlyTable, { TableData } from './InventoryMonthlyTable';
 import { DEFAULT_HQ_ACC_BUDGET, type HqAccBudgetEntry } from '@/lib/inventory-hq-acc-budget';
 
@@ -850,6 +851,8 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     'MLB KIDS': false,
     DISCOVERY: false,
   });
+  // 브랜드별 PL용 모달 — null이면 닫힘, 브랜드명이면 그 브랜드 모달 오픈
+  const [plModalBrand, setPlModalBrand] = useState<AnnualPlanBrand | null>(null);
   const [dependentPlanInitialLoading, setDependentPlanInitialLoading] = useState(false);
   const [otbData, setOtbData] = useState<OtbData | null>(null);
   const [otbLoading, setOtbLoading] = useState(false);
@@ -4247,6 +4250,15 @@ ORDER BY YYYYMM;
                   >
                     YoY 컬럼 {isYoyOpen ? '접기 ▲' : '펼치기 ▼'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlModalBrand(b)}
+                    disabled={!perBrandTopTableDisplayData[b] && !perBrandTopTable[b]}
+                    className="shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100 disabled:opacity-50"
+                    title={`${b} PL용 재고자산표 모달 열기`}
+                  >
+                    PL용 보기 ↗
+                  </button>
                 </div>
               );
             })}
@@ -4956,6 +4968,21 @@ ORDER BY YYYYMM;
           )}
         </div>
       </div>
+
+      {/* 브랜드별 PL용 재고자산표 모달 */}
+      {plModalBrand && (() => {
+        const data = perBrandTopTableDisplayData[plModalBrand] ?? perBrandTopTable[plModalBrand];
+        if (!data) return null;
+        return (
+          <InventoryPLModal
+            brand={plModalBrand}
+            data={data}
+            prevData={perBrandPrevYearTableData[plModalBrand] ?? null}
+            year={year}
+            onClose={() => setPlModalBrand(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -23,6 +23,8 @@ import InventoryDashboard from '@/components/inventory/InventoryDashboard';
 import PLForecastTab from '@/components/pl-forecast/PLForecastTab';
 import type { ScenarioInventoryPayload } from '@/components/pl-forecast/plForecastConfig';
 import PLCashFlowTab from '@/components/pl-forecast/PLCashFlowTab';
+import DealerShipmentByBrand from '@/components/DealerShipmentByBrand';
+import TagRecoveryRateTable from '@/components/TagRecoveryRateTable';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(5);
@@ -706,12 +708,20 @@ export default function Home() {
                   hideInternalControls={true}
                   quarterlyMode={plQuarterlyMode}
                 />
+                {plYear === 2026 && (
+                  <DealerShipmentByBrand
+                    monthsCollapsed={plMonthsCollapsed}
+                    quarterlyMode={plQuarterlyMode}
+                    selectedBrand={plBrand}
+                  />
+                )}
+                {plYear === 2026 && <TagRecoveryRateTable />}
               </div>
             )}
           </div>
         )}
 
-        {/* BS - ?щТ?곹깭??*/}
+        {/* BS - 재무상태표 */}
         {activeTab === 2 && (
           <div>
             <div className="bg-white border-b border-slate-200">
@@ -828,7 +838,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* CF - ?꾧툑?먮쫫??*/}
+        {/* CF - 현금흐름표 */}
         {activeTab === 3 && (
           <div>
             <div className="bg-white border-b border-slate-200">
@@ -940,7 +950,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* ?ъ떊?ъ슜?꾪솴 */}
+        {/* 여신사용현황 */}
         {activeTab === 4 && (
           <div>
             <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
@@ -963,7 +973,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* 재고자산 */}
+        {/* 재고자산 (sim) */}
         {inventoryTabMounted && <div className={activeTab === 5 ? '' : 'hidden'}><InventoryDashboard onScenarioRecalc={setScenarioOverride} /></div>}
         <div className={activeTab === 6 ? '' : 'hidden'}><PLForecastTab scenarioOverride={scenarioOverride} /></div>
         {activeTab === 7 && <PLCashFlowTab />}

@@ -3833,6 +3833,21 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
           };
           const total_26K = new Array(12).fill(null).map((_, mi) => sumParts([currF_26K[mi], currS_26K[mi], acc_26K[mi], year1_26K[mi], next_26K[mi]]));
           const total_25K = new Array(12).fill(null).map((_, mi) => sumParts([currF_25K[mi], currS_25K[mi], acc_25K[mi], year1_25K[mi], next_25K[mi]]));
+
+          // 연간(현지계획): 1~결산월=Snowflake 실적 + 결산월+1~12월=CSV 계획 (모두 내부 CNY → /1000 = K)
+          // 단순 12개월 합산 (OTB 잔여 배분 미적용)
+          const buildLocalPlanK = (season: SalesSupportActualKey) => sumByBrands((b, mi) => {
+            const v = mi < latestActualMonth
+              ? salesSupportActualByBrand[b]?.[season]?.[mi] ?? null
+              : dealerShipmentPlanByBrand[b]?.[season]?.[mi] ?? null;
+            return v == null ? null : v / 1000;
+          });
+          const currF_local_K = buildLocalPlanK('당년F');
+          const currS_local_K = buildLocalPlanK('당년S');
+          const year1_local_K = buildLocalPlanK('1년차');
+          const next_local_K  = buildLocalPlanK('차기시즌');
+          const acc_local_K   = buildLocalPlanK('ACC');
+          const total_local_K = new Array(12).fill(null).map((_, mi) => sumParts([currF_local_K[mi], currS_local_K[mi], acc_local_K[mi], year1_local_K[mi], next_local_K[mi]]));
           const sumArr = (arr: (number | null)[]): number | null => {
             let s = 0; let any = false;
             for (const v of arr) if (v != null) { s += v; any = true; }
@@ -3859,19 +3874,20 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             isTotal?: boolean;
             num: (number | null)[];
             denom: (number | null)[];
+            localPlan: (number | null)[];
           }> = [
-            { label: '당년F',         num: currF_26K, denom: currF_25K },
-            { label: 'YoY (F)',       num: currF_26K, denom: currF_25K, isYoy: true },
-            { label: '당년S',         num: currS_26K, denom: currS_25K },
-            { label: 'YoY (S)',       num: currS_26K, denom: currS_25K, isYoy: true },
-            { label: 'ACC',           num: acc_26K,   denom: acc_25K },
-            { label: 'YoY (ACC)',     num: acc_26K,   denom: acc_25K,   isYoy: true },
-            { label: '1년차',         num: year1_26K, denom: year1_25K },
-            { label: 'YoY (1년차)',   num: year1_26K, denom: year1_25K, isYoy: true },
-            { label: '차기시즌',      num: next_26K,  denom: next_25K },
-            { label: 'YoY (차기시즌)',num: next_26K,  denom: next_25K,  isYoy: true },
-            { label: '합계',          num: total_26K, denom: total_25K, isTotal: true },
-            { label: 'YoY (합계)',    num: total_26K, denom: total_25K, isYoy: true, isTotal: true },
+            { label: 'ACC',           num: acc_26K,   denom: acc_25K,   localPlan: acc_local_K },
+            { label: 'YoY (ACC)',     num: acc_26K,   denom: acc_25K,   localPlan: acc_local_K,   isYoy: true },
+            { label: '당년F',         num: currF_26K, denom: currF_25K, localPlan: currF_local_K },
+            { label: 'YoY (F)',       num: currF_26K, denom: currF_25K, localPlan: currF_local_K, isYoy: true },
+            { label: '당년S',         num: currS_26K, denom: currS_25K, localPlan: currS_local_K },
+            { label: 'YoY (S)',       num: currS_26K, denom: currS_25K, localPlan: currS_local_K, isYoy: true },
+            { label: '1년차',         num: year1_26K, denom: year1_25K, localPlan: year1_local_K },
+            { label: 'YoY (1년차)',   num: year1_26K, denom: year1_25K, localPlan: year1_local_K, isYoy: true },
+            { label: '차기시즌',      num: next_26K,  denom: next_25K,  localPlan: next_local_K },
+            { label: 'YoY (차기시즌)',num: next_26K,  denom: next_25K,  localPlan: next_local_K,  isYoy: true },
+            { label: '합계',          num: total_26K, denom: total_25K, localPlan: total_local_K, isTotal: true },
+            { label: 'YoY (합계)',    num: total_26K, denom: total_25K, localPlan: total_local_K, isYoy: true, isTotal: true },
           ];
           return (
             <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-sm">
@@ -3891,21 +3907,22 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                           </th>
                         );
                       })}
-                      <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">연간</th>
-                      {viewMode !== '분기' && (
-                        <th className="min-w-[120px] border-b border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
-                          {latestActualMonth > 0 ? `YTD(1~${latestActualMonth}월)` : 'YTD'}
-                        </th>
-                      )}
+                      <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">연간(sim)</th>
+                      <th className="min-w-[140px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
+                        연간(현지계획)
+                      </th>
+                      <th className="min-w-[120px] border-b border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
+                        현지 − sim
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {rowDefs.map((r) => {
-                      // 페어별 배경색 매핑 (당년X + YoY(X) 동일 색)
+                      // 페어별 배경색 매핑 (행 그룹마다 alternation, 합계는 yellow)
                       const groupBg =
-                        r.label === '당년F' || r.label === 'YoY (F)' ? 'bg-highlight-sky'
-                        : r.label === '당년S' || r.label === 'YoY (S)' ? 'bg-white'
-                        : r.label === 'ACC' || r.label === 'YoY (ACC)' ? 'bg-highlight-sky'
+                        r.label === 'ACC' || r.label === 'YoY (ACC)' ? 'bg-highlight-sky'
+                        : r.label === '당년F' || r.label === 'YoY (F)' ? 'bg-white'
+                        : r.label === '당년S' || r.label === 'YoY (S)' ? 'bg-highlight-sky'
                         : r.label === '1년차' || r.label === 'YoY (1년차)' ? 'bg-white'
                         : r.label === '차기시즌' || r.label === 'YoY (차기시즌)' ? 'bg-highlight-sky'
                         : 'bg-highlight-yellow'; // 합계, YoY (합계)
@@ -3955,15 +3972,26 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                               ? formatPctRow(yoy(sumArr(r.num), sumArr(r.denom)))
                               : formatKRow(sumArr(r.num))}
                           </td>
-                          {viewMode !== '분기' && (
-                            <td className="border-b border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
-                              {latestActualMonth <= 0
-                                ? ''
-                                : r.isYoy
-                                  ? formatPctRow(yoy(sumRange(r.num, 0, latestActualMonth), sumRange(r.denom, 0, latestActualMonth)))
-                                  : formatKRow(sumRange(r.num, 0, latestActualMonth))}
-                            </td>
-                          )}
+                          <td className="border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
+                            {r.isYoy
+                              ? formatPctRow(yoy(sumArr(r.localPlan), sumArr(r.denom)))
+                              : formatKRow(sumArr(r.localPlan))}
+                          </td>
+                          <td className="border-b border-slate-200 bg-purple-50/60 px-3 py-2 text-right">
+                            {(() => {
+                              if (r.isYoy) return '';
+                              const local = sumArr(r.localPlan);
+                              const sim = sumArr(r.num);
+                              if (local == null || sim == null) return '';
+                              const diff = local - sim;
+                              if (Math.round(diff) === 0) return <span className="text-purple-400">-</span>;
+                              return (
+                                <span className="text-purple-700 font-medium">
+                                  {(diff > 0 ? '+' : '') + Math.round(diff).toLocaleString()}
+                                </span>
+                              );
+                            })()}
+                          </td>
                         </tr>
                       );
                     })}

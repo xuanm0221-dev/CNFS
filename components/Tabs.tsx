@@ -27,14 +27,26 @@ interface TabsProps {
 }
 
 const TAB_ICONS: LucideIcon[] = [
-  LayoutDashboard, // 경영요약
-  BarChart3,       // 손익계산서
-  Scale,           // 재무상태표
-  Banknote,        // 현금흐름표
-  CreditCard,      // 여신사용현황
-  Boxes,           // 재고자산 (sim)
-  LineChart,       // PL (sim)
-  Wallet,          // CF (sim)
+  LayoutDashboard, // 0 경영요약
+  BarChart3,       // 1 손익계산서
+  Scale,           // 2 재무상태표
+  Banknote,        // 3 현금흐름표
+  CreditCard,      // 4 여신사용현황
+  Boxes,           // 5 재고자산 (sim)
+  LineChart,       // 6 PL (sim)
+  Wallet,          // 7 CF (sim)
+];
+
+// 카테고리별 색상 구분: PL 계열(연한 민트), 재고자산 계열(연한 회색)
+const TAB_TINT: Array<{ inactiveBg: string; inactiveText: string; activeRing: string } | null> = [
+  null,                                                                                                   // 0 경영요약
+  { inactiveBg: 'bg-emerald-50 hover:bg-emerald-100', inactiveText: 'text-emerald-700', activeRing: 'ring-1 ring-emerald-300' },  // 1 손익계산서
+  null,                                                                                                   // 2 재무상태표
+  null,                                                                                                   // 3 현금흐름표
+  null,                                                                                                   // 4 여신사용현황
+  { inactiveBg: 'bg-slate-100 hover:bg-slate-200',    inactiveText: 'text-slate-600',   activeRing: 'ring-1 ring-slate-300' },    // 5 재고자산 (sim)
+  { inactiveBg: 'bg-emerald-50 hover:bg-emerald-100', inactiveText: 'text-emerald-700', activeRing: 'ring-1 ring-emerald-300' },  // 6 PL (sim)
+  null,                                                                                                   // 7 CF (sim)
 ];
 
 export default function Tabs({ tabs, activeTab, onChange, groups }: TabsProps) {
@@ -142,15 +154,18 @@ export default function Tabs({ tabs, activeTab, onChange, groups }: TabsProps) {
             {visibleTabs.map(({ tab, index }) => {
               const Icon = TAB_ICONS[index];
               const isActive = activeTab === index;
+              const tint = TAB_TINT[index];
+              const activeCls = `bg-white text-[#1e3a8a] shadow-[0_2px_8px_rgba(30,58,138,0.12),0_0_0_1px_rgba(30,58,138,0.08)] -translate-y-px ${tint?.activeRing ?? ''}`;
+              const inactiveCls = tint
+                ? `${tint.inactiveBg} ${tint.inactiveText}`
+                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700';
               return (
                 <button
                   key={index}
                   onClick={() => onChange(index)}
                   className={`
                     relative flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-150
-                    ${isActive
-                      ? 'bg-white text-[#1e3a8a] shadow-[0_2px_8px_rgba(30,58,138,0.12),0_0_0_1px_rgba(30,58,138,0.08)] -translate-y-px'
-                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}
+                    ${isActive ? activeCls : inactiveCls}
                   `}
                   aria-current={isActive ? 'page' : undefined}
                 >
