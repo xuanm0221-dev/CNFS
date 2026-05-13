@@ -383,12 +383,6 @@ interface BrandActualApiResponse {
 
 type SalesSupportActualKey = SalesSeason | 'ACC';
 
-interface SalesSupportActualApiResponse {
-  brands: Record<SalesBrand, Record<SalesSupportActualKey, (number | null)[]>>;
-  availableMonths: number[];
-  error?: string;
-}
-
 interface OpexForecastApiResponse {
   brands: Record<SalesBrand, Record<string, (number | null)[]>>;
   error?: string;
@@ -995,6 +989,14 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
   const [shipmentProgressLoading, setShipmentProgressLoading] = useState<boolean>(false);
   const [shipmentProgressError, setShipmentProgressError] = useState<string | null>(null);
   const [shipmentProgressRows, setShipmentProgressRows] = useState<ShipmentProgressRow[]>([]);
+  // 26년 대리상 출고계획 — 결산월 다음달(actualCutoff index)만 화면값으로 override. 그 이후는 OTB×진척률 잔여 배분.
+  const [dealerShipmentPlanByBrand, setDealerShipmentPlanByBrand] = useState<Record<SalesBrand, Record<SalesSupportActualKey, (number | null)[]>>>({
+    MLB: { 당년S: new Array(12).fill(null), 당년F: new Array(12).fill(null), '1년차': new Array(12).fill(null), 차기시즌: new Array(12).fill(null), ACC: new Array(12).fill(null) },
+    'MLB KIDS': { 당년S: new Array(12).fill(null), 당년F: new Array(12).fill(null), '1년차': new Array(12).fill(null), 차기시즌: new Array(12).fill(null), ACC: new Array(12).fill(null) },
+    DISCOVERY: { 당년S: new Array(12).fill(null), 당년F: new Array(12).fill(null), '1년차': new Array(12).fill(null), 차기시즌: new Array(12).fill(null), ACC: new Array(12).fill(null) },
+    DUVETICA: { 당년S: new Array(12).fill(null), 당년F: new Array(12).fill(null), '1년차': new Array(12).fill(null), 차기시즌: new Array(12).fill(null), ACC: new Array(12).fill(null) },
+    SUPRA: { 당년S: new Array(12).fill(null), 당년F: new Array(12).fill(null), '1년차': new Array(12).fill(null), 차기시즌: new Array(12).fill(null), ACC: new Array(12).fill(null) },
+  });
   const [dealerAccOtbByBrand, setDealerAccOtbByBrand] = useState<Record<SalesBrand, number>>({
     MLB: 0,
     'MLB KIDS': 0,
@@ -1021,29 +1023,11 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     DUVETICA: emptyBrandActual(),
     SUPRA: emptyBrandActual(),
   });
-  const [salesSupportActualLoading, setSalesSupportActualLoading] = useState<boolean>(false);
-  const [salesSupportActualError, setSalesSupportActualError] = useState<string | null>(null);
-  const [salesSupportActualAvailableMonths, setSalesSupportActualAvailableMonths] = useState<number[]>([]);
-  const emptySalesSupportActual = (): Record<SalesSupportActualKey, (number | null)[]> => ({
-    당년S: new Array(12).fill(null),
-    당년F: new Array(12).fill(null),
-    '1년차': new Array(12).fill(null),
-    차기시즌: new Array(12).fill(null),
-    ACC: new Array(12).fill(null),
-  });
-  const [salesSupportActualByBrandCSV, setSalesSupportActualByBrand] = useState<Record<SalesBrand, Record<SalesSupportActualKey, (number | null)[]>>>({
-    MLB: emptySalesSupportActual(),
-    'MLB KIDS': emptySalesSupportActual(),
-    DISCOVERY: emptySalesSupportActual(),
-    DUVETICA: emptySalesSupportActual(),
-    SUPRA: emptySalesSupportActual(),
-  });
-  // 매출 보조지표 실적월 override: Snowflake 26년 Tag매출 전처리 데이터 사용, 계획월은 CSV 유지
+  // 매출 보조지표 실적월: Snowflake 26년 Tag매출 전처리만 사용 (1~결산월).
   // 매핑: 당년S=26S, 당년F=26F, 1년차=25S+25F, 차기시즌=27+이상, ACC=대리상(ACC).ACC 합계
-  // Snowflake 데이터 없으면 null (빈값)
+  // 결산월+1~12월은 null — 계획월은 dealerSeasonMonthlyByBrand 메모에서 CSV+OTB잔여 로직으로 채움.
   const salesSupportActualByBrand = useMemo<Record<SalesBrand, Record<SalesSupportActualKey, (number | null)[]>>>(() => {
     const actualCutoff = brandActualAvailableMonths.length === 0 ? 0 : Math.max(...brandActualAvailableMonths);
-    if (actualCutoff <= 0) return salesSupportActualByBrandCSV;
     const nullSafeAdd = (a: number | null, b: number | null): number | null => {
       if (a == null && b == null) return null;
       return (a ?? 0) + (b ?? 0);
@@ -1060,9 +1044,9 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       }
       return out;
     };
+    const toCny = (v: number | null): number | null => (v == null ? null : v * 1000);
     const result = {} as Record<SalesBrand, Record<SalesSupportActualKey, (number | null)[]>>;
     for (const brand of ['MLB', 'MLB KIDS', 'DISCOVERY', 'DUVETICA', 'SUPRA'] as SalesBrand[]) {
-      const csv = salesSupportActualByBrandCSV[brand] ?? emptySalesSupportActual();
       const sfBrand = tagSales2026Data.brands[brand];
       const cloth = sfBrand?.['대리상(의류)'] ?? {};
       const sf당년S = cloth['26S'];
@@ -1078,28 +1062,18 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
         차기시즌: new Array(12).fill(null),
         ACC: new Array(12).fill(null),
       };
-      // Snowflake 값은 K 단위 → 내부 원(CNY) 단위로 변환 (× 1000)
-      const toCny = (v: number | null): number | null => (v == null ? null : v * 1000);
-      for (let i = 0; i < 12; i++) {
-        if (i < actualCutoff) {
-          merged.당년S[i] = toCny(sf당년S?.[i] ?? null);
-          merged.당년F[i] = toCny(sf당년F?.[i] ?? null);
-          const y1 = nullSafeAdd(sf25S?.[i] ?? null, sf25F?.[i] ?? null);
-          merged['1년차'][i] = toCny(y1);
-          merged.차기시즌[i] = toCny(sf차기[i] ?? null);
-          merged.ACC[i] = toCny(sfACC?.[i] ?? null);
-        } else {
-          merged.당년S[i] = csv.당년S[i] ?? null;
-          merged.당년F[i] = csv.당년F[i] ?? null;
-          merged['1년차'][i] = csv['1년차'][i] ?? null;
-          merged.차기시즌[i] = csv.차기시즌[i] ?? null;
-          merged.ACC[i] = csv.ACC[i] ?? null;
-        }
+      for (let i = 0; i < actualCutoff; i++) {
+        merged.당년S[i] = toCny(sf당년S?.[i] ?? null);
+        merged.당년F[i] = toCny(sf당년F?.[i] ?? null);
+        const y1 = nullSafeAdd(sf25S?.[i] ?? null, sf25F?.[i] ?? null);
+        merged['1년차'][i] = toCny(y1);
+        merged.차기시즌[i] = toCny(sf차기[i] ?? null);
+        merged.ACC[i] = toCny(sfACC?.[i] ?? null);
       }
       result[brand] = merged;
     }
     return result;
-  }, [salesSupportActualByBrandCSV, tagSales2026Data, brandActualAvailableMonths]);
+  }, [tagSales2026Data, brandActualAvailableMonths]);
   const [opexForecastLoading, setOpexForecastLoading] = useState<boolean>(false);
   const [opexForecastError, setOpexForecastError] = useState<string | null>(null);
   const [opexForecastByBrand, setOpexForecastByBrand] = useState<Record<SalesBrand, Record<string, (number | null)[]>>>({
@@ -1318,6 +1292,24 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
 
   useEffect(() => {
     let mounted = true;
+    const fetchDealerShipmentPlan = async () => {
+      try {
+        const res = await fetch('/api/pl-forecast/dealer-shipment-plan', { cache: 'no-store' });
+        const json = (await res.json()) as { brands?: Record<SalesBrand, Record<SalesSupportActualKey, (number | null)[]>>; error?: string };
+        if (!res.ok || !json.brands) return;
+        if (mounted) setDealerShipmentPlanByBrand(json.brands);
+      } catch {
+        // 실패 시 초기 null 상태 유지 → 기존 OTB×진척률 로직으로 fallback
+      }
+    };
+    fetchDealerShipmentPlan();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
     const fetchAccRatio = async () => {
       setAccRatioLoading(true);
       setAccRatioError(null);
@@ -1419,40 +1411,6 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       }
     };
     fetchBrandActual();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchSalesSupportActual = async () => {
-      setSalesSupportActualLoading(true);
-      setSalesSupportActualError(null);
-      try {
-        const res = await fetch('/api/pl-forecast/sales-support-actual?year=2026', { cache: 'no-store' });
-        const json = (await res.json()) as SalesSupportActualApiResponse;
-        if (!res.ok) throw new Error(json?.error || '매출보조지표 실적 데이터를 불러오지 못했습니다.');
-        if (!mounted) return;
-        setSalesSupportActualAvailableMonths(json.availableMonths ?? []);
-        setSalesSupportActualByBrand(
-          json.brands ?? {
-            MLB: emptySalesSupportActual(),
-            'MLB KIDS': emptySalesSupportActual(),
-            DISCOVERY: emptySalesSupportActual(),
-          },
-        );
-      } catch (err) {
-        if (mounted) {
-          setSalesSupportActualAvailableMonths([]);
-          setSalesSupportActualError(err instanceof Error ? err.message : '매출보조지표 실적 데이터를 불러오지 못했습니다.');
-        }
-      } finally {
-        if (mounted) setSalesSupportActualLoading(false);
-      }
-    };
-
-    fetchSalesSupportActual();
     return () => {
       mounted = false;
     };
@@ -2305,47 +2263,33 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     return result;
   }, [otbData]);
 
+  // 대리상 시즌별 월 분배:
+  //   1~결산월: Snowflake 실적
+  //   결산월+1 ~ 11월: 26년대리상출고계획.csv 값 (null → 0)
+  //   12월: 연간 OTB − (1~11월 합계)
   const dealerSeasonMonthlyByBrand = useMemo(() => {
-    const baseline: Record<SalesBrand, Record<SalesSeason, (number | null)[]>> = {
-      MLB: { 당년S: new Array(12).fill(0), 당년F: new Array(12).fill(0), '1년차': new Array(12).fill(0), 차기시즌: new Array(12).fill(0) },
-      'MLB KIDS': { 당년S: new Array(12).fill(0), 당년F: new Array(12).fill(0), '1년차': new Array(12).fill(0), 차기시즌: new Array(12).fill(0) },
-      DISCOVERY: { 당년S: new Array(12).fill(0), 당년F: new Array(12).fill(0), '1년차': new Array(12).fill(0), 차기시즌: new Array(12).fill(0) },
-      DUVETICA: { 당년S: new Array(12).fill(0), 당년F: new Array(12).fill(0), '1년차': new Array(12).fill(0), 차기시즌: new Array(12).fill(0) },
-      SUPRA: { 당년S: new Array(12).fill(0), 당년F: new Array(12).fill(0), '1년차': new Array(12).fill(0), 차기시즌: new Array(12).fill(0) },
-    };
-
-    const progressMap = new Map<string, ShipmentProgressRow>();
-    for (const row of shipmentProgressRows) {
-      progressMap.set(`${row.brand}::${row.season}`, row);
-    }
-
-    for (const brand of SALES_BRANDS) {
-      for (const season of DEALER_CLOTH_SEASONS) {
-        const progress = progressMap.get(`${brand}::${season}`);
-        const otb =
-          season === '당년S'
-            ? otbByBrand[brand].currS
-            : season === '당년F'
-              ? otbByBrand[brand].currF
-              : season === '1년차'
-                ? otbByBrand[brand].year1
-                : otbByBrand[brand].next;
-        let prevCumulative = progress?.prevYearProgress ?? 0;
-        const monthlyAmounts: (number | null)[] = new Array(12).fill(0);
-
-        for (let i = 0; i < 12; i++) {
-          const currentCumulative = progress?.monthly[i] ?? prevCumulative;
-          const monthlyRate = Math.max(currentCumulative - prevCumulative, 0);
-          monthlyAmounts[i] = otb * monthlyRate;
-          prevCumulative = currentCumulative;
-        }
-        baseline[brand][season] = monthlyAmounts;
-      }
-    }
-
     const actualCutoffMonth =
       brandActualAvailableMonths.length === 0 ? 0 : Math.max(...brandActualAvailableMonths);
-    if (actualCutoffMonth <= 0) return baseline;
+
+    const buildSeries = (
+      brand: SalesBrand,
+      season: SalesSeason,
+      annualOtb: number,
+    ): (number | null)[] => {
+      const actual = salesSupportActualByBrand[brand]?.[season] ?? new Array(12).fill(null);
+      const csv = dealerShipmentPlanByBrand[brand]?.[season] ?? new Array(12).fill(null);
+      const out: (number | null)[] = new Array(12).fill(0);
+      for (let i = 0; i < actualCutoffMonth; i += 1) {
+        if (actual[i] !== null) out[i] = actual[i];
+      }
+      for (let i = actualCutoffMonth; i < 11; i += 1) {
+        out[i] = csv[i] ?? 0;
+      }
+      let sumFirst11 = 0;
+      for (let i = 0; i < 11; i += 1) sumFirst11 += (out[i] as number) ?? 0;
+      out[11] = annualOtb - sumFirst11;
+      return out;
+    };
 
     const result: Record<SalesBrand, Record<SalesSeason, (number | null)[]>> = {
       MLB: { 당년S: new Array(12).fill(0), 당년F: new Array(12).fill(0), '1년차': new Array(12).fill(0), 차기시즌: new Array(12).fill(0) },
@@ -2356,54 +2300,14 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     };
 
     for (const brand of SALES_BRANDS) {
-      const seasonActual = salesSupportActualByBrand[brand] ?? {
-        당년S: new Array(12).fill(null),
-        당년F: new Array(12).fill(null),
-        '1년차': new Array(12).fill(null),
-        차기시즌: new Array(12).fill(null),
-        ACC: new Array(12).fill(null),
-      };
-
-      const fixedS = new Array(12).fill(0) as (number | null)[];
-      const fixedF = new Array(12).fill(0) as (number | null)[];
-      const fixedY1 = new Array(12).fill(0) as (number | null)[];
-      const fixedNext = new Array(12).fill(0) as (number | null)[];
-      for (let i = 0; i < actualCutoffMonth; i += 1) {
-        if (seasonActual.당년S[i] !== null) fixedS[i] = seasonActual.당년S[i];
-        if (seasonActual.당년F[i] !== null) fixedF[i] = seasonActual.당년F[i];
-        if (seasonActual['1년차'][i] !== null) fixedY1[i] = seasonActual['1년차'][i];
-        if (seasonActual.차기시즌[i] !== null) fixedNext[i] = seasonActual.차기시즌[i];
-      }
-
-      result[brand].당년S = distributeRemainingByPattern(
-        otbByBrand[brand].currS,
-        fixedS,
-        baseline[brand].당년S,
-        actualCutoffMonth,
-      );
-      result[brand].당년F = distributeRemainingByPattern(
-        otbByBrand[brand].currF,
-        fixedF,
-        baseline[brand].당년F,
-        actualCutoffMonth,
-      );
-      result[brand]['1년차'] = distributeRemainingByPattern(
-        otbByBrand[brand].year1,
-        fixedY1,
-        baseline[brand].당년F,
-        actualCutoffMonth,
-      );
-      result[brand].차기시즌 = distributeRemainingByPattern(
-        otbByBrand[brand].next,
-        fixedNext,
-        new Array(12).fill(0),
-        actualCutoffMonth,
-        [10, 11],
-      );
+      result[brand].당년S = buildSeries(brand, '당년S', otbByBrand[brand].currS);
+      result[brand].당년F = buildSeries(brand, '당년F', otbByBrand[brand].currF);
+      result[brand]['1년차'] = buildSeries(brand, '1년차', otbByBrand[brand].year1);
+      result[brand].차기시즌 = buildSeries(brand, '차기시즌', otbByBrand[brand].next);
     }
 
     return result;
-  }, [shipmentProgressRows, otbByBrand, salesSupportActualByBrand, brandActualAvailableMonths]);
+  }, [otbByBrand, salesSupportActualByBrand, brandActualAvailableMonths, dealerShipmentPlanByBrand]);
 
   const accRatioByBrand = useMemo(() => {
     const map: Record<SalesBrand, (number | null)[]> = {
@@ -2440,23 +2344,18 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                     const brand = row.brand;
                     const annualOtb = dealerAccOtbByBrand[brand];
                     const actualSeries = salesSupportActualByBrand[brand]?.ACC ?? new Array(12).fill(null);
-                    let actualSum = 0;
+                    const csvSeries = dealerShipmentPlanByBrand[brand]?.ACC ?? new Array(12).fill(null);
+                    const out: (number | null)[] = new Array(12).fill(0);
                     for (let i = 0; i < latestSupportActualMonth; i++) {
-                      actualSum += actualSeries[i] ?? 0;
+                      if (actualSeries[i] !== null) out[i] = actualSeries[i];
                     }
-                    const remaining = annualOtb - actualSum;
-                    let remainingRatioSum = 0;
-                    for (let i = latestSupportActualMonth; i < 12; i++) {
-                      remainingRatioSum += accRatioByBrand[brand][i] ?? 0;
+                    for (let i = latestSupportActualMonth; i < 11; i++) {
+                      out[i] = csvSeries[i] ?? 0;
                     }
-                    return makeMonthlyArray((idx) => {
-                      if (idx < latestSupportActualMonth) {
-                        return actualSeries[idx] ?? 0;
-                      }
-                      const ratio = accRatioByBrand[brand][idx] ?? 0;
-                      if (remainingRatioSum === 0) return annualOtb * ratio;
-                      return remaining * (ratio / remainingRatioSum);
-                    });
+                    let sumFirst11 = 0;
+                    for (let i = 0; i < 11; i++) sumFirst11 += (out[i] as number) ?? 0;
+                    out[11] = annualOtb - sumFirst11;
+                    return out;
                   })()
                 : row.leafKind === 'direct'
                 ? makeMonthlyArray((idx) => {
@@ -2506,7 +2405,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     }
 
     return rowMap;
-  }, [salesRows, otbByBrand, directRetailByBrand, dealerSeasonMonthlyByBrand, dealerAccOtbByBrand, accRatioByBrand, brandActualAvailableMonths, salesSupportActualByBrand]);
+  }, [salesRows, otbByBrand, directRetailByBrand, dealerSeasonMonthlyByBrand, dealerAccOtbByBrand, accRatioByBrand, brandActualAvailableMonths, salesSupportActualByBrand, dealerShipmentPlanByBrand]);
 
   const salesChannelByBrand = useMemo(() => {
     const buildEmpty = () => new Array(12).fill(null) as (number | null)[];
@@ -2953,7 +2852,6 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     shipmentProgressLoading,
     accRatioLoading,
     brandActualLoading,
-    salesSupportActualLoading,
     opexForecastLoading,
     directExpenseRatioLoading,
     tagCostRatioLoading,
@@ -2967,7 +2865,6 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     !!shipmentProgressError ||
     !!accRatioError ||
     !!brandActualError ||
-    !!salesSupportActualError ||
     !!opexForecastError ||
     !!directExpenseRatioError ||
     !!tagCostRatioError;
@@ -3212,17 +3109,18 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
               const brand = row.brand;
               const annualOtb = dealerAccOtbByBrand[brand];
               const actualSeries = salesSupportActualByBrand[brand]?.ACC ?? be();
-              let actualSum = 0;
-              for (let i = 0; i < latestSupportCutoff; i++) actualSum += actualSeries[i] ?? 0;
-              const remaining = annualOtb - actualSum;
-              let remainingRatioSum = 0;
-              for (let i = latestSupportCutoff; i < 12; i++) remainingRatioSum += accRatioByBrand[brand][i] ?? 0;
-              monthly = makeMonthlyArray((idx) => {
-                if (idx < latestSupportCutoff) return actualSeries[idx] ?? 0;
-                const ratio = accRatioByBrand[brand][idx] ?? 0;
-                if (remainingRatioSum === 0) return annualOtb * ratio;
-                return remaining * (ratio / remainingRatioSum);
-              });
+              const csvSeries = dealerShipmentPlanByBrand[brand]?.ACC ?? be();
+              const out: (number | null)[] = new Array(12).fill(0);
+              for (let i = 0; i < latestSupportCutoff; i++) {
+                if (actualSeries[i] !== null) out[i] = actualSeries[i];
+              }
+              for (let i = latestSupportCutoff; i < 11; i++) {
+                out[i] = csvSeries[i] ?? 0;
+              }
+              let sumFirst11 = 0;
+              for (let i = 0; i < 11; i++) sumFirst11 += (out[i] as number) ?? 0;
+              out[11] = annualOtb - sumFirst11;
+              monthly = out;
             } else {
               monthly = makeMonthlyArray((idx) => {
                 if (idx + 1 <= latestBrandActual) return null;
@@ -4440,14 +4338,14 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             </span>
             <div className="flex-1 flex items-center gap-6">
               <div className="shrink-0">
-                <div className="text-sm font-semibold text-slate-800">매출 보조지표 🟡전처리(실적)·🟢계산(계획)</div>
-                <div className="text-xs text-slate-500">실적월 = Snowflake 25/26 Tag매출 전처리, 계획월 = OTB × 진척률 자동 배분</div>
+                <div className="text-sm font-semibold text-slate-800">매출 보조지표 🟡전처리(실적·계획)·🟢계산(12월)</div>
+                <div className="text-xs text-slate-500">~결산월 = Snowflake 실적, 결산월+1~11월 = 출고계획 CSV, 12월 = 연간 OTB − (1~11월 합)</div>
               </div>
               <div className="text-left text-xs text-slate-800 leading-relaxed">
-                <div className="font-mono font-semibold text-blue-600 mb-0.5">실적월: Snowflake sap_fnf.dw_cn_copa_d (25/26 Tag매출 전처리)</div>
-                <div>당년S/F: 실적 Snowflake(26S/26F) · 계획 = 잔여(OTB-실적합) × 전년진척률 배분</div>
-                <div>1년차: 실적 Snowflake(25S+25F) · 계획 = 잔여 × 당년F 진척률 배분&nbsp;|&nbsp;차기시즌: 실적 Snowflake(27+) · 계획 = 잔여 ÷ 2 → 11·12월 균등</div>
-                <div>ACC: 실적 Snowflake(대리상(ACC)) · 계획 = 잔여 × ACC출고비율 배분</div>
+                <div className="font-mono font-semibold text-blue-600 mb-0.5">실적월: Snowflake sap_fnf.dw_cn_copa_d · 계획월: 보조파일(simu)/26년대리상출고계획.csv</div>
+                <div>당년S/F: 1~결산월 Snowflake(26S/26F) · 결산월+1~11월 CSV · 12월 = OTB(26S/26F) − (1~11월 합)</div>
+                <div>1년차: 1~결산월 Snowflake(25S+25F) · 결산월+1~11월 CSV · 12월 = OTB(25F) − (1~11월 합)&nbsp;|&nbsp;차기시즌: 1~결산월 Snowflake(27+) · 결산월+1~11월 CSV · 12월 = OTB(27+) − (1~11월 합)</div>
+                <div>ACC: 1~결산월 Snowflake(대리상(ACC)) · 결산월+1~11월 CSV · 12월 = ACC OTB − (1~11월 합)</div>
               </div>
             </div>
             <span className="inline-flex items-center gap-1 text-xs text-slate-500">
@@ -4469,10 +4367,9 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                   {otbLoading && <div className="text-xs text-slate-500">OTB 불러오는 중...</div>}
                   {retailLoading && <div className="text-xs text-slate-500">직영 매출 불러오는 중...</div>}
                   {brandActualLoading && <div className="text-xs text-slate-500">실적 CSV 불러오는 중...</div>}
-                  {salesSupportActualLoading && <div className="text-xs text-slate-500">매출보조 실적 CSV 불러오는 중...</div>}
                   {opexForecastLoading && <div className="text-xs text-slate-500">영업비 계획 CSV 불러오는 중...</div>}
-                  {(otbError || retailError || brandActualError || salesSupportActualError || opexForecastError) && (
-                    <div className="text-xs text-red-500">{otbError || retailError || brandActualError || salesSupportActualError || opexForecastError}</div>
+                  {(otbError || retailError || brandActualError || opexForecastError) && (
+                    <div className="text-xs text-red-500">{otbError || retailError || brandActualError || opexForecastError}</div>
                   )}
                 </div>
               </div>

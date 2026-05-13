@@ -723,6 +723,49 @@ export default function FinancialTable({
                     return null;
                   }
                   const isValueOk = value === null || Math.abs(value) < 10;
+                  // 손익계산서: 월 셀에 전년대비 증감(금액·%) 인라인 표시 — 분기 셀과 동일 패턴
+                  const isPL = !isBalanceSheet && !isCashFlow;
+                  if (isPL && row.comparisons) {
+                    const prevValue = row.comparisons.prevYearMonthly?.[colIndex] ?? null;
+                    const monthYoY = (value !== null && prevValue !== null) ? value - prevValue : null;
+                    const monthYoYPercent = (value !== null && prevValue !== null && prevValue !== 0)
+                      ? value / prevValue
+                      : null;
+                    const isProfitTurnaroundMonth = row.account === '영업이익(관리식)'
+                      && value !== null && prevValue !== null
+                      && value > 0 && prevValue < 0;
+                    const isRatioRow = row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)' || row.account === '영업이익률(IFRS)' || row.account === '(Tag 대비 원가율)';
+                    return (
+                      <td
+                        key={`month-${colIndex}`}
+                        className={`border border-gray-200 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''}`}
+                      >
+                        <div className="flex flex-col items-end">
+                          <div className={isNegative(value) ? 'text-red-600' : ''}>
+                            {formatValue(value, row.format, false, !row.isCalculated)}
+                          </div>
+                          <div className="text-xs leading-tight mt-0.5">
+                            <span className={isNegative(monthYoY) ? 'text-red-600' : monthYoY !== null && monthYoY > 0 ? 'text-green-600' : ''}>
+                              {formatValue(monthYoY, row.format, true, false)}
+                            </span>
+                            {isProfitTurnaroundMonth ? (
+                              <>
+                                <span className="mx-1">,</span>
+                                <span className="text-green-600 font-semibold">흑자전환</span>
+                              </>
+                            ) : monthYoYPercent !== null && !isRatioRow && (
+                              <>
+                                <span className="mx-1">,</span>
+                                <span className={monthYoYPercent < 1 ? 'text-red-600' : monthYoYPercent > 1 ? 'text-green-600' : ''}>
+                                  {formatPercent(monthYoYPercent, false, false, 0)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    );
+                  }
                   return (
                     <td
                       key={`month-${colIndex}`}
