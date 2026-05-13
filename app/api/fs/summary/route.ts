@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { readCSV, readCFHierarchyCSV, CFHierarchyRow } from '@/lib/csv';
 import { calculatePL, calculateBS, calculateWorkingCapital } from '@/lib/fs-mapping';
+import { loadCorporatePLFromBrands } from '@/lib/pl-corporate-loader';
 import { ExecutiveSummaryData, TableRow } from '@/lib/types';
 
 function rowKey(대: string, 중: string, 소: string): string {
@@ -278,14 +279,12 @@ function generateSummary(
 
 export async function GET() {
   try {
-    // CSV 파일에서 직접 데이터 읽기 (2025·2026 기말 기준)
-    const pl2025Path = path.join(process.cwd(), '파일', 'PL', '2025.csv');
-    const pl2026Path = path.join(process.cwd(), '파일', 'PL', '2026.csv');
+    // PL은 5개 브랜드 합산으로 합성, BS는 별도 CSV 읽기
     const bs2025Path = path.join(process.cwd(), '파일', 'BS', '2025.csv');
     const bs2026Path = path.join(process.cwd(), '파일', 'BS', '2026.csv');
-    
-    const pl2025Data = await readCSV(pl2025Path, 2025);
-    const pl2026Data = await readCSV(pl2026Path, 2026);
+
+    const pl2025Data = await loadCorporatePLFromBrands(2025);
+    const pl2026Data = await loadCorporatePLFromBrands(2026);
     const bs2025Data = await readCSV(bs2025Path, 2025);
     const bs2026Data = await readCSV(bs2026Path, 2026);
     

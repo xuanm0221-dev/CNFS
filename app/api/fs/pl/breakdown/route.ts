@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { readCSV } from '@/lib/csv';
 import { calculatePL, calculateComparisonData, calculateBrandBreakdown } from '@/lib/fs-mapping';
+import { loadCorporatePLFromBrands } from '@/lib/pl-corporate-loader';
 import { TableRow } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -37,24 +38,21 @@ export async function GET(request: NextRequest) {
       try { return await readCSV(p, y); } catch { return undefined; }
     };
 
-    // 법인 전체 데이터 로드
-    const corporateFilePath = path.join(process.cwd(), '파일', 'PL', `${year}.csv`);
-    const corporateData = await readCSV(corporateFilePath, year);
+    // 법인 PL = 5개 브랜드 PL CSV 합산 (별도 법인 CSV 미사용)
+    const corporateData = await loadCorporatePLFromBrands(year);
     const adjustData = await loadAdjustData(year);
     let corporateRows = calculatePL(corporateData, false, adjustData);
 
     // 2025년인 경우 2024년 대비 비교 데이터 추가
     if (year === 2025) {
-      const corporateFilePath2024 = path.join(process.cwd(), '파일', 'PL', '2024.csv');
-      const corporateData2024 = await readCSV(corporateFilePath2024, 2024);
+      const corporateData2024 = await loadCorporatePLFromBrands(2024);
       const adjustData2024 = await loadAdjustData(2024);
       const corporateRows2024 = calculatePL(corporateData2024, false, adjustData2024);
       corporateRows = calculateComparisonData(corporateRows, corporateRows2024, baseMonth);
     }
     // 2026년인 경우 2025년 대비 비교 데이터 추가
     if (year === 2026) {
-      const corporateFilePath2025 = path.join(process.cwd(), '파일', 'PL', '2025.csv');
-      const corporateData2025 = await readCSV(corporateFilePath2025, 2025);
+      const corporateData2025 = await loadCorporatePLFromBrands(2025);
       const adjustData2025 = await loadAdjustData(2025);
       const corporateRows2025 = calculatePL(corporateData2025, false, adjustData2025);
       corporateRows = calculateComparisonData(corporateRows, corporateRows2025, baseMonth);

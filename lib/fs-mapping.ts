@@ -20,6 +20,75 @@ export function getAccountValues(map: Map<string, number[]>, account: string): n
   return map.get(account) || new Array(12).fill(0);
 }
 
+// 브랜드 id → 법인 PL의 Tag매출 분해 계정명 매핑
+export const BRAND_ID_TO_CORP_TAG_ACCOUNT: Record<string, string> = {
+  mlb: 'MLB',
+  kids: 'KIDS',
+  discovery: 'DISCOVERY',
+  duvetica: 'DUVETICA',
+  supra: 'SUPRA',
+};
+
+// 법인 PL의 5브랜드 합산 대상 계정 (calculatePL이 corporate 모드에서 직접 읽는 항목)
+const CORPORATE_SUM_ACCOUNTS: string[] = [
+  '실판매출',
+  '매출원가',
+  '평가감',
+  // 직접비 10항목
+  '급여(매장)', '복리후생비(매장)', '플랫폼수수료', 'TP수수료', '직접광고비',
+  '대리상지원금', '물류비', '매장임차료', '감가상각비', '기타(직접비)',
+  // 영업비 9항목
+  '급여(사무실)', '복리후생비(사무실)', '광고비', '수주회', '지급수수료',
+  '임차료', '감가상각비(영업비)', '세금과공과', '기타(영업비)',
+];
+
+/**
+ * 5개 브랜드별 FinancialData를 법인 PL 형식으로 합성.
+ * - 각 브랜드의 Tag매출 → 법인 계정(MLB/KIDS/DISCOVERY/DUVETICA/SUPRA)
+ * - 그 외 계정(실판매출/매출원가/평가감/직접비/영업비) → 5브랜드 단순 합산
+ * calculatePL(synthData, false, adjustData) 호출 시 기존 법인 CSV와 동일 구조의 TableRow[] 생성.
+ */
+export function synthesizeCorporatePLFromBrands(
+  brandData: Record<string, FinancialData[]>,
+  year: number,
+): FinancialData[] {
+  const out: FinancialData[] = [];
+
+  // 1) 각 브랜드 Tag매출 → 법인의 브랜드별 분해 계정
+  for (const [brandId, corpAccount] of Object.entries(BRAND_ID_TO_CORP_TAG_ACCOUNT)) {
+    const rows = brandData[brandId];
+    if (!rows) continue;
+    for (const r of rows) {
+      if (r.account === 'Tag매출') {
+        out.push({ year, month: r.month, account: corpAccount, value: r.value });
+      }
+    }
+  }
+
+  // 2) 합산 대상 계정 — 5브랜드 합산
+  for (const account of CORPORATE_SUM_ACCOUNTS) {
+    const monthlySum: number[] = new Array(12).fill(0);
+    const monthHasData: boolean[] = new Array(12).fill(false);
+    for (const brandId of Object.keys(BRAND_ID_TO_CORP_TAG_ACCOUNT)) {
+      const rows = brandData[brandId];
+      if (!rows) continue;
+      for (const r of rows) {
+        if (r.account === account && r.month >= 1 && r.month <= 12) {
+          monthlySum[r.month - 1] += r.value;
+          monthHasData[r.month - 1] = true;
+        }
+      }
+    }
+    for (let m = 1; m <= 12; m += 1) {
+      if (monthHasData[m - 1]) {
+        out.push({ year, month: m, account, value: monthlySum[m - 1] });
+      }
+    }
+  }
+
+  return out;
+}
+
 // ==================== PL (손익계산서) ====================
 export function calculatePL(data: FinancialData[], isBrand: boolean = false, adjustData?: FinancialData[]): TableRow[] {
   const map = createMonthDataMap(data);

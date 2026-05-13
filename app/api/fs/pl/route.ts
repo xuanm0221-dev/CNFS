@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { readCSV } from '@/lib/csv';
 import { calculatePL, calculateComparisonData } from '@/lib/fs-mapping';
+import { loadCorporatePLFromBrands } from '@/lib/pl-corporate-loader';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,8 +28,8 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    const filePath = path.join(process.cwd(), '파일', 'PL', `${year}.csv`);
-    const data = await readCSV(filePath, year);
+    // 법인 PL = 5개 브랜드 PL CSV 합산 (별도 법인 CSV 미사용)
+    const data = await loadCorporatePLFromBrands(year);
 
     // 재무조정 데이터 읽기 (법인 전체 = MLB에 반영)
     const adjustFilePath = path.join(process.cwd(), '파일', '재무조정', `${year}.csv`);
@@ -41,8 +42,7 @@ export async function GET(request: NextRequest) {
 
     // 2025년인 경우 2024년 대비 비교 데이터 추가
     if (year === 2025) {
-      const filePath2024 = path.join(process.cwd(), '파일', 'PL', '2024.csv');
-      const data2024 = await readCSV(filePath2024, 2024);
+      const data2024 = await loadCorporatePLFromBrands(2024);
       const adjustFilePath2024 = path.join(process.cwd(), '파일', '재무조정', '2024.csv');
       let adjustData2024: Awaited<ReturnType<typeof readCSV>> | undefined;
       try { adjustData2024 = await readCSV(adjustFilePath2024, 2024); } catch { /* 무시 */ }
@@ -51,8 +51,7 @@ export async function GET(request: NextRequest) {
     }
     // 2026년인 경우 2025년 대비 비교 데이터 추가
     if (year === 2026) {
-      const filePath2025 = path.join(process.cwd(), '파일', 'PL', '2025.csv');
-      const data2025 = await readCSV(filePath2025, 2025);
+      const data2025 = await loadCorporatePLFromBrands(2025);
       const adjustFilePath2025 = path.join(process.cwd(), '파일', '재무조정', '2025.csv');
       let adjustData2025: Awaited<ReturnType<typeof readCSV>> | undefined;
       try { adjustData2025 = await readCSV(adjustFilePath2025, 2025); } catch { /* 무시 */ }
