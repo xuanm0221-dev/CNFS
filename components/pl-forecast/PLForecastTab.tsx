@@ -3223,8 +3223,15 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             if (d === null || d === undefined) return null;
             return (tag * (1 - d)) / 1.13;
           });
-          const dealerCloth = be(); const dealerAcc = be(); const dealer = be(); const direct = be();
+          const dealerCloth = be(); const dealerAcc = be(); const dealer = be(); const direct = be(); const total = be();
           for (let i = 0; i < 12; i++) {
+            // sales.total: PL_brand 단일 실판매출 행 합계 (실적월에만 존재)
+            // main salesActualByBrand와 동일: 있으면 total만 채우고 sub-row는 null 유지
+            const aTotal = brandActualByBrand[brand]?.sales?.total?.[i] ?? null;
+            if (aTotal !== null) {
+              total[i] = aTotal;
+              continue;
+            }
             const aDealer = brandActualByBrand[brand]?.sales?.dealer?.[i] ?? null;
             const aDirect = brandActualByBrand[brand]?.sales?.direct?.[i] ?? null;
             const aDCloth = brandActualByBrand[brand]?.sales?.dealerCloth?.[i] ?? null;
@@ -3232,6 +3239,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             const dVal = aDealer ?? pDealer[i] ?? null;
             const drVal = aDirect ?? pDirect[i] ?? null;
             dealer[i] = dVal; direct[i] = drVal;
+            total[i] = (dVal === null && drVal === null) ? null : (dVal ?? 0) + (drVal ?? 0);
             if (aDCloth !== null || aDAcc !== null) {
               dealerCloth[i] = aDCloth ?? 0; dealerAcc[i] = aDAcc ?? 0;
             } else {
@@ -3239,7 +3247,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
               dealerCloth[i] = sp.a; dealerAcc[i] = sp.b;
             }
           }
-          scSA[brand] = { dealerCloth, dealerAcc, dealer, direct, total: sumSeries(dealer, direct) };
+          scSA[brand] = { dealerCloth, dealerAcc, dealer, direct, total };
         }
 
         // Step 5: monthlyInputs (기존 inputs 복사 후 시나리오 값으로 덮어쓰기)
