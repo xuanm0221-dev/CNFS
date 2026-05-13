@@ -20,20 +20,15 @@ export function getAccountValues(map: Map<string, number[]>, account: string): n
   return map.get(account) || new Array(12).fill(0);
 }
 
-// 브랜드 id → 법인 PL의 Tag매출 분해 계정명 매핑
-export const BRAND_ID_TO_CORP_TAG_ACCOUNT: Record<string, string> = {
-  mlb: 'MLB',
-  kids: 'KIDS',
-  discovery: 'DISCOVERY',
-  duvetica: 'DUVETICA',
-  supra: 'SUPRA',
-};
+// 법인 PL 합성용 브랜드 ID 목록
+export const CORPORATE_PL_BRAND_IDS: string[] = ['mlb', 'kids', 'discovery', 'duvetica', 'supra'];
 
-// 법인 PL의 5브랜드 합산 대상 계정 (calculatePL이 corporate 모드에서 직접 읽는 항목)
+// 법인 PL의 5브랜드 합산 대상 계정 (calculatePL이 읽는 항목 전부)
 const CORPORATE_SUM_ACCOUNTS: string[] = [
-  '실판매출',
-  '매출원가',
-  '평가감',
+  // Tag매출 4-leaf (대리상/직영 × 의류/ACC)
+  'Tag매출_대리상_APP', 'Tag매출_대리상_ACC', 'Tag매출_직영_APP', 'Tag매출_직영_ACC',
+  // 실판매출 / 매출원가 / 평가감
+  '실판매출', '매출원가', '평가감',
   // 직접비 10항목
   '급여(매장)', '복리후생비(매장)', '플랫폼수수료', 'TP수수료', '직접광고비',
   '대리상지원금', '물류비', '매장임차료', '감가상각비', '기타(직접비)',
@@ -44,9 +39,8 @@ const CORPORATE_SUM_ACCOUNTS: string[] = [
 
 /**
  * 5개 브랜드별 FinancialData를 법인 PL 형식으로 합성.
- * - 각 브랜드의 Tag매출 → 법인 계정(MLB/KIDS/DISCOVERY/DUVETICA/SUPRA)
- * - 그 외 계정(실판매출/매출원가/평가감/직접비/영업비) → 5브랜드 단순 합산
- * calculatePL(synthData, false, adjustData) 호출 시 기존 법인 CSV와 동일 구조의 TableRow[] 생성.
+ * 모든 합산 대상 계정을 5브랜드 단순 합산.
+ * calculatePL(synthData, false, adjustData) 호출 시 법인 PL 출력.
  */
 export function synthesizeCorporatePLFromBrands(
   brandData: Record<string, FinancialData[]>,
@@ -54,22 +48,10 @@ export function synthesizeCorporatePLFromBrands(
 ): FinancialData[] {
   const out: FinancialData[] = [];
 
-  // 1) 각 브랜드 Tag매출 → 법인의 브랜드별 분해 계정
-  for (const [brandId, corpAccount] of Object.entries(BRAND_ID_TO_CORP_TAG_ACCOUNT)) {
-    const rows = brandData[brandId];
-    if (!rows) continue;
-    for (const r of rows) {
-      if (r.account === 'Tag매출') {
-        out.push({ year, month: r.month, account: corpAccount, value: r.value });
-      }
-    }
-  }
-
-  // 2) 합산 대상 계정 — 5브랜드 합산
   for (const account of CORPORATE_SUM_ACCOUNTS) {
     const monthlySum: number[] = new Array(12).fill(0);
     const monthHasData: boolean[] = new Array(12).fill(false);
-    for (const brandId of Object.keys(BRAND_ID_TO_CORP_TAG_ACCOUNT)) {
+    for (const brandId of CORPORATE_PL_BRAND_IDS) {
       const rows = brandData[brandId];
       if (!rows) continue;
       for (const r of rows) {
@@ -89,25 +71,78 @@ export function synthesizeCorporatePLFromBrands(
   return out;
 }
 
-// ==================== PL (손익계산서) ====================
-export function calculatePL(data: FinancialData[], isBrand: boolean = false, adjustData?: FinancialData[]): TableRow[] {
-  const map = createMonthDataMap(data);
-  
-  // Tag매출
-  let Tag매출: number[];
-  
-  if (isBrand) {
-    // 브랜드별: Tag매출을 CSV에서 직접 읽기
-    Tag매출 = getAccountValues(map, 'Tag매출');
-  } else {
-    // 법인: 브랜드별 합산
-    const MLB = getAccountValues(map, 'MLB');
-    const KIDS = getAccountValues(map, 'KIDS');
-    const Discovery = getAccountValues(map, 'DISCOVERY');
-    const Duvetica = getAccountValues(map, 'DUVETICA');
-    const Supra = getAccountValues(map, 'SUPRA');
-    Tag매출 = MLB.map((v, i) => v + KIDS[i] + Discovery[i] + Duvetica[i] + Supra[i]);
+// 리테일매출 (Snowflake CHN.dw_sale 기반, 2025/2026만 전달됨)
+//   1~latestActualMonth: leaf 분해 (의류/ACC) — Snowflake 실적
+//   latestActualMonth+1~12: Level 1 (대리상/직영)만 PL(sim) 저장값 (leaf는 null/0)
+export interface RetailPLData {
+  대리상_의류: number[]; // 12개월 (계획월에는 0)
+  대리상_ACC: number[];
+  직영_의류: number[];
+  직영_ACC: number[];
+  /** 계획월(>latestActualMonth)에만 값, 그 외 null. Level 1 대리상 행 계획월 값으로 사용 */
+  대리상_플랜?: (number | null)[];
+  /** 계획월(>latestActualMonth)에만 값, 그 외 null. Level 1 직영 행 계획월 값으로 사용 */
+  직영_플랜?: (number | null)[];
+  /** 1-based 마지막 실적월. 이후 월은 plan 값 사용. 미지정 시 leaf 합산만 사용 */
+  latestActualMonth?: number;
+}
+
+/** 5개 브랜드 RetailPLData를 합산하여 법인 RetailPLData 생성 */
+export function aggregateRetailPLAcrossBrands(
+  brandRetailMap: Partial<Record<string, RetailPLData>>,
+): RetailPLData {
+  const empty = (): number[] => new Array(12).fill(0);
+  const emptyNullable = (): (number | null)[] => new Array(12).fill(null);
+  const out: RetailPLData = {
+    대리상_의류: empty(),
+    대리상_ACC: empty(),
+    직영_의류: empty(),
+    직영_ACC: empty(),
+    대리상_플랜: emptyNullable(),
+    직영_플랜: emptyNullable(),
+    latestActualMonth: 0,
+  };
+  for (const data of Object.values(brandRetailMap)) {
+    if (!data) continue;
+    for (const k of ['대리상_의류', '대리상_ACC', '직영_의류', '직영_ACC'] as const) {
+      for (let i = 0; i < 12; i += 1) out[k][i] += data[k][i] ?? 0;
+    }
+    if (typeof data.latestActualMonth === 'number') {
+      out.latestActualMonth = Math.max(out.latestActualMonth ?? 0, data.latestActualMonth);
+    }
+    for (const k of ['대리상_플랜', '직영_플랜'] as const) {
+      const src = data[k];
+      if (!src) continue;
+      for (let i = 0; i < 12; i += 1) {
+        const v = src[i];
+        if (v == null) continue;
+        out[k]![i] = (out[k]![i] ?? 0) + v;
+      }
+    }
   }
+  return out;
+}
+
+// ==================== PL (손익계산서) ====================
+export function calculatePL(
+  data: FinancialData[],
+  isBrand: boolean = false,
+  adjustData?: FinancialData[],
+  retailData?: RetailPLData,
+): TableRow[] {
+  const map = createMonthDataMap(data);
+
+  // Tag매출 3단계 분해 (브랜드/법인 동일)
+  //   Level 2 leaf: 대리상_의류(_APP), 대리상_ACC, 직영_의류(_APP), 직영_ACC
+  //   Level 1: 대리상 = 대리상_의류 + 대리상_ACC, 직영 = 직영_의류 + 직영_ACC
+  //   Level 0: Tag매출 = 대리상 + 직영
+  const Tag매출_대리상_APP = getAccountValues(map, 'Tag매출_대리상_APP');
+  const Tag매출_대리상_ACC = getAccountValues(map, 'Tag매출_대리상_ACC');
+  const Tag매출_직영_APP = getAccountValues(map, 'Tag매출_직영_APP');
+  const Tag매출_직영_ACC = getAccountValues(map, 'Tag매출_직영_ACC');
+  const Tag매출_대리상 = Tag매출_대리상_APP.map((v, i) => v + Tag매출_대리상_ACC[i]);
+  const Tag매출_직영 = Tag매출_직영_APP.map((v, i) => v + Tag매출_직영_ACC[i]);
+  const Tag매출 = Tag매출_대리상.map((v, i) => v + Tag매출_직영[i]);
   
   // 실판매출 (파일에서 직접 읽기)
   const 실판매출 = getAccountValues(map, '실판매출');
@@ -162,25 +197,77 @@ export function calculatePL(data: FinancialData[], isBrand: boolean = false, adj
   // 영업이익률
   const 영업이익률 = 실판매출.map((v, i) => (v !== 0 ? 영업이익[i] / v : null));
   
+  // 리테일매출 (2025/2026만 전달, 그 외 연도는 undefined → 행 미생성)
+  const 리테일매출Rows: TableRow[] = [];
+  const YOY_RETAIL: TableRow = {
+    account: 'YOY (리테일)',
+    level: 1,
+    isGroup: false,
+    isCalculated: true,
+    values: new Array(12).fill(null),
+    format: 'percent' as const,
+    isYoyRow: true,
+    yoyParent: '리테일매출',
+  };
+  const YOY_TAG: TableRow = {
+    account: 'YOY (Tag매출)',
+    level: 1,
+    isGroup: false,
+    isCalculated: true,
+    values: new Array(12).fill(null),
+    format: 'percent' as const,
+    isYoyRow: true,
+    yoyParent: 'Tag매출',
+  };
+  if (retailData) {
+    const r대리상_의류 = retailData.대리상_의류;
+    const r대리상_ACC = retailData.대리상_ACC;
+    const r직영_의류 = retailData.직영_의류;
+    const r직영_ACC = retailData.직영_ACC;
+    const latestActual = retailData.latestActualMonth ?? 0; // 1-based
+    // Level 1: 1~latestActual = leaf합, latestActual+1~12 = plan 값 (있으면) / null
+    const r대리상 = r대리상_의류.map((v, i) => {
+      if (i < latestActual) return v + r대리상_ACC[i];
+      return retailData.대리상_플랜?.[i] ?? 0;
+    });
+    const r직영 = r직영_의류.map((v, i) => {
+      if (i < latestActual) return v + r직영_ACC[i];
+      return retailData.직영_플랜?.[i] ?? 0;
+    });
+    const r리테일매출 = r대리상.map((v, i) => v + r직영[i]);
+    리테일매출Rows.push(
+      { account: '리테일매출', level: 0, isGroup: true, isCalculated: true, isBold: true, isHighlight: 'mint', values: r리테일매출, format: 'number' as const },
+      YOY_RETAIL,
+      { account: '리테일_대리상', displayLabel: '대리상', level: 1, isGroup: true, isCalculated: true, values: r대리상, format: 'number' as const },
+      { account: '리테일_대리상_의류', displayLabel: '의류', level: 2, isGroup: false, isCalculated: false, values: r대리상_의류, format: 'number' as const },
+      { account: '리테일_대리상_ACC', displayLabel: 'ACC', level: 2, isGroup: false, isCalculated: false, values: r대리상_ACC, format: 'number' as const },
+      { account: '리테일_직영', displayLabel: '직영', level: 1, isGroup: true, isCalculated: true, values: r직영, format: 'number' as const },
+      { account: '리테일_직영_의류', displayLabel: '의류', level: 2, isGroup: false, isCalculated: false, values: r직영_의류, format: 'number' as const },
+      { account: '리테일_직영_ACC', displayLabel: 'ACC', level: 2, isGroup: false, isCalculated: false, values: r직영_ACC, format: 'number' as const },
+    );
+  }
+  void isBrand; // 향후 사용 위해 시그니처 유지
+
   const rows: TableRow[] = [
+    ...리테일매출Rows,
     {
       account: 'Tag매출',
       level: 0,
-      isGroup: isBrand ? false : true,
-      isCalculated: isBrand ? false : true,
+      isGroup: true,
+      isCalculated: true,
       isBold: true,
       isHighlight: 'sky',
       values: Tag매출,
       format: 'number',
     },
-    // 브랜드별일 경우 하위 브랜드 항목 생략
-    ...(!isBrand ? [
-      { account: 'MLB', level: 1, isGroup: false, isCalculated: false, values: getAccountValues(map, 'MLB'), format: 'number' as const },
-      { account: 'KIDS', level: 1, isGroup: false, isCalculated: false, values: getAccountValues(map, 'KIDS'), format: 'number' as const },
-      { account: 'DISCOVERY', level: 1, isGroup: false, isCalculated: false, values: getAccountValues(map, 'DISCOVERY'), format: 'number' as const },
-      { account: 'DUVETICA', level: 1, isGroup: false, isCalculated: false, values: getAccountValues(map, 'DUVETICA'), format: 'number' as const },
-      { account: 'SUPRA', level: 1, isGroup: false, isCalculated: false, values: getAccountValues(map, 'SUPRA'), format: 'number' as const },
-    ] : []),
+    YOY_TAG,
+    // 3단계 분해: 대리상/직영 → 의류/ACC (브랜드·법인 동일)
+    { account: '대리상', level: 1, isGroup: true, isCalculated: true, values: Tag매출_대리상, format: 'number' as const },
+    { account: '대리상_의류', displayLabel: '의류', level: 2, isGroup: false, isCalculated: false, values: Tag매출_대리상_APP, format: 'number' as const },
+    { account: '대리상_ACC', displayLabel: 'ACC', level: 2, isGroup: false, isCalculated: false, values: Tag매출_대리상_ACC, format: 'number' as const },
+    { account: '직영', level: 1, isGroup: true, isCalculated: true, values: Tag매출_직영, format: 'number' as const },
+    { account: '직영_의류', displayLabel: '의류', level: 2, isGroup: false, isCalculated: false, values: Tag매출_직영_APP, format: 'number' as const },
+    { account: '직영_ACC', displayLabel: 'ACC', level: 2, isGroup: false, isCalculated: false, values: Tag매출_직영_ACC, format: 'number' as const },
     {
       account: '실판매출',
       level: 0,
@@ -379,10 +466,45 @@ export function calculateComparisonData(
   const calculateAnnual = (values: (number | null)[]): number => {
     return values.reduce((sum: number, v) => sum + (v || 0), 0);
   };
-  
+
   const result = currentYearData.map(row => {
+    // YOY 행: 부모 행의 current/prev 비율로 12개월 채움
+    if (row.isYoyRow && row.yoyParent) {
+      const currParent = currAccountMap.get(row.yoyParent);
+      const prevParent = prevAccountMap.get(row.yoyParent);
+      const yoyValues: (number | null)[] = new Array(12).fill(null);
+      let cYtd = 0, pYtd = 0, cAnn = 0, pAnn = 0;
+      let cYtdHas = false, pYtdHas = false, cAnnHas = false, pAnnHas = false;
+      if (currParent && prevParent) {
+        for (let i = 0; i < 12; i += 1) {
+          const c = currParent.values[i];
+          const p = prevParent.values[i];
+          if (c != null) { cAnn += c; cAnnHas = true; if (i < baseMonth) { cYtd += c; cYtdHas = true; } }
+          if (p != null) { pAnn += p; pAnnHas = true; if (i < baseMonth) { pYtd += p; pYtdHas = true; } }
+          if (c == null || p == null || p === 0) continue;
+          yoyValues[i] = c / p; // ratio, format='percent' → "108%"
+        }
+      }
+      const ytdRatio = cYtdHas && pYtdHas && pYtd !== 0 ? cYtd / pYtd : null;
+      const annualRatio = cAnnHas && pAnnHas && pAnn !== 0 ? cAnn / pAnn : null;
+      return {
+        ...row,
+        values: yoyValues,
+        comparisons: {
+          prevYearMonth: null,
+          currYearMonth: yoyValues[baseMonth - 1] ?? null,
+          monthYoY: null,
+          prevYearYTD: null,
+          currYearYTD: ytdRatio,
+          ytdYoY: null,
+          prevYearAnnual: null,
+          currYearAnnual: annualRatio,
+          annualYoY: null,
+        },
+      };
+    }
     const prevRow = prevAccountMap.get(row.account);
-    
+
     if (!prevRow) {
       return {
         ...row,

@@ -686,19 +686,6 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   const [allBrandsBgLoaded, setAllBrandsBgLoaded] = useState(false);
   const [brandBgLoadedCount, setBrandBgLoadedCount] = useState(0);
 
-  // 재고자산 주요지표 모달
-  const [driverModalOpen, setDriverModalOpen] = useState(false);
-
-  // ESC로 모달 닫기
-  useEffect(() => {
-    if (!driverModalOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDriverModalOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [driverModalOpen]);
-
   // 시나리오 재고 사전계산 상태
   const [scenarioInvStatus, setScenarioInvStatus] = useState<Record<ScenarioKey, 'idle' | 'computing' | 'done' | 'error'>>({
     negative: 'idle', base: 'idle', positive: 'idle',
@@ -3515,7 +3502,6 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
         scenarioInvSavedAt={year === 2026 ? scenarioInvSavedAt : undefined}
         onComputeScenarioInv={year === 2026 && allBrandsBgLoaded ? computeAndSaveScenarioInventory : undefined}
         onDownloadSnapshot={process.env.NODE_ENV === 'development' && year === 2026 && allBrandsBgLoaded ? downloadDefaultSnapshot : undefined}
-        onOpenDriverModal={year === 2026 ? () => setDriverModalOpen(true) : undefined}
       />
 
       <div className="px-6 py-5">
@@ -3528,166 +3514,6 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
         {statusErrorMessage && !statusLoading && !dealerTableData && (
           <div className="py-10 text-center text-red-500 text-sm">{statusErrorMessage}</div>
         )}
-        {/* 2026: 재고관련 주요지표 모달 — 상단 필터바의 "재고자산 주요지표" 버튼으로 열림 */}
-        {year === 2026 && driverModalOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            onClick={() => setDriverModalOpen(false)}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div
-              className="max-h-[90vh] w-full max-w-6xl overflow-auto rounded-2xl bg-white shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3">
-                <h2 className="text-base font-bold text-slate-800">재고자산 주요지표</h2>
-                <button
-                  type="button"
-                  onClick={() => setDriverModalOpen(false)}
-                  className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                  aria-label="닫기"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M4 4l8 8M12 4l-8 8" />
-                  </svg>
-                </button>
-              </div>
-              <div className="px-5 py-4">
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                  <table key={`dependent-driver-${DRIVER_COLUMN_HEADERS.join('|')}`} className="min-w-full border-collapse text-xs">
-                    <thead>
-                      <tr>
-                        <th rowSpan={2} className="min-w-[140px] border border-slate-300 bg-slate-200 px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide text-slate-700">재고관련 주요지표</th>
-                        <th rowSpan={2} className="min-w-[90px] border border-slate-300 bg-slate-200 px-3 py-2.5 text-center text-[11px] font-semibold tracking-wide text-slate-700">전년</th>
-                        <th colSpan={2} className="border border-slate-300 bg-slate-200 px-3 py-2.5 text-center text-[11px] font-semibold tracking-wide text-slate-700">계획</th>
-                        <th colSpan={4} className="border border-slate-300 bg-slate-200 px-3 py-2.5 text-center text-[11px] font-semibold tracking-wide text-slate-700">Rolling</th>
-                      </tr>
-                      <tr>
-                        <th className="min-w-[90px] border border-slate-300 bg-slate-100 px-3 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-600">금액</th>
-                        <th className="min-w-[70px] border border-slate-300 bg-slate-100 px-3 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-600">YOY</th>
-                        <th className="min-w-[90px] border border-slate-300 bg-slate-100 px-3 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-600">금액</th>
-                        <th className="min-w-[70px] border border-slate-300 bg-slate-100 px-3 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-600">YOY</th>
-                        <th className="min-w-[100px] border border-slate-300 bg-slate-100 px-3 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-600">계획대비 증감</th>
-                        <th className="min-w-[100px] border border-slate-300 bg-slate-100 px-3 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-600">계획대비 증감(%)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {DEPENDENT_DRIVER_ROWS.map((rowLabel, rowIndex) => {
-                        const pickRolling = (row: typeof hqDriverTotalRow) =>
-                          rowIndex === 0 ? row?.sellOutTotal : rowIndex === 1 ? row?.sellInTotal : row?.closing;
-                        const pickPrev = (row: typeof prevYearHqDriverTotalRow) =>
-                          rowIndex === 0 ? row?.sellOutTotal : rowIndex === 1 ? row?.sellInTotal : row?.closing;
-
-                        const planValue = ANNUAL_PLAN_BRANDS.reduce<number | null>((sum, planBrand) => {
-                          const value = dependentPlanValues[rowLabel]?.[planBrand];
-                          if (value == null || !Number.isFinite(value)) return sum;
-                          return (sum ?? 0) + value;
-                        }, null);
-                        const prevValue = pickPrev(prevYearHqDriverTotalRow);
-                        const rollingValue = pickRolling(hqDriverTotalRow);
-
-                        const yoyByPlanVsPrev =
-                          planValue != null && prevValue != null && Number.isFinite(planValue) && Number.isFinite(prevValue) && prevValue !== 0
-                            ? `${Math.round((planValue / prevValue) * 100).toLocaleString()}%`
-                            : '-';
-                        const planVsRolling =
-                          planValue != null && rollingValue != null && Number.isFinite(planValue) && Number.isFinite(rollingValue) && planValue !== 0
-                            ? `${Math.round((rollingValue / planValue) * 100).toLocaleString()}%`
-                            : '-';
-                        const planVsRollingAmount =
-                          planValue != null && rollingValue != null && Number.isFinite(planValue) && Number.isFinite(rollingValue)
-                            ? formatDriverNumber(rollingValue - planValue)
-                            : '-';
-
-                        return (
-                          <React.Fragment key={`derived-${rowLabel}`}>
-                            <tr className="bg-white odd:bg-slate-50/70">
-                              <td className="border-b border-slate-200 px-3 py-2.5 font-semibold text-slate-700">
-                                <span>{rowLabel}</span>
-                              </td>
-                              {DRIVER_COLUMN_HEADERS.map((column, columnIndex) => {
-                                const displayValue =
-                                  column === '계획금액'
-                                    ? (planValue == null ? '-' : formatDriverNumber(planValue))
-                                    : column === '계획YOY'
-                                      ? yoyByPlanVsPrev
-                                      : column === '계획대비 증감'
-                                        ? planVsRollingAmount
-                                        : column === '계획대비 증감(%)'
-                                          ? planVsRolling
-                                          : getDependentDriverCellValue(column, columnIndex, rowIndex, hqDriverTotalRow, prevYearHqDriverTotalRow);
-                                return (
-                                  <td key={`derived-${rowLabel}-${columnIndex}`} className="border-b border-slate-200 px-3 py-2.5 text-right text-sm font-semibold text-slate-950">
-                                    {displayValue}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                            {ANNUAL_PLAN_BRANDS.map((b) => {
-                              const brandRow = perBrandTopTable[b]?.hq.rows.find((r) => r.isTotal) ?? null;
-                              const prevBrandRow = perBrandPrevYearTableData[b]?.hq.rows.find((r) => r.isTotal) ?? null;
-                              const brandPlanValue = dependentPlanValues[rowLabel]?.[b] ?? null;
-                              const brandRolling = pickRolling(brandRow);
-                              const brandPrev = pickPrev(prevBrandRow);
-
-                              const brandYoy =
-                                brandPlanValue != null && brandPrev != null && Number.isFinite(brandPlanValue) && Number.isFinite(brandPrev) && brandPrev !== 0
-                                  ? `${Math.round((brandPlanValue / brandPrev) * 100).toLocaleString()}%`
-                                  : '-';
-                              const brandPlanVsRolling =
-                                brandPlanValue != null && brandRolling != null && Number.isFinite(brandPlanValue) && Number.isFinite(brandRolling) && brandPlanValue !== 0
-                                  ? `${Math.round((brandRolling / brandPlanValue) * 100).toLocaleString()}%`
-                                  : '-';
-                              const brandPlanVsRollingAmt =
-                                brandPlanValue != null && brandRolling != null && Number.isFinite(brandPlanValue) && Number.isFinite(brandRolling)
-                                  ? formatDriverNumber(brandRolling - brandPlanValue)
-                                  : '-';
-
-                              return (
-                                <tr key={`derived-${rowLabel}-brand-${b}`} className="bg-amber-50/35">
-                                  <td className="border-b border-slate-100 pl-7 pr-3 py-2 text-xs text-slate-600">
-                                    <span className="text-slate-400 mr-1">ㄴ</span>{b}
-                                  </td>
-                                  {DRIVER_COLUMN_HEADERS.map((column, columnIndex) => {
-                                    const val =
-                                      column === '전년'
-                                        ? formatDriverNumber(brandPrev)
-                                        : column === '계획금액'
-                                          ? (brandPlanValue == null ? '-' : formatDriverNumber(brandPlanValue))
-                                          : column === '계획YOY'
-                                            ? brandYoy
-                                            : column === 'Rolling금액'
-                                              ? formatDriverNumber(brandRolling)
-                                              : column === 'RollingYOY'
-                                                ? (brandRolling != null && brandPrev != null && Number.isFinite(brandRolling) && Number.isFinite(brandPrev) && brandPrev !== 0
-                                                  ? `${Math.round((brandRolling / brandPrev) * 100).toLocaleString()}%`
-                                                  : '-')
-                                                : column === '계획대비 증감'
-                                                  ? brandPlanVsRollingAmt
-                                                  : column === '계획대비 증감(%)'
-                                                    ? brandPlanVsRolling
-                                                    : '-';
-                                    return (
-                                      <td key={`derived-${rowLabel}-brand-${b}-${columnIndex}`} className="border-b border-slate-100 px-3 py-2 text-right text-xs text-slate-700">
-                                        {val}
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                              );
-                            })}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* 브랜드별 대리상 판매추정 / 판매 섹션 (2026) */}
         {year === 2026 && (() => {
           const ESTIMATE_TABLES = [

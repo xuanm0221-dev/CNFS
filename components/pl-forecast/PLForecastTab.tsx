@@ -965,6 +965,10 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
   const [retailLoading, setRetailLoading] = useState<boolean>(false);
   const [retailError, setRetailError] = useState<string | null>(null);
   const [growthParams, setGrowthParams] = useState<InventoryGrowthParams>(DEFAULT_GROWTH_PARAMS);
+  // 손익계산서 탭에 공유할 리테일 계획 저장 상태
+  const [retailPlanSaving, setRetailPlanSaving] = useState<boolean>(false);
+  const [retailPlanSavedAt, setRetailPlanSavedAt] = useState<string | null>(null);
+  const [retailPlanSaveError, setRetailPlanSaveError] = useState<string | null>(null);
 
   // 재고자산(sim) 리테일 성장률(base)에서 부정/긍정 오프셋을 적용한 동적 시나리오 성장률
   const effectiveScenarioGrowthRates = useMemo(
@@ -3536,6 +3540,53 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                   실적 1~{latestActualMonth}월 반영
                 </div>
               )}
+
+              {/* 리테일 계획 저장 — 손익계산서 탭에서 사용 */}
+              <button
+                type="button"
+                disabled={retailPlanSaving}
+                onClick={async () => {
+                  setRetailPlanSaving(true);
+                  setRetailPlanSaveError(null);
+                  try {
+                    const brandsPayload: Record<SalesBrand, { dealer: (number | null)[]; direct: (number | null)[] }> = {
+                      MLB: { dealer: retailByBrand.MLB.dealer.slice(), direct: retailByBrand.MLB.direct.slice() },
+                      'MLB KIDS': { dealer: retailByBrand['MLB KIDS'].dealer.slice(), direct: retailByBrand['MLB KIDS'].direct.slice() },
+                      DISCOVERY: { dealer: retailByBrand.DISCOVERY.dealer.slice(), direct: retailByBrand.DISCOVERY.direct.slice() },
+                      DUVETICA: { dealer: retailByBrand.DUVETICA.dealer.slice(), direct: retailByBrand.DUVETICA.direct.slice() },
+                      SUPRA: { dealer: retailByBrand.SUPRA.dealer.slice(), direct: retailByBrand.SUPRA.direct.slice() },
+                    };
+                    const res = await fetch('/api/pl-forecast/retail-plan', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ year: 2026, brands: brandsPayload }),
+                    });
+                    const json = await res.json();
+                    if (!res.ok) throw new Error(json?.error ?? '저장 실패');
+                    setRetailPlanSavedAt(json.savedAt ?? new Date().toISOString());
+                  } catch (err) {
+                    setRetailPlanSaveError(err instanceof Error ? err.message : String(err));
+                  } finally {
+                    setRetailPlanSaving(false);
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  retailPlanSaveError
+                    ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
+                    : retailPlanSavedAt
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      : 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                } disabled:opacity-60`}
+                title="현재 리테일 계산값(대리상/직영×12개월)을 손익계산서 탭에서 사용할 수 있도록 저장"
+              >
+                {retailPlanSaving
+                  ? '저장 중...'
+                  : retailPlanSaveError
+                    ? `저장 실패: ${retailPlanSaveError}`
+                    : retailPlanSavedAt
+                      ? `리테일 계획 저장됨 ✓`
+                      : '리테일 계획 저장'}
+              </button>
 
               <div
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${

@@ -1,10 +1,10 @@
 // 법인 PL — 5개 브랜드 CSV를 읽어 합성한 FinancialData를 반환 (서버 전용)
 import path from 'path';
 import { readCSV } from './csv';
-import { synthesizeCorporatePLFromBrands, BRAND_ID_TO_CORP_TAG_ACCOUNT } from './fs-mapping';
+import { synthesizeCorporatePLFromBrands, CORPORATE_PL_BRAND_IDS } from './fs-mapping';
 import type { FinancialData } from './types';
 
-const BRAND_IDS = Object.keys(BRAND_ID_TO_CORP_TAG_ACCOUNT);
+const BRAND_IDS = CORPORATE_PL_BRAND_IDS;
 
 /**
  * 5개 브랜드 PL CSV를 읽어 법인 PL 형식의 FinancialData[]로 합성.

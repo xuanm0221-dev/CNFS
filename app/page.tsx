@@ -39,7 +39,7 @@ export default function Home() {
   // 브랜드별 손익 비교컬럼 표시 여부 (법인 상단용)
   const [hideYtd, setHideYtd] = useState<boolean>(true); // YTD 숨기기 (기준월 12월일 때 기본값 숨김)
   const [plMonthsCollapsed, setPlMonthsCollapsed] = useState<boolean>(true); // PL 월별 데이터 접기
-  const [plQuarterlyMode, setPlQuarterlyMode] = useState<boolean>(false); // PL 분기보기 (월별 12개 컬럼을 1Q~4Q 4개 컬럼으로 교체)
+  const [plQuarterlyMode, setPlQuarterlyMode] = useState<boolean>(true); // PL 분기보기 (월별 12개 컬럼을 1Q~4Q 4개 컬럼으로 교체) — 기본값 true
   const [plAllRowsCollapsed, setPlAllRowsCollapsed] = useState<boolean>(true); // PL 모든 행 접기
   const [summaryData, setSummaryData] = useState<ExecutiveSummaryData | null>(null);
   const [plData, setPlData] = useState<TableRow[] | null>(null);

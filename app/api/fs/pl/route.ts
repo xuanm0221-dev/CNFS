@@ -3,6 +3,7 @@ import path from 'path';
 import { readCSV } from '@/lib/csv';
 import { calculatePL, calculateComparisonData } from '@/lib/fs-mapping';
 import { loadCorporatePLFromBrands } from '@/lib/pl-corporate-loader';
+import { loadRetailPLForCorporate, makeEmptyRetailPLData } from '@/lib/retail-pl-loader';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,10 @@ export async function GET(request: NextRequest) {
       adjustData = await readCSV(adjustFilePath, year);
     } catch { /* 파일 없으면 무시 */ }
 
-    let tableRows = calculatePL(data, false, adjustData);
+    // 리테일매출 (2025/2026만 — Snowflake CHN.dw_sale 기반)
+    const retailData = (await loadRetailPLForCorporate(year)) ?? undefined;
+
+    let tableRows = calculatePL(data, false, adjustData, retailData);
 
     // 2025년인 경우 2024년 대비 비교 데이터 추가
     if (year === 2025) {
@@ -55,7 +59,8 @@ export async function GET(request: NextRequest) {
       const adjustFilePath2025 = path.join(process.cwd(), '파일', '재무조정', '2025.csv');
       let adjustData2025: Awaited<ReturnType<typeof readCSV>> | undefined;
       try { adjustData2025 = await readCSV(adjustFilePath2025, 2025); } catch { /* 무시 */ }
-      const rows2025 = calculatePL(data2025, false, adjustData2025);
+      const retailData2025 = (await loadRetailPLForCorporate(2025)) ?? makeEmptyRetailPLData();
+      const rows2025 = calculatePL(data2025, false, adjustData2025, retailData2025);
       tableRows = calculateComparisonData(tableRows, rows2025, baseMonth);
     }
     

@@ -124,7 +124,8 @@ export default function FinancialTable({
     for (const row of data) {
       // 접힌 그룹의 자식인지 확인
       if (skipUntilLevel >= 0 && row.level > skipUntilLevel) {
-        continue; // 숨김
+        // YOY 행은 부모 접힘과 무관하게 항상 표시 (PL(sim) 스타일)
+        if (!row.isYoyRow) continue;
       } else {
         skipUntilLevel = -1; // 스킵 종료
       }
@@ -259,6 +260,16 @@ export default function FinancialTable({
 
   // 분기값 산출: 일반 행은 단순 합, 비율 행은 분자/분모 합산 후 비율 재계산
   const getQuarterValue = (row: TableRow, q: number, useCurrYear: boolean): number | null => {
+    // YOY 행: 부모 행의 분기 합산 비율 (current quarter sum / prev quarter sum)
+    if (row.isYoyRow && row.yoyParent) {
+      const parent = accountMonthlyMap.get(row.yoyParent);
+      if (!parent) return null;
+      const numSum = sumQuarter(parent.curr, q);
+      const denSum = sumQuarter(parent.prev, q);
+      if (numSum === null || denSum === null || denSum === 0) return null;
+      // useCurrYear=true(당년) → 비율 그대로, false(전년) → 1 (자기 자신 = 100%)
+      return useCurrYear ? numSum / denSum : 1;
+    }
     const rule = RATIO_RULES[row.account];
     if (rule) {
       const num = accountMonthlyMap.get(rule.numerator);
@@ -362,16 +373,17 @@ export default function FinancialTable({
             result.push(...columns.slice(1)); // 1월~12월
           }
 
-          // 빈 컬럼
-          result.push('');
-          
-          // 당월 그룹: 전년(12월), 당년(12월), 브랜드별 컬럼
-          result.push(comparisonColumns[0]); // 전년(12월)
-          result.push(comparisonColumns[1]); // 당년(12월) - YoY 통합 표시
-          if (!brandMonthCollapsed) {
-            brands.forEach(brand => {
-              result.push(`${brand}`); // 브랜드별 통합 컬럼 (금액 + YoY)
-            });
+          // 당월 그룹: 월별 펼치기 상태에서는 12개월 안에 이미 N월이 있으므로 생략
+          const isMonthlyExpanded = !monthsCollapsed && !quarterlyMode;
+          if (!isMonthlyExpanded) {
+            result.push(''); // 빈 컬럼
+            result.push(comparisonColumns[0]); // 전년(N월)
+            result.push(comparisonColumns[1]); // 당년(N월) - YoY 통합 표시
+            if (!brandMonthCollapsed) {
+              brands.forEach(brand => {
+                result.push(`${brand}`); // 브랜드별 통합 컬럼 (금액 + YoY)
+              });
+            }
           }
           
           // YTD 그룹 (hideYtd가 false일 때만)
@@ -413,15 +425,14 @@ export default function FinancialTable({
         ] : monthsCollapsed ? [
             ...accountCol,
             '', // 빈 컬럼
-            comparisonColumns[0], comparisonColumns[1], // 전년(12월), 당년(12월)
+            comparisonColumns[0], comparisonColumns[1], // 전년(N월), 당년(N월)
           ...(hideYtd ? [] : ['', comparisonColumns[2], comparisonColumns[3]]), // 전년YTD, 당년YTD
             '', // 빈 컬럼
           comparisonColumns[4], comparisonColumns[5], // 24년연간, 25년연간
         ] : [
+            // 월별 데이터 펼치기 — 12개월 안에 이미 N월이 있으므로 가운데 전년(N월)/당년(N월) 생략
             ...accountCol,
           ...columns.slice(1),
-            '', // 빈 컬럼 (12월 뒤)
-            comparisonColumns[0], comparisonColumns[1], // 전년(12월), 당년(12월)
           ...(hideYtd ? [] : ['', comparisonColumns[2], comparisonColumns[3]]), // 전년YTD, 당년YTD
           '', // 빈 컬럼
           comparisonColumns[4], comparisonColumns[5], // 24년연간, 25년연간
@@ -647,6 +658,7 @@ export default function FinancialTable({
                   ${row.isBold ? 'font-semibold' : ''}
                   ${hasThickDivider ? '[&>td]:!border-b-[3px] [&>td]:!border-b-slate-400' : ''}
                   ${isOrangeText ? '[&>td]:!text-orange-700' : ''}
+                  ${row.isYoyRow ? 'italic text-slate-500 [&>td]:!text-slate-500' : ''}
                   hover:bg-gray-50
                 `}
               >
@@ -674,7 +686,7 @@ export default function FinancialTable({
                       {isBalanceCheck ? (
                         isBalanceOk ? 'Balance Check ✓ 정합' : 'Balance Check (차대변 불일치)'
                       ) : (
-                        row.account === '실판매출' ? '실판매출(V-)' : row.account
+                        row.account === '실판매출' ? '실판매출(V-)' : (row.displayLabel ?? row.account)
                       )}
                     </span>
                     {row.isGroup && (

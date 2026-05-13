@@ -3,6 +3,7 @@ import path from 'path';
 import { readCSV } from '@/lib/csv';
 import { calculatePL, calculateComparisonData, calculateBrandBreakdown } from '@/lib/fs-mapping';
 import { loadCorporatePLFromBrands } from '@/lib/pl-corporate-loader';
+import { loadRetailPLByBrand, loadRetailPLForCorporate, makeEmptyRetailPLData } from '@/lib/retail-pl-loader';
 import { TableRow } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,9 @@ export async function GET(request: NextRequest) {
     // 법인 PL = 5개 브랜드 PL CSV 합산 (별도 법인 CSV 미사용)
     const corporateData = await loadCorporatePLFromBrands(year);
     const adjustData = await loadAdjustData(year);
-    let corporateRows = calculatePL(corporateData, false, adjustData);
+    // 리테일매출 (2025/2026만)
+    const corpRetail = (await loadRetailPLForCorporate(year)) ?? undefined;
+    let corporateRows = calculatePL(corporateData, false, adjustData, corpRetail);
 
     // 2025년인 경우 2024년 대비 비교 데이터 추가
     if (year === 2025) {
@@ -54,7 +57,9 @@ export async function GET(request: NextRequest) {
     if (year === 2026) {
       const corporateData2025 = await loadCorporatePLFromBrands(2025);
       const adjustData2025 = await loadAdjustData(2025);
-      const corporateRows2025 = calculatePL(corporateData2025, false, adjustData2025);
+      // 2025 retail이 null이면 빈 RetailPLData fallback (리테일매출 행이 prev에도 존재해야 YoY 매칭됨)
+      const corpRetail2025 = (await loadRetailPLForCorporate(2025)) ?? makeEmptyRetailPLData();
+      const corporateRows2025 = calculatePL(corporateData2025, false, adjustData2025, corpRetail2025);
       corporateRows = calculateComparisonData(corporateRows, corporateRows2025, baseMonth);
     }
 
@@ -67,7 +72,8 @@ export async function GET(request: NextRequest) {
         const brandData = await readCSV(brandFilePath, year);
         // MLB일 때만 재무조정 반영
         const brandAdjust = brand === 'mlb' ? adjustData : undefined;
-        let brandRows = calculatePL(brandData, true, brandAdjust);
+        const brandRetail = (await loadRetailPLByBrand(year, brand)) ?? undefined;
+        let brandRows = calculatePL(brandData, true, brandAdjust, brandRetail);
 
         // 2025년인 경우 2024년 대비 비교 데이터 추가
         if (year === 2025) {
@@ -82,7 +88,9 @@ export async function GET(request: NextRequest) {
           const brandFilePath2025 = path.join(process.cwd(), '파일', 'PL_brand', brand, '2025.csv');
           const brandData2025 = await readCSV(brandFilePath2025, 2025);
           const brandAdjust2025 = brand === 'mlb' ? await loadAdjustData(2025) : undefined;
-          const brandRows2025 = calculatePL(brandData2025, true, brandAdjust2025);
+          // 2025 retail null이면 zero fallback (리테일매출 행이 prev에 존재해야 YoY 매칭됨)
+          const brandRetail2025 = (await loadRetailPLByBrand(2025, brand)) ?? makeEmptyRetailPLData();
+          const brandRows2025 = calculatePL(brandData2025, true, brandAdjust2025, brandRetail2025);
           brandRows = calculateComparisonData(brandRows, brandRows2025, baseMonth);
         }
 
