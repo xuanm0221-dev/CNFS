@@ -21,8 +21,6 @@ export interface TableRow {
   year2024Value?: number | null; // CF용 2024년 값
   brandComparisons?: BrandComparisonData; // 브랜드별 비교 데이터 (브랜드별 손익 보기 전용)
   displayLabel?: string; // 표시용 라벨 — 있으면 account 대신 표시. account는 내부 매칭 키로만 사용.
-  isYoyRow?: boolean; // YOY 비율 행 (이탤릭/연한 색, 그룹 접힘 영향 안받음). calculateComparisonData에서 값 계산.
-  yoyParent?: string; // YOY 행의 부모 account 이름 (current/prev 비율 계산 기준)
 }
 
 // 비교 데이터 (PL 2025년 전용)

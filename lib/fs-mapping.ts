@@ -199,26 +199,6 @@ export function calculatePL(
   
   // 리테일매출 (2025/2026만 전달, 그 외 연도는 undefined → 행 미생성)
   const 리테일매출Rows: TableRow[] = [];
-  const YOY_RETAIL: TableRow = {
-    account: 'YOY (리테일)',
-    level: 1,
-    isGroup: false,
-    isCalculated: true,
-    values: new Array(12).fill(null),
-    format: 'percent' as const,
-    isYoyRow: true,
-    yoyParent: '리테일매출',
-  };
-  const YOY_TAG: TableRow = {
-    account: 'YOY (Tag매출)',
-    level: 1,
-    isGroup: false,
-    isCalculated: true,
-    values: new Array(12).fill(null),
-    format: 'percent' as const,
-    isYoyRow: true,
-    yoyParent: 'Tag매출',
-  };
   if (retailData) {
     const r대리상_의류 = retailData.대리상_의류;
     const r대리상_ACC = retailData.대리상_ACC;
@@ -237,7 +217,6 @@ export function calculatePL(
     const r리테일매출 = r대리상.map((v, i) => v + r직영[i]);
     리테일매출Rows.push(
       { account: '리테일매출', level: 0, isGroup: true, isCalculated: true, isBold: true, isHighlight: 'mint', values: r리테일매출, format: 'number' as const },
-      YOY_RETAIL,
       { account: '리테일_대리상', displayLabel: '대리상', level: 1, isGroup: true, isCalculated: true, values: r대리상, format: 'number' as const },
       { account: '리테일_대리상_의류', displayLabel: '의류', level: 2, isGroup: false, isCalculated: false, values: r대리상_의류, format: 'number' as const },
       { account: '리테일_대리상_ACC', displayLabel: 'ACC', level: 2, isGroup: false, isCalculated: false, values: r대리상_ACC, format: 'number' as const },
@@ -260,7 +239,6 @@ export function calculatePL(
       values: Tag매출,
       format: 'number',
     },
-    YOY_TAG,
     // 3단계 분해: 대리상/직영 → 의류/ACC (브랜드·법인 동일)
     { account: '대리상', level: 1, isGroup: true, isCalculated: true, values: Tag매출_대리상, format: 'number' as const },
     { account: '대리상_의류', displayLabel: '의류', level: 2, isGroup: false, isCalculated: false, values: Tag매출_대리상_APP, format: 'number' as const },
@@ -468,41 +446,6 @@ export function calculateComparisonData(
   };
 
   const result = currentYearData.map(row => {
-    // YOY 행: 부모 행의 current/prev 비율로 12개월 채움
-    if (row.isYoyRow && row.yoyParent) {
-      const currParent = currAccountMap.get(row.yoyParent);
-      const prevParent = prevAccountMap.get(row.yoyParent);
-      const yoyValues: (number | null)[] = new Array(12).fill(null);
-      let cYtd = 0, pYtd = 0, cAnn = 0, pAnn = 0;
-      let cYtdHas = false, pYtdHas = false, cAnnHas = false, pAnnHas = false;
-      if (currParent && prevParent) {
-        for (let i = 0; i < 12; i += 1) {
-          const c = currParent.values[i];
-          const p = prevParent.values[i];
-          if (c != null) { cAnn += c; cAnnHas = true; if (i < baseMonth) { cYtd += c; cYtdHas = true; } }
-          if (p != null) { pAnn += p; pAnnHas = true; if (i < baseMonth) { pYtd += p; pYtdHas = true; } }
-          if (c == null || p == null || p === 0) continue;
-          yoyValues[i] = c / p; // ratio, format='percent' → "108%"
-        }
-      }
-      const ytdRatio = cYtdHas && pYtdHas && pYtd !== 0 ? cYtd / pYtd : null;
-      const annualRatio = cAnnHas && pAnnHas && pAnn !== 0 ? cAnn / pAnn : null;
-      return {
-        ...row,
-        values: yoyValues,
-        comparisons: {
-          prevYearMonth: null,
-          currYearMonth: yoyValues[baseMonth - 1] ?? null,
-          monthYoY: null,
-          prevYearYTD: null,
-          currYearYTD: ytdRatio,
-          ytdYoY: null,
-          prevYearAnnual: null,
-          currYearAnnual: annualRatio,
-          annualYoY: null,
-        },
-      };
-    }
     const prevRow = prevAccountMap.get(row.account);
 
     if (!prevRow) {

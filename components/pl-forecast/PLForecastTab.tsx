@@ -370,7 +370,7 @@ interface AccShipmentRatioRow {
 
 interface BrandActualData {
   tag: { dealer: (number | null)[]; direct: (number | null)[]; dealerCloth: (number | null)[]; dealerAcc: (number | null)[] };
-  sales: { dealer: (number | null)[]; direct: (number | null)[]; dealerCloth: (number | null)[]; dealerAcc: (number | null)[] };
+  sales: { dealer: (number | null)[]; direct: (number | null)[]; dealerCloth: (number | null)[]; dealerAcc: (number | null)[]; total?: (number | null)[] };
   retail: { dealer: (number | null)[]; direct: (number | null)[] };
   accounts: Record<string, (number | null)[]>;
 }
@@ -1388,6 +1388,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                 direct: mergeSeries(cur.sales.direct, plan.sales.direct),
                 dealerCloth: mergeSeries(cur.sales.dealerCloth, plan.sales.dealerCloth),
                 dealerAcc: mergeSeries(cur.sales.dealerAcc, plan.sales.dealerAcc),
+                total: cur.sales.total ? [...cur.sales.total] : new Array(12).fill(null),
               },
               retail: {
                 dealer: mergeSeries(cur.retail.dealer, plan.retail.dealer),
@@ -2556,7 +2557,16 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       const dealerAcc = buildEmpty();
       const dealer = buildEmpty();
       const direct = buildEmpty();
+      const totalArr = buildEmpty();
       for (let i = 0; i < 12; i += 1) {
+        // sales.total: PL_brand 단일 실판매출 행 합계 (실적월에만 존재)
+        // 있으면 합계 그대로 사용하고 sub-row(대리상/직영/의류/ACC)는 null로 유지 (오해 방지)
+        const actualTotal = brandActualByBrand[brand]?.sales?.total?.[i] ?? null;
+        if (actualTotal !== null) {
+          totalArr[i] = actualTotal;
+          // dealer/direct/dealerCloth/dealerAcc 는 null 유지
+          continue;
+        }
         const actualDealer = brandActualByBrand[brand]?.sales?.dealer?.[i] ?? null;
         const actualDirect = brandActualByBrand[brand]?.sales?.direct?.[i] ?? null;
         const actualDealerCloth = brandActualByBrand[brand]?.sales?.dealerCloth?.[i] ?? null;
@@ -2567,6 +2577,8 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
 
         dealer[i] = dealerValue;
         direct[i] = directValue;
+        totalArr[i] = (dealerValue ?? 0) + (directValue ?? 0);
+        if (dealerValue === null && directValue === null) totalArr[i] = null;
 
         if (actualDealerCloth !== null || actualDealerAcc !== null) {
           dealerCloth[i] = actualDealerCloth ?? 0;
@@ -2582,7 +2594,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
         dealerAcc,
         dealer,
         direct,
-        total: sumSeries(dealer, direct),
+        total: totalArr,
       };
     }
     return result;

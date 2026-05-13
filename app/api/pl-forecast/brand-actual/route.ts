@@ -1,7 +1,11 @@
+// PL(sim)용 브랜드 실적 — 파일/PL_brand/{brand}/{year}.csv 단일 소스 사용
+// (이전: 보조파일(simu)/pl_brand_actual_K/{YYYY-MM}.csv 월별 천위안)
+// 통합 후: 1위안 단위, 1~BASE_MONTH 컬럼만 실적으로 인식, 그 이후는 계획 (null 처리)
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import Papa from 'papaparse';
+import { BASE_MONTH, BASE_YEAR } from '@/lib/base-month';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +21,7 @@ interface BrandActualData {
   sales: Record<SalesChannel, (number | null)[]> & {
     dealerCloth: (number | null)[];
     dealerAcc: (number | null)[];
+    total: (number | null)[]; // 실적월 단일 합계 (sub-row 분해 없음). 계획월은 null
   };
   retail: Record<SalesChannel, (number | null)[]>;
   accounts: Record<string, (number | null)[]>;
@@ -30,6 +35,14 @@ interface ActualResponse {
 type CsvRow = Record<string, string>;
 
 const BRANDS: SalesBrand[] = ['MLB', 'MLB KIDS', 'DISCOVERY', 'DUVETICA', 'SUPRA'];
+const BRAND_TO_DIR: Record<SalesBrand, string> = {
+  MLB: 'mlb',
+  'MLB KIDS': 'kids',
+  DISCOVERY: 'discovery',
+  DUVETICA: 'duvetica',
+  SUPRA: 'supra',
+};
+const MONTH_KEYS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
 function empty12(): (number | null)[] {
   return new Array(12).fill(null);
@@ -38,7 +51,7 @@ function empty12(): (number | null)[] {
 function makeBrandData(): BrandActualData {
   return {
     tag: { dealer: empty12(), direct: empty12(), dealerCloth: empty12(), dealerAcc: empty12() },
-    sales: { dealer: empty12(), direct: empty12(), dealerCloth: empty12(), dealerAcc: empty12() },
+    sales: { dealer: empty12(), direct: empty12(), dealerCloth: empty12(), dealerAcc: empty12(), total: empty12() },
     retail: { dealer: empty12(), direct: empty12() },
     accounts: {},
   };
@@ -52,6 +65,65 @@ function toNullableNumber(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function readBrandCsv(year: number, brand: SalesBrand, latestActualMonth: number, bd: BrandActualData) {
+  const csvPath = path.join(process.cwd(), '파일', 'PL_brand', BRAND_TO_DIR[brand], `${year}.csv`);
+  if (!fs.existsSync(csvPath)) return;
+  const content = fs.readFileSync(csvPath, 'utf-8').replace(/^﻿/, '');
+  const parsed = Papa.parse<CsvRow>(content, { header: true, skipEmptyLines: true });
+
+  for (const row of parsed.data) {
+    const account = (row['계정과목'] ?? '').trim();
+    if (!account) continue;
+
+    for (let i = 0; i < 12; i += 1) {
+      if (i >= latestActualMonth) continue; // 계획월은 실적에서 제외
+      const v = toNullableNumber(row[MONTH_KEYS[i]]);
+      if (v === null) continue;
+
+      // PL_brand CSV 계정명 → BrandActualData 필드 매핑
+      switch (account) {
+        case 'Tag매출_대리상_APP':
+          bd.tag.dealerCloth[i] = v;
+          break;
+        case 'Tag매출_대리상_ACC':
+          bd.tag.dealerAcc[i] = v;
+          break;
+        case 'Tag매출_직영_APP':
+        case 'Tag매출_직영_ACC':
+          bd.tag.direct[i] = (bd.tag.direct[i] ?? 0) + v;
+          break;
+        case 'Tag매출':
+          // 총합 행 — leaf로 자동 합산되므로 무시
+          break;
+        case '리테일매출_대리상':
+          bd.retail.dealer[i] = v;
+          break;
+        case '리테일매출_직영':
+          bd.retail.direct[i] = v;
+          break;
+        case '실판매출':
+          // PL_brand는 단일 행. 실적월: total에만 저장 (sub-row dealer/direct/dealerCloth/dealerAcc는 null 유지)
+          // PL(sim)에서 sales.total[i] !== null이면 그 값을 합계로 사용, sub-row는 표시 안 함
+          bd.sales.total[i] = v;
+          break;
+        default: {
+          // 그 외 — 매출원가/평가감/직접비/영업비 등 → accounts[name]
+          if (!bd.accounts[account]) bd.accounts[account] = empty12();
+          bd.accounts[account][i] = v;
+        }
+      }
+    }
+  }
+
+  // tag.dealer = dealerCloth + dealerAcc (분해 행 합산)
+  for (let i = 0; i < 12; i += 1) {
+    const tc = bd.tag.dealerCloth[i];
+    const ta = bd.tag.dealerAcc[i];
+    if (tc !== null || ta !== null) bd.tag.dealer[i] = (tc ?? 0) + (ta ?? 0);
+  }
+
+}
+
 export async function GET(req: NextRequest) {
   try {
     const yearRaw = req.nextUrl.searchParams.get('year') ?? '2026';
@@ -60,31 +132,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '유효한 year 파라미터가 필요합니다.' }, { status: 400 });
     }
 
-    const dirPath = path.join(process.cwd(), '보조파일(simu)', 'pl_brand_actual_K');
-    if (!fs.existsSync(dirPath)) {
-      const empty: ActualResponse = {
-        brands: { MLB: makeBrandData(), 'MLB KIDS': makeBrandData(), DISCOVERY: makeBrandData(), DUVETICA: makeBrandData(), SUPRA: makeBrandData() },
-        availableMonths: [],
-      };
-      return NextResponse.json(empty, { headers: { 'Cache-Control': 'no-store' } });
-    }
-
-    const files = fs
-      .readdirSync(dirPath, { withFileTypes: true })
-      .filter((entry) => entry.isFile())
-      .map((entry) => entry.name);
-
-    const monthFiles = files
-      .map((name) => {
-        const m = name.match(/^(\d{4})-(\d{2})\.csv$/i);
-        if (!m) return null;
-        const y = Number(m[1]);
-        const month = Number(m[2]);
-        if (y !== year || month < 1 || month > 12) return null;
-        return { name, month };
-      })
-      .filter((v): v is { name: string; month: number } => v !== null)
-      .sort((a, b) => a.month - b.month);
+    // 실적월 범위: BASE_YEAR 미만이면 전체 12개월 실적, BASE_YEAR면 BASE_MONTH까지만 실적
+    const latestActualMonth = year < BASE_YEAR ? 12 : (year === BASE_YEAR ? BASE_MONTH : 0);
 
     const result: ActualResponse = {
       brands: {
@@ -94,70 +143,11 @@ export async function GET(req: NextRequest) {
         DUVETICA: makeBrandData(),
         SUPRA: makeBrandData(),
       },
-      availableMonths: [],
+      availableMonths: Array.from({ length: latestActualMonth }, (_, i) => i + 1),
     };
 
-    for (const file of monthFiles) {
-      const monthIdx = file.month - 1;
-      result.availableMonths.push(file.month);
-      const csvPath = path.join(dirPath, file.name);
-      const content = fs.readFileSync(csvPath, 'utf-8');
-      const parsed = Papa.parse<CsvRow>(content, { header: true, skipEmptyLines: true });
-
-      for (const row of parsed.data) {
-        const level1 = (row.level1 ?? '').trim();
-        const level2 = (row.level2 ?? '').trim();
-        if (!level1) continue;
-
-        for (const brand of BRANDS) {
-          const raw = toNullableNumber(row[brand]);
-          if (raw === null) continue;
-          const value = raw * 1000; // CSV is CNY K; PL internal uses base CNY.
-
-          if (level1 === '리테일매출') {
-            if (level2 === '대리상') result.brands[brand].retail.dealer[monthIdx] = value;
-            if (level2 === '직영') result.brands[brand].retail.direct[monthIdx] = value;
-            continue;
-          }
-          if (level1 === 'Tag매출') {
-            if (level2 === '대리상') result.brands[brand].tag.dealer[monthIdx] = value;
-            if (level2 === '대리상(의류)') result.brands[brand].tag.dealerCloth[monthIdx] = value;
-            if (level2 === '대리상(ACC)') result.brands[brand].tag.dealerAcc[monthIdx] = value;
-            if (level2 === '직영') result.brands[brand].tag.direct[monthIdx] = value;
-            continue;
-          }
-          if (level1 === '실판매출') {
-            if (level2 === '대리상') result.brands[brand].sales.dealer[monthIdx] = value;
-            if (level2 === '대리상(의류)') result.brands[brand].sales.dealerCloth[monthIdx] = value;
-            if (level2 === '대리상(ACC)') result.brands[brand].sales.dealerAcc[monthIdx] = value;
-            if (level2 === '직영') result.brands[brand].sales.direct[monthIdx] = value;
-            continue;
-          }
-          if (level2) continue;
-
-          if (!result.brands[brand].accounts[level1]) {
-            result.brands[brand].accounts[level1] = empty12();
-          }
-          result.brands[brand].accounts[level1][monthIdx] = value;
-        }
-      }
-    }
-
-    // 분리 행(의류+ACC)으로 dealer 합산 재계산
     for (const brand of BRANDS) {
-      const bd = result.brands[brand];
-      for (let i = 0; i < 12; i++) {
-        const tc = bd.tag.dealerCloth[i];
-        const ta = bd.tag.dealerAcc[i];
-        if (tc !== null || ta !== null) {
-          bd.tag.dealer[i] = (tc ?? 0) + (ta ?? 0);
-        }
-        const sc = bd.sales.dealerCloth[i];
-        const sa = bd.sales.dealerAcc[i];
-        if (sc !== null || sa !== null) {
-          bd.sales.dealer[i] = (sc ?? 0) + (sa ?? 0);
-        }
-      }
+      readBrandCsv(year, brand, latestActualMonth, result.brands[brand]);
     }
 
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
@@ -166,4 +156,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `브랜드 실적 CSV 조회 오류: ${message}` }, { status: 500 });
   }
 }
-
