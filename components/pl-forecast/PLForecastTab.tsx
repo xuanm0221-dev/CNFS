@@ -3385,8 +3385,12 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
         };
       };
 
+      // 기존계획(base) = PL(sim) 손익계산서와 동일해야 함
+      // → 저장된 시나리오 JSON 대신 PL(sim) main의 라이브 retail 데이터 사용
+      //   (UI 성장률 조정 시 PL(sim) main과 함께 기존계획도 즉시 반영)
+      // 부정/긍정은 재고자산(sim) 재계산·저장 시점 스냅샷(SCENARIO_DEFS 오프셋 적용분) 그대로 사용
       const allData: AllScenarioData = {
-        base: computeOnePL(scenarioRetailHq.base, scenarioRetailDealer.base),
+        base: computeOnePL(directRetailByBrand, dealerTagRetailByBrand),
         positive: computeOnePL(scenarioRetailHq.positive, scenarioRetailDealer.positive),
         negative: computeOnePL(scenarioRetailHq.negative, scenarioRetailDealer.negative),
       };
