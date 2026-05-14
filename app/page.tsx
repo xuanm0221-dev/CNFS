@@ -25,6 +25,7 @@ import type { ScenarioInventoryPayload } from '@/components/pl-forecast/plForeca
 import PLCashFlowTab from '@/components/pl-forecast/PLCashFlowTab';
 import DealerShipmentByBrand from '@/components/DealerShipmentByBrand';
 import TagRecoveryRateTable from '@/components/TagRecoveryRateTable';
+import CumulativeCostRateTable from '@/components/CumulativeCostRateTable';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(5);
@@ -716,6 +717,7 @@ export default function Home() {
                   />
                 )}
                 {plYear === 2026 && <TagRecoveryRateTable />}
+                {plYear === 2026 && <CumulativeCostRateTable />}
               </div>
             )}
           </div>

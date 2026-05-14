@@ -110,6 +110,42 @@ function sortClothingTags(tags: string[]): string[] {
   });
 }
 
+// 수기 조정 (Snowflake 과대 계상 보정)
+// - 2026년 4월 DISCOVERY 1년차(=25S+25F): 시스템 과대 계상으로 -220,836.5K 차감
+//   1년차 표시는 25S+25F 합계이므로 25F에 차감 적용해도 합은 동일
+type ManualAdjustment = {
+  brand: TagSalesBrand;
+  grp: TagSalesGrp;
+  tag: string;
+  monthIdx: number; // 0-based
+  deltaK: number;
+  note: string;
+};
+const MANUAL_ADJUSTMENTS_BY_YEAR: Record<number, ManualAdjustment[]> = {
+  2026: [
+    {
+      brand: 'DISCOVERY',
+      grp: '대리상(의류)',
+      tag: '25F',
+      monthIdx: 3, // 4월
+      deltaK: -220836.5,
+      note: 'DISCOVERY 4월 1년차 시스템 과대 계상 보정',
+    },
+  ],
+};
+
+function applyManualAdjustments(year: number, brands: Record<TagSalesBrand, TagSalesBrandData>): void {
+  const adjustments = MANUAL_ADJUSTMENTS_BY_YEAR[year];
+  if (!adjustments) return;
+  for (const adj of adjustments) {
+    const bucket = brands[adj.brand][adj.grp];
+    if (!bucket[adj.tag]) bucket[adj.tag] = new Array(12).fill(null);
+    const series = bucket[adj.tag];
+    const cur = series[adj.monthIdx] ?? 0;
+    series[adj.monthIdx] = cur + adj.deltaK;
+  }
+}
+
 export async function fetchTagSalesByYear(year: number): Promise<TagSales2025Result> {
   const sql = buildQuery(year);
   const rows = await executeSnowflakeQuery<SnowflakeRow>(sql);
@@ -142,6 +178,15 @@ export async function fetchTagSalesByYear(year: number): Promise<TagSales2025Res
     series[monthIdx] = (series[monthIdx] ?? 0) + (amt ?? 0);
 
     if (grp === '대리상(의류)') clothingTagSet.add(tag);
+  }
+
+  // 수기 조정 적용 (시스템 과대 계상 등)
+  applyManualAdjustments(year, brands);
+  // 조정으로 새 tag 키가 추가됐을 수 있으므로 clothingTagSet 재구성
+  for (const brand of Object.keys(brands) as TagSalesBrand[]) {
+    for (const tag of Object.keys(brands[brand]['대리상(의류)'])) {
+      clothingTagSet.add(tag);
+    }
   }
 
   return {
