@@ -182,7 +182,13 @@ export async function GET(request: NextRequest) {
 
       // planMonthValue/planAnnualValue를 FinancialData[]로 변환 후 calculateBS/WC 통과
       // → 자산, 유동자산 등 계산행(합계)도 자동 집계됨
-      let aggregatedPlanData: {
+      // BS와 WC는 동일 account명 (이익잉여금 등) 에 대해 부호 규칙이 다름 → 별도 map 사용
+      let bsAggregatedPlanData: {
+        planMonthValue: Map<string, number>;
+        planAnnualValue: Map<string, number>;
+        planMonth: number;
+      } | null = null;
+      let wcAggregatedPlanData: {
         planMonthValue: Map<string, number>;
         planAnnualValue: Map<string, number>;
         planMonth: number;
@@ -203,28 +209,28 @@ export async function GET(request: NextRequest) {
         const planBSRows = calculateBS(planFinancialData);
         const planWCRows = calculateWorkingCapital(planFinancialData);
 
-        const aggMonth = new Map<string, number>();
-        const aggAnnual = new Map<string, number>();
-
+        // BS 표용: BS 행에서만 plan 추출 (이익잉여금 등 양수 그대로)
+        const bsAggMonth = new Map<string, number>();
+        const bsAggAnnual = new Map<string, number>();
         for (const row of planBSRows) {
-          aggMonth.set(row.account, row.values[pm - 1] ?? 0);
-          aggAnnual.set(row.account, row.values[11] ?? 0);
-        }
-        // WC 계정은 부호가 반전되므로 BS값을 덮어씀
-        for (const row of planWCRows) {
-          aggMonth.set(row.account, row.values[pm - 1] ?? 0);
-          aggAnnual.set(row.account, row.values[11] ?? 0);
+          bsAggMonth.set(row.account, row.values[pm - 1] ?? 0);
+          bsAggAnnual.set(row.account, row.values[11] ?? 0);
         }
 
-        aggregatedPlanData = {
-          planMonthValue: aggMonth,
-          planAnnualValue: aggAnnual,
-          planMonth: pm,
-        };
+        // WC 표용: BS plan을 베이스로 깔고 WC 행으로 덮어쓰기 (부호 반전 반영)
+        const wcAggMonth = new Map<string, number>(bsAggMonth);
+        const wcAggAnnual = new Map<string, number>(bsAggAnnual);
+        for (const row of planWCRows) {
+          wcAggMonth.set(row.account, row.values[pm - 1] ?? 0);
+          wcAggAnnual.set(row.account, row.values[11] ?? 0);
+        }
+
+        bsAggregatedPlanData = { planMonthValue: bsAggMonth, planAnnualValue: bsAggAnnual, planMonth: pm };
+        wcAggregatedPlanData = { planMonthValue: wcAggMonth, planAnnualValue: wcAggAnnual, planMonth: pm };
       }
 
-      tableRows = calculateComparisonDataBS(tableRows, prevTableRows, year, aggregatedPlanData);
-      workingCapitalRows = calculateComparisonDataBS(workingCapitalRows, prevWorkingCapitalRows, year, aggregatedPlanData);
+      tableRows = calculateComparisonDataBS(tableRows, prevTableRows, year, bsAggregatedPlanData);
+      workingCapitalRows = calculateComparisonDataBS(workingCapitalRows, prevWorkingCapitalRows, year, wcAggregatedPlanData);
       
       // 2026년일 때 운전자본표에 2024년(기말) 부여 (2025년(기말) 전월대비용)
       if (year === 2026) {
