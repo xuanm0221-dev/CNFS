@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CLOSED_THROUGH } from '@/lib/inventory-db';
+import { BASE_YEAR } from '@/lib/base-month';
 import { fetchRetailSales } from '@/lib/retail-sales-db';
 import { RetailSalesResponse, RetailSalesRow } from '@/lib/retail-sales-types';
 import { mergePlanMonths } from '@/lib/retail-plan';
@@ -23,8 +24,19 @@ function buildYyymmList(year: number, effectiveClosed: string) {
   return { all, queryable };
 }
 
-function getPlanFromMonth(queryableMonths: string[]): number {
-  return queryableMonths.length + 1;
+/**
+ * planFromMonth 데이터 기반 도출: 매출합계 행에서 첫 null/0 인 월 = 계획 시작월.
+ * Snowflake 가 그 월에 값을 반환하지 않았다 = 실제 데이터 없음 = 계획.
+ * 모두 값 있으면 13 반환 (전 월 실적).
+ */
+function derivePlanFromMonthByData(rows: RetailSalesRow[]): number {
+  const totalRow = rows.find((r) => r.key === '매출합계' || r.isTotal);
+  if (!totalRow) return 1;
+  for (let i = 0; i < 12; i += 1) {
+    const v = totalRow.monthly[i];
+    if (v == null || v === 0) return i + 1;
+  }
+  return 13;
 }
 
 /**
@@ -56,7 +68,12 @@ export async function GET(request: NextRequest) {
   const growthRateHq = parseFloat(searchParams.get('growthRateHq') ?? '10');
   const factorDealer = 1 + growthRate / 100;
   const factorHq = 1 + growthRateHq / 100;
-  const effectiveClosed = searchParams.get('closedThrough') || CLOSED_THROUGH;
+  // 라이브 호출 시 (clientThrough 파라미터 없을 때): year-end 까지 query
+  //   → Snowflake 가 실제로 보유한 월까지만 데이터 반환, 나머지는 null
+  //   → planFromMonth 는 응답 데이터에서 도출 (= 실제 Snowflake 사용 여부 단일 기준)
+  // 스크립트(refresh_*.py)가 closedThrough 명시할 때는 그 값 사용 (호환성 유지)
+  const clientClosed = searchParams.get('closedThrough');
+  const effectiveClosed = clientClosed || `${BASE_YEAR}12`;
 
   // 2025년 캐시 확인
   if (year === 2025) {
@@ -80,7 +97,6 @@ export async function GET(request: NextRequest) {
     if (year === 2026) {
       const { all: all2026, queryable: queryable2026 } = buildYyymmList(2026, effectiveClosed);
       const { all: all2025, queryable: queryable2025 } = buildYyymmList(2025, CLOSED_THROUGH);
-      const planFromMonth = getPlanFromMonth(queryable2026);
       const [data2026, data2025] = await Promise.all([
         queryable2026.length > 0
           ? fetchRetailSales(queryable2026, brand, 2026).then((r) => ({
@@ -97,6 +113,8 @@ export async function GET(request: NextRequest) {
         })),
       ]);
       if (data2026.dealer.rows.length === 0 && data2025.dealer.rows.length > 0) {
+        // 2026 데이터가 전혀 없음 → 전 월 plan
+        const planFromMonth = 1;
         const emptyCurrDealer = data2025.dealer.rows.map((r) => ({
           ...r,
           monthly: r.monthly.map(() => null) as (number | null)[],
@@ -117,6 +135,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(response);
       }
       if (data2026.dealer.rows.length > 0 && data2025.dealer.rows.length > 0) {
+        // 데이터 기반 planFromMonth: 2026 매출합계 첫 null/0 월 = 계획 시작
+        const planFromMonth = derivePlanFromMonthByData(data2026.dealer.rows);
         const response: RetailSalesResponse = {
           year: 2026,
           brand,

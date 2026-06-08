@@ -3837,6 +3837,23 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
           const brandLabel = activeBrand === null
             ? '법인 (5브랜드 합산)'
             : brandsForAgg[0];
+          // (F) 헤더 판단: Snowflake 데이터 자체에 값이 있는 마지막 월 기준 (BASE_MONTH 아님)
+          // → 실제 표에 Snowflake 값이 적용된 월까지는 (F) 없음, 단일 기준
+          let snowflakeLatestMonth = 0;
+          for (const b of SALES_BRANDS) {
+            const brandData = tagSales2026Data.brands[b];
+            if (!brandData) continue;
+            for (const grp of ['직영', '대리상(ACC)', '대리상(의류)'] as const) {
+              const tags = brandData[grp];
+              if (!tags) continue;
+              for (const series of Object.values(tags)) {
+                for (let i = 0; i < 12; i += 1) {
+                  const v = series[i];
+                  if (v != null && v !== 0 && i + 1 > snowflakeLatestMonth) snowflakeLatestMonth = i + 1;
+                }
+              }
+            }
+          }
           const sumByBrands = (getter: (b: SalesBrand, mi: number) => number | null): (number | null)[] => {
             const out: (number | null)[] = new Array(12).fill(null);
             for (let mi = 0; mi < 12; mi += 1) {
@@ -3974,8 +3991,8 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                       <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">전년 연간</th>
                       {(viewMode === '분기' ? QUARTER_HEADERS : MONTH_HEADERS).map((label, idx) => {
                         const isForecast = viewMode === '분기'
-                          ? (idx + 1) * 3 > latestActualMonth
-                          : idx >= latestActualMonth;
+                          ? (idx + 1) * 3 > snowflakeLatestMonth
+                          : idx >= snowflakeLatestMonth;
                         return (
                           <th key={`dealer-ship-h-${label}`} className={`${viewMode === '분기' ? 'min-w-[130px]' : 'min-w-[105px]'} border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white`}>
                             {label}{isForecast ? ' (F)' : ''}

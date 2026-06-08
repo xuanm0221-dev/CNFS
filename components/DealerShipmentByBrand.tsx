@@ -33,10 +33,6 @@ interface DealerShipmentPlanResponse {
   brands?: Record<Brand, Record<Season, (number | null)[]>>;
 }
 
-interface BrandActualResponse {
-  availableMonths?: number[];
-}
-
 interface DealerShipmentByBrandProps {
   monthsCollapsed: boolean;
   quarterlyMode: boolean;
@@ -126,7 +122,6 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
   const [tag26, setTag26] = useState<TagSalesYearResponse | null>(null);
   const [tag25, setTag25] = useState<TagSalesYearResponse | null>(null);
   const [plan, setPlan] = useState<DealerShipmentPlanResponse | null>(null);
-  const [availableMonths, setAvailableMonths] = useState<number[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<boolean>(true);
@@ -139,15 +134,12 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
       fetch('/api/pl-forecast/tag-sales-2025-preprocess?year=2026', { cache: 'no-store' }).then((r) => r.json()),
       fetch('/api/pl-forecast/tag-sales-2025-preprocess?year=2025', { cache: 'no-store' }).then((r) => r.json()),
       fetch('/api/pl-forecast/dealer-shipment-plan', { cache: 'no-store' }).then((r) => r.json()),
-      fetch('/api/pl-forecast/brand-actual?year=2026', { cache: 'no-store' }).then((r) => r.json()),
     ])
-      .then(([t26, t25, p, a]) => {
+      .then(([t26, t25, p]) => {
         if (!mounted) return;
         setTag26(t26 as TagSalesYearResponse);
         setTag25(t25 as TagSalesYearResponse);
         setPlan(p as DealerShipmentPlanResponse);
-        const ar = a as BrandActualResponse;
-        setAvailableMonths(Array.isArray(ar?.availableMonths) ? ar.availableMonths : []);
       })
       .catch((e: unknown) => {
         if (!mounted) return;
@@ -161,7 +153,27 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
     };
   }, []);
 
-  const latestActualMonth = availableMonths.length === 0 ? 0 : Math.max(...availableMonths);
+  // 실적/계획 판단 기준: Snowflake 데이터 자체에 값이 있는 마지막 월 (BASE_MONTH 하드코딩 아님)
+  // → 실제 Tag매출 전처리에 값이 들어와야 (F) 가 사라짐. 단일 기준으로 통일.
+  const latestActualMonth = useMemo<number>(() => {
+    if (!tag26?.brands) return 0;
+    let latest = 0;
+    for (const brand of BRANDS) {
+      const brandData = tag26.brands[brand];
+      if (!brandData) continue;
+      for (const grp of ['직영', '대리상(ACC)', '대리상(의류)'] as const) {
+        const tags = brandData[grp];
+        if (!tags) continue;
+        for (const tagSeries of Object.values(tags)) {
+          for (let i = 0; i < 12; i += 1) {
+            const v = tagSeries[i];
+            if (v != null && v !== 0 && i + 1 > latest) latest = i + 1;
+          }
+        }
+      }
+    }
+    return latest;
+  }, [tag26]);
 
   // 26년 series per brand × season (K 단위)
   //   1~latestActualMonth: Snowflake Tag매출 전처리 (이미 K)
