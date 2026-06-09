@@ -26,16 +26,41 @@ function changePhrase(yoy: number, isLiability: boolean): string {
   return `${absM}M ${decrease ? '감소' : '증가'}`;
 }
 
-// 비용 분석 라인 빌더 — 지급수수료 포함 시 부연 설명(괄호)만 별도 줄로 분리.
-// 메인 라벨 및 항목 텍스트는 기존 로직 그대로.
+// 항목별 하드코딩 부연 설명. {AMOUNT} 는 해당 항목의 +XM 으로 치환됨.
+// 한 항목당 여러 줄 가능 — ①②③ 마커는 TOP 3 전체에서 연속 번호로 부여.
+const EXPENSE_EXPLANATIONS: Record<string, string[]> = {
+  '지급수수료': [
+    '창고 이전 비용 2M, 업체 부담 예정이었으나 협의 결과 중국법인 부담으로 변경',
+    '본사 은행 지급보증수수료 지급 (전월 계획 미반영, 비용 인식은 완료)',
+  ],
+  '법인세': [
+    '5-6월 위탁생산 출고 비중 증가에 따른 이익 증가로 법인세 {AMOUNT}',
+  ],
+  '이자비용': [
+    '차입실행 금액 전월 계획 대비 증가로 이자비용 {AMOUNT} (연말 차입잔액은 변화 없음)',
+  ],
+};
+
+const NUMBER_MARKERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+
+// 비용 분석 라인 빌더 — TOP 3 항목 메인 라인 + 각 항목별 하드코딩 부연 설명(연속 번호)
 function buildExpenseAnalysisLines(top3: CFExplanationNumbers['비용증감_top3']): string[] {
   if (top3.length === 0) {
     return ['ㄴ 비용 항목 계획 대비 모두 절감 또는 변동 없음.'];
   }
-  const mainLine = `ㄴ 비용증가 분석: ${top3.map((t) => `${t.name} ${Mabs(t.yoy)} 증가`).join(', ')}.`;
+  const mainLine = `ㄴ 비용증가 분석: ${top3.map((t) => `${t.name} +${Mabs(t.yoy)}`).join(', ')}.`;
   const lines = [mainLine];
-  if (top3.some((t) => t.name === '지급수수료')) {
-    lines.push('　　(창고 이전 비용 2M, 업체 부담 예정이었으나 협의 결과 중국법인 부담으로 변경)');
+
+  let markerIdx = 0;
+  for (const item of top3) {
+    const explanations = EXPENSE_EXPLANATIONS[item.name];
+    if (!explanations) continue;
+    for (const exp of explanations) {
+      const filled = exp.replace('{AMOUNT}', `+${Mabs(item.yoy)}`);
+      const marker = NUMBER_MARKERS[markerIdx] ?? `(${markerIdx + 1})`;
+      lines.push(`　　${marker} ${filled}`);
+      markerIdx += 1;
+    }
   }
   return lines;
 }
