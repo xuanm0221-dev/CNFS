@@ -16,6 +16,8 @@ interface BrandData {
 
 interface ApiResponse {
   brands?: Record<Brand, BrandData>;
+  baseYear?: number;
+  baseMonth?: number;
   error?: string;
 }
 
@@ -25,6 +27,172 @@ const BRANDS: Brand[] = ['MLB', 'MLB KIDS'];
 function formatRate(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return '';
   return `${(v * 100).toFixed(1)}%`;
+}
+
+function fmtPct(v: number | null, digits = 1): string {
+  if (v == null || !Number.isFinite(v)) return '-';
+  return `${(v * 100).toFixed(digits)}%`;
+}
+
+function fmtPctDiff(v: number | null, digits = 1): string {
+  if (v == null || !Number.isFinite(v)) return '-';
+  const x = v * 100;
+  const sign = x >= 0 ? '+' : '';
+  return `${sign}${x.toFixed(digits)}%p`;
+}
+
+interface BrandMetrics {
+  totalCnRate: number | null;
+  totalImpRate: number | null;
+  totalCnShare: number | null;
+  totalWeighted: number | null;
+  monthsCount: number;
+  minCnRate: { month: string; value: number } | null;
+  maxCnRate: { month: string; value: number } | null;
+  maxCnShare: { month: string; value: number } | null;
+  maxImpRate: { month: string; value: number } | null;
+  // 26년 평균 CN비중 (없으면 null)
+  avgCnShare26: number | null;
+  // 25년 평균 CN비중
+  avgCnShare25: number | null;
+}
+
+function computeMetrics(bd: BrandData | undefined): BrandMetrics {
+  const empty: BrandMetrics = {
+    totalCnRate: null, totalImpRate: null, totalCnShare: null, totalWeighted: null,
+    monthsCount: 0, minCnRate: null, maxCnRate: null, maxCnShare: null, maxImpRate: null,
+    avgCnShare26: null, avgCnShare25: null,
+  };
+  if (!bd) return empty;
+
+  const totalIdx = bd.months.indexOf('전체');
+  const result: BrandMetrics = {
+    ...empty,
+    totalCnRate: totalIdx >= 0 ? bd.rows.CN원가율[totalIdx] : null,
+    totalImpRate: totalIdx >= 0 ? bd.rows.IMP원가율[totalIdx] : null,
+    totalCnShare: totalIdx >= 0 ? bd.rows.CN비중[totalIdx] : null,
+    totalWeighted: totalIdx >= 0 ? bd.rows.가중평균[totalIdx] : null,
+  };
+
+  const monthEntries = bd.months
+    .map((m, i) => ({ m, i }))
+    .filter((e) => e.m !== '전체');
+  result.monthsCount = monthEntries.length;
+
+  for (const { m, i } of monthEntries) {
+    const cn = bd.rows.CN원가율[i];
+    const cnShare = bd.rows.CN비중[i];
+    const imp = bd.rows.IMP원가율[i];
+    if (cn != null) {
+      if (result.minCnRate === null || cn < result.minCnRate.value) result.minCnRate = { month: m, value: cn };
+      if (result.maxCnRate === null || cn > result.maxCnRate.value) result.maxCnRate = { month: m, value: cn };
+    }
+    if (cnShare != null) {
+      if (result.maxCnShare === null || cnShare > result.maxCnShare.value) result.maxCnShare = { month: m, value: cnShare };
+    }
+    if (imp != null) {
+      if (result.maxImpRate === null || imp > result.maxImpRate.value) result.maxImpRate = { month: m, value: imp };
+    }
+  }
+
+  // 연도별 CN비중 평균 (25년, 26년 구분)
+  const shares25: number[] = [];
+  const shares26: number[] = [];
+  for (const { m, i } of monthEntries) {
+    const v = bd.rows.CN비중[i];
+    if (v == null) continue;
+    if (m.startsWith('25년')) shares25.push(v);
+    else if (m.startsWith('26년')) shares26.push(v);
+  }
+  result.avgCnShare25 = shares25.length > 0 ? shares25.reduce((a, b) => a + b, 0) / shares25.length : null;
+  result.avgCnShare26 = shares26.length > 0 ? shares26.reduce((a, b) => a + b, 0) / shares26.length : null;
+  return result;
+}
+
+interface AnalysisProps {
+  brand: Brand;
+  metrics: BrandMetrics;
+  otherMetrics: BrandMetrics;
+}
+
+function AnalysisSection({ brand, metrics, otherMetrics }: AnalysisProps) {
+  const other: Brand = brand === 'MLB' ? 'MLB KIDS' : 'MLB';
+  const diffCn = (metrics.totalCnRate != null && otherMetrics.totalCnRate != null)
+    ? metrics.totalCnRate - otherMetrics.totalCnRate : null;
+  const diffShare = (metrics.totalCnShare != null && otherMetrics.totalCnShare != null)
+    ? metrics.totalCnShare - otherMetrics.totalCnShare : null;
+  const diffImp = (metrics.totalImpRate != null && otherMetrics.totalImpRate != null)
+    ? metrics.totalImpRate - otherMetrics.totalImpRate : null;
+
+  const cnHigherDesc = diffCn != null
+    ? (diffCn > 0
+        ? `${other}(${fmtPct(otherMetrics.totalCnRate)}) 대비 ${fmtPctDiff(Math.abs(diffCn))} 높음`
+        : `${other}(${fmtPct(otherMetrics.totalCnRate)}) 대비 ${fmtPctDiff(Math.abs(diffCn))} 낮음`)
+    : `${other}와 비교 불가`;
+  const shareHigherDesc = diffShare != null
+    ? (diffShare > 0
+        ? `${other}(${fmtPct(otherMetrics.totalCnShare)}) 대비 ${fmtPctDiff(Math.abs(diffShare))} 높음`
+        : `${other}(${fmtPct(otherMetrics.totalCnShare)}) 대비 ${fmtPctDiff(Math.abs(diffShare))} 낮음`)
+    : `${other}와 비교 불가`;
+  const isHigherShare = (diffShare ?? 0) > 0;
+
+  const trendDesc = (metrics.avgCnShare25 != null && metrics.avgCnShare26 != null)
+    ? `25년 평균 ${fmtPct(metrics.avgCnShare25, 1)} → 26년 평균 ${fmtPct(metrics.avgCnShare26, 1)}`
+    : null;
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <div className="font-medium text-slate-800">주요 지표</div>
+        <ul className="ml-4 list-disc space-y-1 text-slate-600">
+          <li>
+            <span className="font-medium text-slate-700">CN원가율 평균 {fmtPct(metrics.totalCnRate)}</span>
+            <span className="text-slate-500"> — {cnHigherDesc}</span>
+          </li>
+          <li>
+            <span className="font-medium text-slate-700">CN비중 평균 {fmtPct(metrics.totalCnShare)}</span>
+            <span className="text-slate-500"> — {shareHigherDesc}. {isHigherShare ? '현지생산 의존도 높음' : '본사 수입 비중 우세'}</span>
+          </li>
+          <li>
+            <span className="font-medium text-slate-700">가중평균 원가율 {fmtPct(metrics.totalWeighted)} / IMP 원가율 {fmtPct(metrics.totalImpRate)}</span>
+            {diffImp != null && (
+              <span className="text-slate-500"> — IMP는 {other}({fmtPct(otherMetrics.totalImpRate)}) 대비 {fmtPctDiff(Math.abs(diffImp))} {diffImp > 0 ? '높음' : '낮음'}</span>
+            )}
+          </li>
+        </ul>
+      </div>
+      <div>
+        <div className="font-medium text-slate-800">수치 특이점</div>
+        <ul className="ml-4 list-disc space-y-1 text-slate-600">
+          {metrics.minCnRate && (
+            <li>{metrics.minCnRate.month} CN 원가율 {fmtPct(metrics.minCnRate.value)} ({metrics.monthsCount}개월 중 최저)</li>
+          )}
+          {metrics.maxCnShare && (
+            <li>{metrics.maxCnShare.month} CN비중 {fmtPct(metrics.maxCnShare.value)} ({metrics.monthsCount}개월 중 최고){trendDesc ? ` — ${trendDesc}` : ''}</li>
+          )}
+          {metrics.maxImpRate && metrics.totalImpRate != null && metrics.maxImpRate.value > metrics.totalImpRate * 1.10 && (
+            <li>{metrics.maxImpRate.month} IMP 원가율 {fmtPct(metrics.maxImpRate.value)} — 전체 평균({fmtPct(metrics.totalImpRate)}) 대비 10%+ 상회, 검토 필요</li>
+          )}
+        </ul>
+      </div>
+      <div>
+        <div className="font-medium text-slate-800">추천 액션</div>
+        <ul className="ml-4 list-disc space-y-1 text-slate-600">
+          {diffCn != null && (
+            <li>CN 원가율 격차 분해 — {brand} {fmtPct(metrics.totalCnRate)} vs {other} {fmtPct(otherMetrics.totalCnRate)}, {fmtPctDiff(Math.abs(diffCn))} 차이를 단가/카테고리/공장별로 추가 분해</li>
+          )}
+          {isHigherShare ? (
+            <li>CN생산 가속화 검증 — {brand} CN비중 추세 {trendDesc ?? '확인'}. 전략적 의도 vs 수입 라인업 축소 결과 점검</li>
+          ) : (
+            <li>IMP 원가율 안정성 모니터링 — {brand}는 IMP 비중이 높아 이전가격 변동에 민감</li>
+          )}
+          {diffImp != null && diffImp > 0.02 && (
+            <li>{brand} IMP 원가율 점검 — 본사 이전가격이 {other}({fmtPct(otherMetrics.totalImpRate)}) 대비 {fmtPctDiff(Math.abs(diffImp))} 높음. 수입 SKU mix 또는 단가 원인 분석</li>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
 }
 
 interface ChartProps {
@@ -73,12 +241,11 @@ function TrendChart({ months, cnRate, cnShare }: ChartProps) {
   const leftTicks = [0, 0.1, 0.2, 0.3, 0.4, 0.5];
   const rightTicks = [0, 0.05, 0.1, 0.15, 0.2, 0.25];
 
-  // X축 라벨: 너무 많아서 25년/26년 시작과 끝, 분기마다만 표시
+  // X축 라벨: 첫 월/마지막 월/년도경계(N년1월)/중간(N년7월) 만 표시 — 데이터 범위 자동 적응
+  const toShortLabel = (m: string): string => m.replace(/년/, '-').replace(/월/, '');
   const labelFor = (m: string, i: number): string | null => {
-    if (i === 0) return '25-1';
-    if (i === n - 1) return m.replace(/년/, '-').replace(/월/, '');
-    if (m === '25년7월') return '25-7';
-    if (m === '26년1월') return '26-1';
+    if (i === 0 || i === n - 1) return toShortLabel(m);
+    if (m.endsWith('년1월') || m.endsWith('년7월')) return toShortLabel(m);
     return null;
   };
 
@@ -168,6 +335,7 @@ function TrendChart({ months, cnRate, cnShare }: ChartProps) {
 
 export default function CumulativeCostRateTable() {
   const [data, setData] = useState<Record<Brand, BrandData> | null>(null);
+  const [baseMonth, setBaseMonth] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeBrand, setActiveBrand] = useState<Brand>('MLB');
@@ -185,6 +353,7 @@ export default function CumulativeCostRateTable() {
           return;
         }
         setData(json.brands ?? null);
+        setBaseMonth(json.baseMonth ?? null);
       })
       .catch((e: unknown) => {
         if (!mounted) return;
@@ -220,9 +389,14 @@ export default function CumulativeCostRateTable() {
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/60 px-4 py-2">
-        <div>
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="font-semibold text-slate-800">누적원가율</div>
-          <div className="mt-0.5 text-xs text-slate-500">파일/누적원가율.csv</div>
+          {baseMonth != null && (
+            <code className="font-mono font-semibold text-blue-600 text-xs select-all">
+              {`python scripts/refresh_2026_cumulative_cost_rate.py --baseMonth ${baseMonth}`}
+            </code>
+          )}
+          <div className="text-xs text-slate-500">Snowflake → public/data/cumulative-cost-rate.json</div>
         </div>
         <div className="flex gap-1">
           {BRANDS.map((b) => (
@@ -285,85 +459,23 @@ export default function CumulativeCostRateTable() {
       <div className="border-t border-slate-200 bg-slate-50/40 px-4 py-3 text-xs leading-relaxed text-slate-700">
         <div className="mb-2 font-semibold text-slate-800">{activeBrand} 분석</div>
         <div className="grid gap-4 lg:grid-cols-[1fr_500px]">
-        <div>
-        {activeBrand === 'MLB' ? (
-          <div className="space-y-2">
-            <div>
-              <div className="font-medium text-slate-800">주요 지표</div>
-              <ul className="ml-4 list-disc space-y-1 text-slate-600">
-                <li>
-                  <span className="font-medium text-slate-700">CN원가율 평균 14.8%</span>
-                  <span className="text-slate-500"> — MLB Kids(19.5%) 대비 5%p 낮음. MLB 본 라인은 평균 단가가 높아 중국 현지 생산 시 원가율 부담이 상대적으로 작음</span>
-                </li>
-                <li>
-                  <span className="font-medium text-slate-700">CN비중 평균 16.7%</span>
-                  <span className="text-slate-500"> — MLB Kids(27.3%) 대비 10.6%p 낮음. 본 라인은 본사 수입 비중이 압도적</span>
-                </li>
-                <li>
-                  <span className="font-medium text-slate-700">가중평균 원가율 35.2% / IMP 원가율 39.3%</span>
-                  <span className="text-slate-500"> — IMP 비중(83%)이 높지만 IMP 원가율 자체가 안정적이라 가중평균이 양호</span>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <div className="font-medium text-slate-800">수치 특이점</div>
-              <ul className="ml-4 list-disc space-y-1 text-slate-600">
-                <li>25-11월 CN 원가율 12.8% (16개월 중 최저) — 시즌 마감 효과 추정</li>
-                <li>26-4월 CN 원가율 14.1%로 하향 추세 — 본사 수입 비중 17.6% 대비 변동성 적음</li>
-              </ul>
-            </div>
-            <div>
-              <div className="font-medium text-slate-800">추천 액션</div>
-              <ul className="ml-4 list-disc space-y-1 text-slate-600">
-                <li>CN 원가율 격차 분해 — MLB 14.8% vs Kids 19.5%, 5%p 차이를 단가/카테고리/공장별로 추가 분해</li>
-                <li>IMP 원가율 안정성 모니터링 — 본 라인이 IMP 비중이 높아 이전가격 변동에 민감</li>
-              </ul>
-            </div>
+          <div>
+            <AnalysisSection
+              brand={activeBrand}
+              metrics={computeMetrics(brandData)}
+              otherMetrics={computeMetrics(data[activeBrand === 'MLB' ? 'MLB KIDS' : 'MLB'])}
+            />
           </div>
-        ) : (
-          <div className="space-y-2">
-            <div>
-              <div className="font-medium text-slate-800">주요 지표</div>
-              <ul className="ml-4 list-disc space-y-1 text-slate-600">
-                <li>
-                  <span className="font-medium text-slate-700">CN원가율 평균 19.5%</span>
-                  <span className="text-slate-500"> — MLB(14.8%) 대비 5%p 높음. 키즈 의류는 평균 단가가 낮아 원가율 부담이 큼. 중국 현지 생산도 키즈는 생산 효율이 낮을 가능성</span>
-                </li>
-                <li>
-                  <span className="font-medium text-slate-700">CN비중 평균 27.3%</span>
-                  <span className="text-slate-500"> — MLB(16.7%) 대비 10.6%p 높음, 1.6배 수준. 키즈 SKU의 중국 적합도가 높거나 본사 수입 모델 수가 적음</span>
-                </li>
-                <li>
-                  <span className="font-medium text-slate-700">가중평균 원가율 36.2% / IMP 원가율 42.5%</span>
-                  <span className="text-slate-500"> — CN/IMP 양쪽 원가율이 모두 높지만 CN비중이 높아 부분 상쇄. IMP 42.5%는 마진 압박 요인</span>
-                </li>
-              </ul>
+          <div className="flex flex-col items-center justify-start">
+            <div className="mb-1 text-[11px] font-medium text-slate-700">
+              {activeBrand} CN 추세 ({months.filter((m) => m !== '전체').length}개월)
             </div>
-            <div>
-              <div className="font-medium text-slate-800">수치 특이점</div>
-              <ul className="ml-4 list-disc space-y-1 text-slate-600">
-                <li>25-3월 IMP 원가율 46.6% (이상치) — 검토 필요</li>
-                <li>26-4월 CN비중 43.5% (16개월 중 최고) — 키즈 현지생산 가속화 신호 (25년 평균 ~25% → 26년 4월 43.5%)</li>
-              </ul>
-            </div>
-            <div>
-              <div className="font-medium text-slate-800">추천 액션</div>
-              <ul className="ml-4 list-disc space-y-1 text-slate-600">
-                <li>IMP 원가율 점검 — 본사 이전가격이 MLB(39.3%) 대비 3.2%p 높은 원인 분석 (수입 키즈 SKU mix vs 단가)</li>
-                <li>키즈 CN생산 가속화 검증 — 26년 CN비중 25%→44% 추세가 전략적 의도인지, 수입 라인업 축소 결과인지 확인</li>
-              </ul>
-            </div>
+            <TrendChart
+              months={months.filter((m) => m !== '전체')}
+              cnRate={(brandData?.rows?.CN원가율 ?? []).filter((_, i) => months[i] !== '전체')}
+              cnShare={(brandData?.rows?.CN비중 ?? []).filter((_, i) => months[i] !== '전체')}
+            />
           </div>
-        )}
-        </div>
-        <div className="flex flex-col items-center justify-start">
-          <div className="mb-1 text-[11px] font-medium text-slate-700">{activeBrand} CN 추세 (16개월)</div>
-          <TrendChart
-            months={months.filter((m) => m !== '전체')}
-            cnRate={(brandData?.rows?.CN원가율 ?? []).filter((_, i) => months[i] !== '전체')}
-            cnShare={(brandData?.rows?.CN비중 ?? []).filter((_, i) => months[i] !== '전체')}
-          />
-        </div>
         </div>
       </div>
     </div>
