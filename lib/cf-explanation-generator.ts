@@ -12,6 +12,11 @@ function Mabs(value: number): string {
   return `${m}M`;
 }
 
+/** M(value) 환산 시 절대값 1M 미만이면 0M 으로 간주 (= 무시) */
+function isZeroM(value: number): boolean {
+  return Math.round(value / 1_000_000) === 0;
+}
+
 
 /** 26년말 vs 25년말 YoY 기준: 절대값 M + "증가" | "감소" (자산은 yoy<0이 감소, 채무는 yoy>0이 감소) */
 function changePhrase(yoy: number, isLiability: boolean): string {
@@ -19,6 +24,20 @@ function changePhrase(yoy: number, isLiability: boolean): string {
   if (absM === 0) return '변동 없음';
   const decrease = isLiability ? yoy > 0 : yoy < 0;
   return `${absM}M ${decrease ? '감소' : '증가'}`;
+}
+
+// 비용 분석 라인 빌더 — 지급수수료 포함 시 부연 설명(괄호)만 별도 줄로 분리.
+// 메인 라벨 및 항목 텍스트는 기존 로직 그대로.
+function buildExpenseAnalysisLines(top3: CFExplanationNumbers['비용증감_top3']): string[] {
+  if (top3.length === 0) {
+    return ['ㄴ 비용 항목 계획 대비 모두 절감 또는 변동 없음.'];
+  }
+  const mainLine = `ㄴ 비용증가 분석: ${top3.map((t) => `${t.name} ${Mabs(t.yoy)} 증가`).join(', ')}.`;
+  const lines = [mainLine];
+  if (top3.some((t) => t.name === '지급수수료')) {
+    lines.push('　　(창고 이전 비용 2M, 업체 부담 예정이었으나 협의 결과 중국법인 부담으로 변경)');
+  }
+  return lines;
 }
 
 export function generateCFExplanationContent(n: CFExplanationNumbers): CFExplanationContent {
@@ -39,13 +58,27 @@ export function generateCFExplanationContent(n: CFExplanationNumbers): CFExplana
       `재고 ${재고YoYM}(창고 재고 출고/판매), 회수 ${회수YoYM}, 본사 채무 ${본사200M} 정상화로 현금 유입.`,
       `대리상 채권 전년비 ${대리상ARYoYM}로 2024년 기말 수준 회복.`,
     ],
-    cashFlow: [
-      `영업활동: 매출수금 ${M(n.매출수금_yoy)} YoY, 물품대 ${M(n.물품대_yoy)} YoY(생산비·전년 미수 상환 반영).`,
-      `자산성지출: 연간 (${Mabs(n.자산성지출_26)}), ${M(n.자산성지출_yoy)} YoY.`,
-      `기타수익: 연간 ${Mabs(n.기타수익_26)}, ${M(n.기타수익_yoy)} YoY.`,
-      `차입금: 연간 ${Mabs(Math.abs(n.차입금_26))} 상환.`,
-      `Net Cash: 연간 (${Mabs(n.netCash_26)}), ${M(n.netCash_yoy)} YoY.`,
-    ],
+    cashFlow: (() => {
+      const lines: string[] = [];
+      // 영업활동: 매출수금/물품대 중 0 아닌 것만 표시
+      const opParts: string[] = [];
+      if (!isZeroM(n.매출수금_planVs)) opParts.push(`매출수금 ${M(n.매출수금_planVs)}`);
+      if (!isZeroM(n.물품대_planVs)) opParts.push(`물품대 ${M(n.물품대_planVs)}`);
+      if (opParts.length > 0) {
+        lines.push(`영업활동: ${opParts.join(', ')} 계획대비.`);
+      } else if (n.비용증감_top3.length > 0) {
+        // 매출수금/물품대 모두 0이지만 비용 분석은 있어야 할 때 영업활동 헤더 유지
+        lines.push(`영업활동:`);
+      }
+      // 비용 분석 (always show if has top3)
+      lines.push(...buildExpenseAnalysisLines(n.비용증감_top3));
+      // 자산성지출 / 기타수익 / 차입금 / Net Cash: 0 아닐 때만
+      if (!isZeroM(n.자산성지출_planVs)) lines.push(`자산성지출: ${M(n.자산성지출_planVs)} 계획대비.`);
+      if (!isZeroM(n.기타수익_planVs)) lines.push(`기타수익: ${M(n.기타수익_planVs)} 계획대비.`);
+      if (!isZeroM(n.차입금_planVs)) lines.push(`차입금: ${M(n.차입금_planVs)} 계획대비.`);
+      if (!isZeroM(n.netCash_planVs)) lines.push(`Net Cash: ${M(n.netCash_planVs)} 계획대비.`);
+      return lines;
+    })(),
     workingCapital: [
       `매출채권: ${changePhrase(n.매출채권_yoy, false)}(26년말 vs 25년말), 현금 유입 및 구조 개선.`,
       `재고자산: ${changePhrase(n.재고자산_yoy, false)}(26년말 vs 25년말), 현금 유입, 보수적 재고 관리 정책 반영.`,

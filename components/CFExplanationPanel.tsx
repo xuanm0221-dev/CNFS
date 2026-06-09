@@ -186,7 +186,7 @@ export default function CFExplanationPanel({ year = 2026, rollingNumbers, storeK
 
   const getSectionTitle = (key: keyof CFExplanationContent) => {
     if (key === 'keyInsights') return '핵심 인사이트';
-    if (key === 'cashFlow') return `${year}년 현금흐름표`;
+    if (key === 'cashFlow') return `${year}년 현금흐름표 (계획대비)`;
     if (key === 'workingCapital') return `${year}년 운전자본표`;
     return '관리 포인트';
   };
@@ -285,9 +285,21 @@ export default function CFExplanationPanel({ year = 2026, rollingNumbers, storeK
                 />
               ) : (
                 <ul className="space-y-1.5 text-sm text-slate-700 leading-relaxed">
-                  {lines.map((line, i) => (
-                    <li key={i}>• {line}</li>
-                  ))}
+                  {lines.map((line, i) => {
+                    // 'ㄴ ' 시작 → 1단계 하위 (동그라미 제거, 들여쓰기)
+                    if (line.startsWith('ㄴ ') || line.startsWith('ㄴ\t')) {
+                      return (
+                        <li key={i} className="pl-6 list-none text-slate-600">{line}</li>
+                      );
+                    }
+                    // 전각공백/공백 시작 → 2단계 하위 (동그라미 제거, 더 깊은 들여쓰기)
+                    if (/^[　\s]/.test(line)) {
+                      return (
+                        <li key={i} className="pl-12 list-none text-slate-500">{line.replace(/^[　\s]+/, '')}</li>
+                      );
+                    }
+                    return <li key={i}>• {line}</li>;
+                  })}
                 </ul>
               )}
             </div>

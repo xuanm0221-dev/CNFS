@@ -55,6 +55,16 @@ export interface CFExplanationNumbers {
   매입채무_yoy: number;
   대리상AR_26: number;
   대리상AR_yoy: number;
+  // 비용 증감 분석 — Rolling vs 계획(N-1) "계획대비증감" 사용 (음수 = 계획보다 비용 더 사용)
+  비용증감_top3: Array<{ name: string; yoy: number; curr: number; prev: number }>;
+  // 계획대비 증감 (Rolling - 계획) — cashFlow 섹션 분석용
+  매출수금_planVs: number;
+  물품대_planVs: number;
+  영업활동_planVs: number;
+  자산성지출_planVs: number;
+  기타수익_planVs: number;
+  차입금_planVs: number;
+  netCash_planVs: number;
 }
 
 const ZERO: CFExplanationNumbers = {
@@ -88,6 +98,14 @@ const ZERO: CFExplanationNumbers = {
   매입채무_yoy: 0,
   대리상AR_26: 0,
   대리상AR_yoy: 0,
+  비용증감_top3: [],
+  매출수금_planVs: 0,
+  물품대_planVs: 0,
+  영업활동_planVs: 0,
+  자산성지출_planVs: 0,
+  기타수익_planVs: 0,
+  차입금_planVs: 0,
+  netCash_planVs: 0,
 };
 
 export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNumbers> {
@@ -133,6 +151,19 @@ export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNum
           if (중 === '매출수금') result.매출수금_yoy = cSub - pSub;
           if (중 === '물품대') result.물품대_yoy = cSub - pSub;
         }
+        // 비용 하위 12개 소분류 yoy → 가장 많이 증가한 (yoy 가장 음수) 3개 추출
+        const expenseDeltas: Array<{ name: string; yoy: number; curr: number; prev: number }> = [];
+        for (const r of data2026.rows) {
+          if (r.대분류 !== '영업활동' || r.중분류 !== '비용') continue;
+          const k = rowKey(r.대분류, r.중분류, r.소분류);
+          const c = dataCurr.get(k)?.total ?? 0;
+          const p = dataPrev.get(k)?.total ?? 0;
+          expenseDeltas.push({ name: r.소분류, yoy: c - p, curr: c, prev: p });
+        }
+        result.비용증감_top3 = expenseDeltas
+          .filter((e) => e.yoy < 0)
+          .sort((a, b) => a.yoy - b.yoy)
+          .slice(0, 3);
       } else if (대 === '자산성지출') {
         result.자산성지출_26 = curr;
         result.자산성지출_yoy = yoy;

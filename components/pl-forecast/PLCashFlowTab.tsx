@@ -79,32 +79,39 @@ const INVENTORY_PURCHASE_MONTHLY_KEY = 'inventory_purchase_monthly_by_brand';
 const INVENTORY_SHIPMENT_MONTHLY_KEY = 'inventory_shipment_monthly_by_brand';
 const PL_TAG_COST_RATIO_KEY = 'pl_tag_cost_ratio_annual';
 
+// 2025년(합계)는 cf-hierarchy 라이브 응답 values[0]에서 자동 추출.
+// 하드코딩 actual2025는 더 이상 사용 안 함 — null 로 통일 (옛 stale 값 보관 안 함).
 const STATIC_CF_ROWS: StaticCFRow[] = [
-  { key: 'operating', label: '영업활동', level: 0, isGroup: true, actual2025: -447126572 },
-  { key: 'operating_receipts', label: '매출수금', level: 1, isGroup: true, actual2025: 5227741340 },
-  { key: 'operating_receipts_mlb', label: 'MLB', level: 2, isGroup: false, actual2025: 5013366502 },
-  { key: 'operating_receipts_kids', label: 'MLB KIDS', level: 2, isGroup: false, actual2025: 160399540 },
-  { key: 'operating_receipts_discovery', label: 'DISCOVERY', level: 2, isGroup: false, actual2025: 40727371 },
-  { key: 'operating_receipts_duvetica', label: 'DUVETICA', level: 2, isGroup: false, actual2025: 9232685 },
-  { key: 'operating_receipts_supra', label: 'SUPRA', level: 2, isGroup: false, actual2025: 4015242 },
-  { key: 'operating_payments', label: '물품대', level: 1, isGroup: true, actual2025: -3361214993 },
-  { key: 'operating_payments_hq', label: '본사', level: 2, isGroup: false, actual2025: -2991224444 },
-  { key: 'operating_payments_local', label: '현지', level: 2, isGroup: false, actual2025: -369990549 },
-  { key: 'operating_advance', label: '본사선급금', level: 1, isGroup: false, actual2025: -700000000 },
-  { key: 'operating_expenses', label: '비용', level: 1, isGroup: true, actual2025: -1613652919 },
-  { key: 'operating_expenses_ad', label: '광고비', level: 2, isGroup: false, actual2025: -224166795 },
-  { key: 'operating_expenses_platform', label: '온라인 플랫폼비용', level: 2, isGroup: false, actual2025: -274204282 },
-  { key: 'operating_expenses_store', label: '오프라인 매장비용', level: 2, isGroup: false, actual2025: -256910016 },
-  { key: 'operating_expenses_duty', label: '수입증치세', level: 2, isGroup: false, actual2025: -524699762 },
-  { key: 'operating_expenses_payroll', label: '인건비', level: 2, isGroup: false, actual2025: -127309323 },
-  { key: 'operating_expenses_deposit', label: '보증금지급', level: 2, isGroup: false, actual2025: -5982822 },
-  { key: 'operating_expenses_other', label: '기타', level: 2, isGroup: false, actual2025: -200379920 },
-  { key: 'capex', label: '자산성지출', level: 0, isGroup: true, actual2025: -43236275 },
-  { key: 'capex_interior', label: '인테리어/VMD', level: 1, isGroup: false, actual2025: -35983113 },
-  { key: 'capex_fixture', label: '비품취득', level: 1, isGroup: false, actual2025: -7253162 },
-  { key: 'other_income', label: '기타수익', level: 0, isGroup: false, actual2025: 45376018 },
-  { key: 'borrowings', label: '차입금', level: 0, isGroup: false, actual2025: 409685078 },
-  { key: 'net_cash', label: 'net cash', level: 0, isGroup: false, actual2025: -35301752 },
+  { key: 'operating', label: '영업활동', level: 0, isGroup: true, actual2025: null },
+  { key: 'operating_receipts', label: '매출수금', level: 1, isGroup: true, actual2025: null },
+  { key: 'operating_receipts_mlb', label: 'MLB', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_kids', label: 'MLB KIDS', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_discovery', label: 'DISCOVERY', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_duvetica', label: 'DUVETICA', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_supra', label: 'SUPRA', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_payments', label: '물품대', level: 1, isGroup: true, actual2025: null },
+  { key: 'operating_payments_hq', label: '본사', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_payments_local', label: '현지', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_advance', label: '본사선급금', level: 1, isGroup: false, actual2025: null },
+  { key: 'operating_expenses', label: '비용', level: 1, isGroup: true, actual2025: null },
+  { key: 'operating_expenses_ad', label: '광고비', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_platform', label: '온라인 플랫폼비용', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_store', label: '오프라인 매장비용', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_duty', label: '수입증치세', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_payroll', label: '인건비', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_deposit', label: '보증금지급', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_rent', label: '사무실임차료', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_service_fee', label: '지급수수료', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_interest', label: '이자비용', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_withholding_vat', label: 'Withholding/VAT', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_corporate_tax', label: '법인세', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_expenses_other_cost', label: '기타비용', level: 2, isGroup: false, actual2025: null },
+  { key: 'capex', label: '자산성지출', level: 0, isGroup: true, actual2025: null },
+  { key: 'capex_interior', label: '인테리어/VMD', level: 1, isGroup: false, actual2025: null },
+  { key: 'capex_fixture', label: '비품취득', level: 1, isGroup: false, actual2025: null },
+  { key: 'other_income', label: '기타수익', level: 0, isGroup: false, actual2025: null },
+  { key: 'borrowings', label: '차입금', level: 0, isGroup: false, actual2025: null },
+  { key: 'net_cash', label: 'net cash', level: 0, isGroup: false, actual2025: null },
 ];
 
 const STATIC_CASH_BORROWING = {
@@ -826,7 +833,12 @@ export default function PLCashFlowTab() {
         else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === '수입증치세') key = 'operating_expenses_duty';
         else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === '인건비') key = 'operating_expenses_payroll';
         else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === '보증금지급') key = 'operating_expenses_deposit';
-        else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === '기타') key = 'operating_expenses_other';
+        else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === '사무실임차료') key = 'operating_expenses_rent';
+        else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === '지급수수료') key = 'operating_expenses_service_fee';
+        else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === '이자비용') key = 'operating_expenses_interest';
+        else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === 'Withholding/VAT') key = 'operating_expenses_withholding_vat';
+        else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === '법인세') key = 'operating_expenses_corporate_tax';
+        else if (row.level === 2 && level0 === '영업활동' && level1 === '비용' && row.account === '기타비용') key = 'operating_expenses_other_cost';
         else if (row.level === 0 && row.account === '자산성지출') key = 'capex';
         else if (row.level === 1 && level0 === '자산성지출' && row.account === '인테리어/VMD') key = 'capex_interior';
         else if (row.level === 1 && level0 === '자산성지출' && row.account === '비품취득') key = 'capex_fixture';
@@ -894,6 +906,19 @@ export default function PLCashFlowTab() {
     if (!values) return null;
     const raw = values[13];
     return Number.isFinite(raw) ? raw : null;
+  };
+
+  // cf-hierarchy year=2026 응답의 values[0] = 2025년(합계) 컬럼 — 현금흐름표 탭과 동일 라이브 데이터
+  // STATIC_CF_ROWS.actual2025 (하드코딩) 대신 이걸 우선 사용
+  const cf2025Annual = (rowKey: string): number | null => {
+    const values = cfValuesByKey[rowKey];
+    if (!values || values.length < 1) return null;
+    const raw = values[0];
+    return Number.isFinite(raw) ? raw : null;
+  };
+  const getActual2025 = (row: StaticCFRow): number => {
+    const live = cf2025Annual(row.key);
+    return live != null ? live : (row.actual2025 ?? 0);
   };
 
   const cfYoy = (row: StaticCFRow): number | null => {
@@ -1188,7 +1213,12 @@ export default function PLCashFlowTab() {
   };
 
   const cfExplanationNumbers = useMemo<CFExplanationNumbers>(() => {
-    const staticCfRow = (key: string) => STATIC_CF_ROWS.find((r) => r.key === key)?.actual2025 ?? 0;
+    // 2025년(합계): cf-hierarchy 라이브 응답 우선, 없으면 STATIC_CF_ROWS 하드코딩 fallback
+    const staticCfRow = (key: string) => {
+      const live = cf2025Annual(key);
+      if (live != null) return live;
+      return STATIC_CF_ROWS.find((r) => r.key === key)?.actual2025 ?? 0;
+    };
     const staticWcRowRaw = (key: string) => key === 'wc_total' ? WC_TOTAL_ACTUAL2025 : (STATIC_WORKING_CAPITAL_ROWS.find((r) => r.key === key)?.actual2025 ?? 0);
     const wcK = (key: string) => workingCapital2026(key) ?? 0;
     const wcYoyK = (key: string) => {
@@ -1199,6 +1229,34 @@ export default function PLCashFlowTab() {
     };
     const opening = cashBorrowingOpening('borrowing');
     const end2026 = cashBorrowing2026('borrowing');
+
+    // 비용증가 분석 TOP 3: 영업활동 > 비용 하위 12개 중 "계획대비증감(금액)" 가 가장 음수인 3개
+    //   계획대비증감 = Rolling - 계획(N-1). 비용은 음수이므로:
+    //     - 음수 → Rolling이 계획보다 더 음수 → 비용 더 많이 사용 (= 계획 대비 비용 증가)
+    //     - 양수 → 계획보다 비용 덜 씀 (= 계획 대비 비용 절감)
+    const EXPENSE_ITEMS: Array<{ key: string; name: string }> = [
+      { key: 'operating_expenses_ad', name: '광고비' },
+      { key: 'operating_expenses_platform', name: '온라인 플랫폼비용' },
+      { key: 'operating_expenses_store', name: '오프라인 매장비용' },
+      { key: 'operating_expenses_duty', name: '수입증치세' },
+      { key: 'operating_expenses_payroll', name: '인건비' },
+      { key: 'operating_expenses_deposit', name: '보증금지급' },
+      { key: 'operating_expenses_rent', name: '사무실임차료' },
+      { key: 'operating_expenses_service_fee', name: '지급수수료' },
+      { key: 'operating_expenses_interest', name: '이자비용' },
+      { key: 'operating_expenses_withholding_vat', name: 'Withholding/VAT' },
+      { key: 'operating_expenses_corporate_tax', name: '법인세' },
+      { key: 'operating_expenses_other_cost', name: '기타비용' },
+    ];
+    const expenseTop3 = EXPENSE_ITEMS
+      .map((item) => {
+        const planVsRolling = cfPlanVsRollingAmount(item.key) ?? 0;
+        return { name: item.name, yoy: planVsRolling, curr: 0, prev: 0 };
+      })
+      .filter((e) => e.yoy < 0) // 음수 = Rolling이 계획보다 비용 더 많이 사용 (= 계획 대비 비용 증가)
+      .sort((a, b) => a.yoy - b.yoy) // 가장 음수 (계획 대비 가장 많이 증가) 순
+      .slice(0, 3);
+
     return {
       영업활동_25: staticCfRow('operating'),
       영업활동_26: cf2026('operating') ?? 0,
@@ -1230,6 +1288,14 @@ export default function PLCashFlowTab() {
       매입채무_yoy: wcYoyK('wc_ap') * 1000,
       대리상AR_26: wcK('wc_ar_dealer') * 1000,
       대리상AR_yoy: wcYoyK('wc_ar_dealer') * 1000,
+      비용증감_top3: expenseTop3,
+      매출수금_planVs: cfPlanVsRollingAmount('operating_receipts') ?? 0,
+      물품대_planVs: cfPlanVsRollingAmount('operating_payments') ?? 0,
+      영업활동_planVs: cfPlanVsRollingAmount('operating') ?? 0,
+      자산성지출_planVs: cfPlanVsRollingAmount('capex') ?? 0,
+      기타수익_planVs: cfPlanVsRollingAmount('other_income') ?? 0,
+      차입금_planVs: cfPlanVsRollingAmount('borrowings') ?? 0,
+      netCash_planVs: cfPlanVsRollingAmount('net_cash') ?? 0,
     };
   }, [cfValuesByKey, cashBorrowingData, inventoryHqClosing, tagCostRatio, shipmentMonthlyByBrand, purchaseMonthlyByBrand, wcForecastByKey]);
 
@@ -1365,7 +1431,7 @@ export default function PLCashFlowTab() {
                           row.label
                         )}
                       </td>
-                      <td className="border-b border-r border-slate-200 py-2 px-4 text-right">{formatActual(row.actual2025)}</td>
+                      <td className="border-b border-r border-slate-200 py-2 px-4 text-right">{formatActual(getActual2025(row))}</td>
                       <td className="border-b border-r border-slate-200 py-2 px-4 text-right">{cfPlan(row.key) != null ? formatActual(cfPlan(row.key)) : '-'}</td>
                       <td className={`border-b border-r border-slate-200 py-2 px-4 text-right ${(cfPlanVsPrev(row) ?? 0) < 0 ? 'text-red-500' : ''}`}>{formatDiffActual(cfPlanVsPrev(row))}</td>
                       {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month, monthIndex) => {
