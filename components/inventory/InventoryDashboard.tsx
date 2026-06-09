@@ -4311,8 +4311,11 @@ ORDER BY YYYYMM;
                           </tr>
                         </thead>
                         <tbody>
-                          {OTB_SEASONS_LIST.map((sesn) => (
-                            <tr key={sesn} className="bg-white hover:bg-gray-50">
+                          {OTB_SEASONS_LIST.map((sesn) => {
+                            // 26S, 26F 는 MLB·MLB KIDS 셀이 Snowflake 라이브 (조건부 채택) 라 행 배경 파랑
+                            const isSnowflakeRow = sesn === '26S' || sesn === '26F';
+                            return (
+                            <tr key={sesn} className={isSnowflakeRow ? 'bg-blue-50 hover:bg-blue-100' : 'bg-white hover:bg-gray-50'}>
                               <td className="px-3 py-2 border-b border-gray-200 font-medium text-gray-700">{sesn}</td>
                               {ANNUAL_PLAN_BRANDS.map((b) => {
                                 const activeData = otbEditMode ? otbDraft : otbData;
@@ -4340,7 +4343,8 @@ ORDER BY YYYYMM;
                                 );
                               })}
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     )}

@@ -1,10 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 import { CLOSED_THROUGH } from '@/lib/inventory-db';
 import { fetchPurchaseSales } from '@/lib/purchase-db';
 import { RetailSalesTableData, RetailSalesRow } from '@/lib/retail-sales-types';
 import { get2025Cache, set2025Cache } from '@/lib/inventory-2025-cache';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Precomputed JSON 의 closedThrough 읽기 — 사용자 마지막 전처리 월.
+ * 라이브 API 도 동일 closedThrough 사용 → 백그라운드 fetch 가 옛 데이터로 덮어쓰는 race 방지.
+ */
+function readPrecomputedClosedThrough(year: number, brand: string): string | null {
+  try {
+    const safeBrand = brand.replace(/\s+/g, '_');
+    const filePath = path.join(
+      process.cwd(),
+      'public',
+      'data',
+      'inventory',
+      String(year),
+      `purchase-${safeBrand}.json`,
+    );
+    if (!fs.existsSync(filePath)) return null;
+    const content = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as { closedThrough?: string };
+    return content.closedThrough ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export interface PurchaseResponse {
   year: number;
@@ -46,7 +71,10 @@ export async function GET(request: NextRequest) {
   const brand = searchParams.get('brand') ?? 'MLB';
   const onlyLatest = searchParams.get('onlyLatest') === 'true';
   const includeFuture = searchParams.get('includeFuture') === 'true';
-  const effectiveClosed = searchParams.get('closedThrough') || CLOSED_THROUGH;
+  // effectiveClosed 우선순위: 1) 클라이언트 명시, 2) precomputed JSON, 3) CLOSED_THROUGH 상수
+  const clientClosed = searchParams.get('closedThrough');
+  const precomputedClosed = year === 2026 ? readPrecomputedClosedThrough(year, brand) : null;
+  const effectiveClosed = clientClosed || precomputedClosed || CLOSED_THROUGH;
 
   // 2025년 캐시 확인 (onlyLatest/includeFuture 없는 일반 요청만 캐시)
   if (year === 2025 && !onlyLatest && !includeFuture) {

@@ -3837,23 +3837,12 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
           const brandLabel = activeBrand === null
             ? '법인 (5브랜드 합산)'
             : brandsForAgg[0];
-          // (F) 헤더 판단: Snowflake 데이터 자체에 값이 있는 마지막 월 기준 (BASE_MONTH 아님)
-          // → 실제 표에 Snowflake 값이 적용된 월까지는 (F) 없음, 단일 기준
-          let snowflakeLatestMonth = 0;
-          for (const b of SALES_BRANDS) {
-            const brandData = tagSales2026Data.brands[b];
-            if (!brandData) continue;
-            for (const grp of ['직영', '대리상(ACC)', '대리상(의류)'] as const) {
-              const tags = brandData[grp];
-              if (!tags) continue;
-              for (const series of Object.values(tags)) {
-                for (let i = 0; i < 12; i += 1) {
-                  const v = series[i];
-                  if (v != null && v !== 0 && i + 1 > snowflakeLatestMonth) snowflakeLatestMonth = i + 1;
-                }
-              }
-            }
-          }
+          // (F) 헤더 판단: 결산 완료월 (brand-actual API availableMonths = BASE_MONTH 기반)
+          // → Snowflake 가 현재 진행월 부분 데이터도 갖고 있어서 데이터 존재 기준은 부적합.
+          //   사용자가 "결산 완료" 선언한 월까지만 실적, 그 이후는 (F).
+          const snowflakeLatestMonth = brandActualAvailableMonths.length === 0
+            ? 0
+            : Math.max(...brandActualAvailableMonths);
           const sumByBrands = (getter: (b: SalesBrand, mi: number) => number | null): (number | null)[] => {
             const out: (number | null)[] = new Array(12).fill(null);
             for (let mi = 0; mi < 12; mi += 1) {

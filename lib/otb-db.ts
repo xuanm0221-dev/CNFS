@@ -66,51 +66,47 @@ const DISCOVERY_OTB_HARDCODE: Record<OtbSeason, number> = {
 };
 
 /**
- * 2026년 기준 5개 시즌 × 3개 브랜드 OTB 합계(retail_amt)를 병렬 조회.
- * MLB, MLB KIDS, DISCOVERY 브랜드 모두 하드코딩 값 사용.
+ * 2026년 기준 5개 시즌 × 3개 브랜드 OTB 합계(retail_amt) 조회.
+ * 정책:
+ *   - MLB / MLB KIDS 의 26S, 26F: Snowflake 라이브 조회
+ *   - 그 외 (DISCOVERY 전체, MLB/KIDS 의 27F/27S/25F): 하드코딩 유지
  * 반환값 단위: CNY (원본) — 호출측에서 ÷1000으로 CNY K 변환.
  */
+const SNOWFLAKE_QUERY_PAIRS: Array<{ brand: OtbBrand; season: OtbSeason }> = [
+  { brand: 'MLB', season: '26S' },
+  { brand: 'MLB', season: '26F' },
+  { brand: 'MLB KIDS', season: '26S' },
+  { brand: 'MLB KIDS', season: '26F' },
+];
+
 export async function fetchOtbData(): Promise<OtbData> {
-  type Task = { brand: OtbBrand; season: OtbSeason; sql: string };
-
-  const tasks: Task[] = [];
-  for (const brand of OTB_BRANDS) {
-    if (brand === 'MLB' || brand === 'MLB KIDS' || brand === 'DISCOVERY') continue; // 하드코딩으로 처리
-    for (const season of OTB_SEASONS) {
-      if (season === '25F') continue; // MLB KIDS의 25F는 조회 제외 (0으로 유지)
-      tasks.push({
-        brand,
-        season,
-        sql: buildOtbQuery(BRD_ACCOUNT_CD_MAP[brand], season),
-      });
-    }
-  }
-
-  const results = await Promise.all(
-    tasks.map((t) =>
-      executeSnowflakeQuery<OtbQueryRow>(t.sql).then((rows) => ({
-        brand: t.brand,
-        season: t.season,
-        value: rows[0]?.TOTAL_RETAIL_AMT ?? 0,
-      })),
-    ),
-  );
-
-  // 빈 구조 초기화
+  // 빈 구조 초기화 후 하드코딩 베이스 깔기
   const data: OtbData = {} as OtbData;
   for (const season of OTB_SEASONS) {
-    data[season] = { MLB: 0, 'MLB KIDS': 0, DISCOVERY: 0 };
+    data[season] = {
+      MLB: MLB_OTB_HARDCODE[season],
+      'MLB KIDS': MLB_KIDS_OTB_HARDCODE[season],
+      DISCOVERY: DISCOVERY_OTB_HARDCODE[season],
+    };
   }
 
+  // Snowflake 조회 대상 (MLB·KIDS 의 26S/26F) 만 조회 후 비교
+  //   - Snowflake > 하드코딩 → Snowflake 채택 (발주 추가됨)
+  //   - Snowflake ≤ 하드코딩 → 하드코딩 유지 (안전한 최대값 유지)
+  const results = await Promise.all(
+    SNOWFLAKE_QUERY_PAIRS.map(({ brand, season }) =>
+      executeSnowflakeQuery<OtbQueryRow>(buildOtbQuery(BRD_ACCOUNT_CD_MAP[brand], season))
+        .then((rows) => ({ brand, season, value: rows[0]?.TOTAL_RETAIL_AMT ?? null }))
+        .catch(() => ({ brand, season, value: null })),
+    ),
+  );
   for (const { brand, season, value } of results) {
-    data[season][brand] = value ?? 0;
-  }
-
-  // MLB, MLB KIDS, DISCOVERY는 하드코딩 값으로 덮어쓰기
-  for (const season of OTB_SEASONS) {
-    data[season]['MLB'] = MLB_OTB_HARDCODE[season];
-    data[season]['MLB KIDS'] = MLB_KIDS_OTB_HARDCODE[season];
-    data[season]['DISCOVERY'] = DISCOVERY_OTB_HARDCODE[season];
+    if (value == null || !Number.isFinite(Number(value))) continue;
+    const sfVal = Number(value);
+    const hcVal = data[season][brand]; // 위에서 하드코딩으로 초기화된 베이스 값
+    if (sfVal > hcVal) {
+      data[season][brand] = sfVal; // SF 가 더 크면 채택, 아니면 하드코딩 유지
+    }
   }
 
   return data;
