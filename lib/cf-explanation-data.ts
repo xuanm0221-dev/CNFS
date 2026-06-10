@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import { readCFHierarchyCSV, CFHierarchyRow } from '@/lib/csv';
+import { readCFHierarchyCSV, CFHierarchyRow, readCFPlanData } from '@/lib/csv';
 import { readCashBorrowingCSV } from '@/lib/csv';
 import { readCSV } from '@/lib/csv';
 import { calculateWorkingCapital, calculateComparisonDataBS } from '@/lib/fs-mapping';
@@ -192,6 +192,67 @@ export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNum
     }
     result.netCash_26 = netCurr;
     result.netCash_yoy = netCurr - netPrev;
+
+    // ── 계획대비증감 (planVs) — PL(sim) 우측 패널과 동일 기준 ───
+    // 2026.csv 의 "2026년계획(N-1)" 컬럼 = 전월 계획. planVs = Rolling - 계획
+    const planPack = readCFPlanData(cf2026Path);
+    if (planPack) {
+      const planData = planPack.planData;
+      const sumPlanByCategory = (filter: (r: CFHierarchyRow) => boolean): number => {
+        let s = 0;
+        for (const r of data2026.rows) {
+          if (!filter(r)) continue;
+          s += planData.get(rowKey(r.대분류, r.중분류, r.소분류)) ?? 0;
+        }
+        return s;
+      };
+      const sumCurrByCategory = (filter: (r: CFHierarchyRow) => boolean): number => {
+        let s = 0;
+        for (const r of data2026.rows) {
+          if (!filter(r)) continue;
+          s += dataCurr.get(rowKey(r.대분류, r.중분류, r.소분류))?.total ?? 0;
+        }
+        return s;
+      };
+
+      const op = (r: CFHierarchyRow) => r.대분류 === '영업활동';
+      const opRec = (r: CFHierarchyRow) => r.대분류 === '영업활동' && r.중분류 === '매출수금';
+      const opPay = (r: CFHierarchyRow) => r.대분류 === '영업활동' && r.중분류 === '물품대';
+      const capex = (r: CFHierarchyRow) => r.대분류 === '자산성지출';
+      const other = (r: CFHierarchyRow) => r.대분류 === '기타수익';
+      const borrow = (r: CFHierarchyRow) => r.대분류 === '차입금';
+
+      result.영업활동_planVs = sumCurrByCategory(op) - sumPlanByCategory(op);
+      result.매출수금_planVs = sumCurrByCategory(opRec) - sumPlanByCategory(opRec);
+      result.물품대_planVs = sumCurrByCategory(opPay) - sumPlanByCategory(opPay);
+      result.자산성지출_planVs = sumCurrByCategory(capex) - sumPlanByCategory(capex);
+      result.기타수익_planVs = sumCurrByCategory(other) - sumPlanByCategory(other);
+      result.차입금_planVs = sumCurrByCategory(borrow) - sumPlanByCategory(borrow);
+
+      // net cash planVs = 전 대분류 합
+      let netCurrAll = 0;
+      let netPlanAll = 0;
+      for (const 대 of 대분류Set) {
+        netCurrAll += sumCurrByCategory((r) => r.대분류 === 대);
+        netPlanAll += sumPlanByCategory((r) => r.대분류 === 대);
+      }
+      result.netCash_planVs = netCurrAll - netPlanAll;
+
+      // 비용증감_top3 (계획대비 기준): 영업활동/비용 소분류 12개에서 planVs 가 가장 음수인 3개
+      // (= 계획 대비 비용이 가장 많이 증가한 항목)
+      const expenseByPlanVs: Array<{ name: string; yoy: number; curr: number; prev: number }> = [];
+      for (const r of data2026.rows) {
+        if (r.대분류 !== '영업활동' || r.중분류 !== '비용') continue;
+        const k = rowKey(r.대분류, r.중분류, r.소분류);
+        const c = dataCurr.get(k)?.total ?? 0;
+        const p = planData.get(k) ?? 0;
+        expenseByPlanVs.push({ name: r.소분류, yoy: c - p, curr: c, prev: p });
+      }
+      result.비용증감_top3 = expenseByPlanVs
+        .filter((e) => e.yoy < 0)
+        .sort((a, b) => a.yoy - b.yoy)
+        .slice(0, 3);
+    }
   }
 
   // 2) Cash / Borrowing balance
