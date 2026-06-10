@@ -115,6 +115,7 @@ const SCENARIO_CF_TAX_ADJUST_ACCOUNT = '법인세 조정';
 const SCENARIO_CF_CORP_TAX_RATE = 0.25;
 
 const ACCOUNT_LABEL_OVERRIDES: Record<string, string> = {
+  리테일매출: '리테일매출(실판)',
   Tag매출_대리상: '대리상',
   Tag매출_의류: '의류',
   Tag매출_ACC: 'ACC',
@@ -990,6 +991,17 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     DUVETICA: new Array(12).fill(null),
     SUPRA: new Array(12).fill(null),
   });
+  // PL forecast actual 리테일 (Snowflake sale_amt, 실판) — 1~BASE_MONTH 만 채워짐 (24h 캐시)
+  const [retailActualSaleAmtByBrand, setRetailActualSaleAmtByBrand] = useState<Record<SalesBrand, { dealer: (number | null)[]; direct: (number | null)[] }>>({
+    MLB: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) },
+    'MLB KIDS': { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) },
+    DISCOVERY: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) },
+    DUVETICA: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) },
+    SUPRA: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null) },
+  });
+  // Snowflake 캐시 상태: cachedAt 시점과 클라이언트 fetch 시점 비교로 캐시/라이브 구분
+  const [retailActualMeta, setRetailActualMeta] = useState<{ cachedAt: number | null; fetchedAt: number | null }>({ cachedAt: null, fetchedAt: null });
+  const [retailActualRefreshing, setRetailActualRefreshing] = useState<boolean>(false);
   const [shipmentProgressLoading, setShipmentProgressLoading] = useState<boolean>(false);
   const [shipmentProgressError, setShipmentProgressError] = useState<string | null>(null);
   const [shipmentProgressRows, setShipmentProgressRows] = useState<ShipmentProgressRow[]>([]);
@@ -1722,6 +1734,26 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       mounted = false;
     };
   }, [growthParams]);
+
+  // PL forecast actual 리테일 — Snowflake sale_amt (실판), 24h 캐시
+  const fetchRetailActualSnowflake = (force = false) => {
+    if (force) setRetailActualRefreshing(true);
+    const url = force
+      ? '/api/pl-forecast/retail-actual-snowflake?year=2026&refresh=1'
+      : '/api/pl-forecast/retail-actual-snowflake?year=2026';
+    fetch(url, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((json: { brands?: Record<SalesBrand, { dealer: (number | null)[]; direct: (number | null)[] }>; cachedAt?: number }) => {
+        if (json.brands) setRetailActualSaleAmtByBrand(json.brands);
+        setRetailActualMeta({ cachedAt: json.cachedAt ?? null, fetchedAt: Date.now() });
+      })
+      .catch(() => { /* 실패 시 빈 값 유지 → 실적월도 plan 로직으로 fallback */ })
+      .finally(() => { if (force) setRetailActualRefreshing(false); });
+  };
+  useEffect(() => {
+    fetchRetailActualSnowflake(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -2615,29 +2647,39 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       DUVETICA: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null), total: new Array(12).fill(null) },
       SUPRA: { dealer: new Array(12).fill(null), direct: new Array(12).fill(null), total: new Array(12).fill(null) },
     };
+    // 실적월 cutoff: brand-actual API 의 availableMonths 최대값 (= BASE_MONTH, 결산 완료월)
+    const actualCutoff = brandActualAvailableMonths.length === 0 ? 0 : Math.max(...brandActualAvailableMonths);
     for (const brand of SALES_BRANDS) {
-      const actualDealer = brandActualByBrand[brand]?.retail?.dealer ?? new Array(12).fill(null);
-      const actualDirect = brandActualByBrand[brand]?.retail?.direct ?? new Array(12).fill(null);
       const tagDealer = dealerTagRetailByBrand[brand] ?? new Array(12).fill(null);
       const tagDirect = directRetailByBrand[brand] ?? new Array(12).fill(null);
       const discountDealer = prevYearDiscountByBrand[brand]?.dealer ?? new Array(12).fill(null);
       const discountDirect = prevYearDiscountByBrand[brand]?.direct ?? new Array(12).fill(null);
+      const actualSaleAmtDealer = retailActualSaleAmtByBrand[brand]?.dealer ?? new Array(12).fill(null);
+      const actualSaleAmtDirect = retailActualSaleAmtByBrand[brand]?.direct ?? new Array(12).fill(null);
 
       for (let i = 0; i < 12; i++) {
-        // 실적월: CSV 실적값, 계획월: Tag리테일 × (1 - 전년할인율)
-        const actualD = actualDealer[i];
-        const actualH = actualDirect[i];
-        result[brand].dealer[i] = actualD !== null
-          ? actualD
-          : (tagDealer[i] !== null ? tagDealer[i]! * (1 - (discountDealer[i] ?? 0)) : null);
-        result[brand].direct[i] = actualH !== null
-          ? actualH
-          : (tagDirect[i] !== null ? tagDirect[i]! * (1 - (discountDirect[i] ?? 0)) : null);
+        // 실적월(i < BASE_MONTH): Snowflake CHN.dw_sale.sale_amt 직접 사용 (실판가, post-discount)
+        //   → 24h 캐시된 retail-actual-snowflake 엔드포인트 응답
+        //   → 데이터 없으면 (DUVETICA/SUPRA 등) Tag × (1 − 할인율) 로 fallback
+        // 계획월(i >= BASE_MONTH): Tag × (1 − 전년할인율) (기존 로직 유지)
+        if (i < actualCutoff) {
+          const saDealer = actualSaleAmtDealer[i];
+          const saDirect = actualSaleAmtDirect[i];
+          result[brand].dealer[i] = saDealer != null
+            ? saDealer
+            : (tagDealer[i] !== null ? tagDealer[i]! * (1 - (discountDealer[i] ?? 0)) : null);
+          result[brand].direct[i] = saDirect != null
+            ? saDirect
+            : (tagDirect[i] !== null ? tagDirect[i]! * (1 - (discountDirect[i] ?? 0)) : null);
+        } else {
+          result[brand].dealer[i] = tagDealer[i] !== null ? tagDealer[i]! * (1 - (discountDealer[i] ?? 0)) : null;
+          result[brand].direct[i] = tagDirect[i] !== null ? tagDirect[i]! * (1 - (discountDirect[i] ?? 0)) : null;
+        }
       }
       result[brand].total = sumSeries(result[brand].dealer, result[brand].direct);
     }
     return result;
-  }, [brandActualByBrand, dealerTagRetailByBrand, directRetailByBrand, prevYearDiscountByBrand]);
+  }, [dealerTagRetailByBrand, directRetailByBrand, prevYearDiscountByBrand, brandActualAvailableMonths, retailActualSaleAmtByBrand]);
 
   const corporateRetail = useMemo(() => {
     const sumAll = (key: 'dealer' | 'direct' | 'total') =>
@@ -3653,14 +3695,22 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                 <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white">
                   25년(연간)
                 </th>
-                {(viewMode === '분기' ? QUARTER_HEADERS : MONTH_HEADERS).map((label) => (
-                  <th
-                    key={label}
-                    className={`${viewMode === '분기' ? 'min-w-[130px]' : 'min-w-[105px]'} border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white`}
-                  >
-                    {label}
-                  </th>
-                ))}
+                {(viewMode === '분기' ? QUARTER_HEADERS : MONTH_HEADERS).map((label, idx) => {
+                  // (F) 마커: 출처가 계획·계산 (Snowflake 실적 외) 인 경우
+                  //   - 월별: 월 > latestActualMonth (= BASE_MONTH)
+                  //   - 분기: (분기 * 3) > latestActualMonth — 분기 마지막 월이 계획월에 포함될 때
+                  const isForecast = viewMode === '분기'
+                    ? (idx + 1) * 3 > latestActualMonth
+                    : idx + 1 > latestActualMonth;
+                  return (
+                    <th
+                      key={label}
+                      className={`${viewMode === '분기' ? 'min-w-[130px]' : 'min-w-[105px]'} border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white`}
+                    >
+                      {label}{isForecast ? '(F)' : ''}
+                    </th>
+                  );
+                })}
                 <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white">
                   26년(연간)
                 </th>
@@ -4480,6 +4530,34 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                   {(otbError || retailError || brandActualError || opexForecastError) && (
                     <div className="text-xs text-red-500">{otbError || retailError || brandActualError || opexForecastError}</div>
                   )}
+                  {/* Snowflake 실판 actual 캐시 상태 */}
+                  {retailActualMeta.cachedAt != null && (() => {
+                    const ageSec = Math.max(0, Math.floor(((retailActualMeta.fetchedAt ?? Date.now()) - retailActualMeta.cachedAt) / 1000));
+                    // ageSec < 5: 방금 서버에서 조회 = LIVE
+                    const isLive = ageSec < 5;
+                    const ageLabel = ageSec < 60
+                      ? `${ageSec}초 전`
+                      : ageSec < 3600
+                      ? `${Math.floor(ageSec / 60)}분 전`
+                      : `${Math.floor(ageSec / 3600)}시간 ${Math.floor((ageSec % 3600) / 60)}분 전`;
+                    return (
+                      <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px]">
+                        <span title="PL 리테일매출 actual: Snowflake CHN.dw_sale.sale_amt (24h 캐시)">
+                          {isLive ? '🟢 Live' : '🟡 캐시'}
+                        </span>
+                        <span className="text-slate-500">실판 actual · {ageLabel}</span>
+                        <button
+                          type="button"
+                          onClick={() => fetchRetailActualSnowflake(true)}
+                          disabled={retailActualRefreshing}
+                          className="ml-1 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                          title="Snowflake 강제 재조회 (?refresh=1)"
+                        >
+                          {retailActualRefreshing ? '갱신중…' : '새로고침'}
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -4490,11 +4568,18 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                       <th className="min-w-[130px] border-b border-r border-slate-300 bg-slate-800 px-3 py-2 text-center font-semibold text-slate-100">브랜드</th>
                       <th className="min-w-[220px] border-b border-r border-slate-300 bg-slate-800 px-3 py-2 text-center font-semibold text-slate-100">채널</th>
                       <th className="min-w-[120px] border-b border-r border-slate-300 bg-slate-700 px-3 py-2 text-center font-semibold text-slate-100">OTB</th>
-                      {MONTH_HEADERS.map((month) => (
-                        <th key={`sales-${month}`} className="min-w-[95px] border-b border-r border-slate-300 bg-slate-800 px-3 py-2 text-center font-semibold text-slate-100">
-                          {month}
-                        </th>
-                      ))}
+                      {MONTH_HEADERS.map((month, idx) => {
+                        // 출처 기반 (F) 마커:
+                        //   - 1~latestActualMonth (= BASE_MONTH): Snowflake 실적 → (F) 없음
+                        //   - latestActualMonth+1 ~ 12: CSV 계획 / OTB 잔여 계산 → (F)
+                        const monthNum = idx + 1;
+                        const isForecast = monthNum > latestActualMonth;
+                        return (
+                          <th key={`sales-${month}`} className="min-w-[95px] border-b border-r border-slate-300 bg-slate-800 px-3 py-2 text-center font-semibold text-slate-100">
+                            {month}{isForecast ? '(F)' : ''}
+                          </th>
+                        );
+                      })}
                       <th className="min-w-[120px] border-b border-slate-300 bg-slate-700 px-3 py-2 text-center font-semibold text-slate-100">FY26</th>
                     </tr>
                   </thead>
