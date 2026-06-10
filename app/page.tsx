@@ -62,6 +62,10 @@ export default function Home() {
     borrowingNMonthPlan?: number;
   } | null>(null);
   const [cfWorkingCapitalData, setCfWorkingCapitalData] = useState<TableRow[] | null>(null);
+  // 운전자본 snapshot 저장 (PL(sim) 시나리오 모달 기존계획 갱신용)
+  const [wcSnapshotSaving, setWcSnapshotSaving] = useState<boolean>(false);
+  const [wcSnapshotSavedAt, setWcSnapshotSavedAt] = useState<string | null>(null);
+  const [wcSnapshotError, setWcSnapshotError] = useState<string | null>(null);
   const [creditRecoveryData, setCreditRecoveryData] = useState<CreditRecoveryData | null>(null);
   const [creditData, setCreditData] = useState<CreditData | null>(null);
   const [cfSummaryNumbers, setCfSummaryNumbers] = useState<CFExplanationNumbers | null>(null);
@@ -115,6 +119,54 @@ export default function Home() {
       .then((data) => { if (data) setCfSummaryNumbers(data as CFExplanationNumbers); })
       .catch(() => {});
   }, []);
+
+  // 운전자본 snapshot 마지막 저장 시점 로드 (한 번)
+  useEffect(() => {
+    fetch('/api/pl-forecast/wc-snapshot', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { savedAt?: string } | null) => {
+        if (data && data.savedAt) setWcSnapshotSavedAt(data.savedAt);
+      })
+      .catch(() => { /* 무시 */ });
+  }, []);
+
+  // 운전자본 snapshot 저장: BS workingCapital 의 12월 값 추출 → POST
+  const handleSaveWcSnapshot = async () => {
+    if (!cfWorkingCapitalData || cfWorkingCapitalData.length === 0) {
+      setWcSnapshotError('운전자본표 데이터가 없습니다.');
+      return;
+    }
+    setWcSnapshotSaving(true);
+    setWcSnapshotError(null);
+    try {
+      const findVal12 = (name: string): number => {
+        const r = cfWorkingCapitalData.find((row) => row.account.trim() === name);
+        if (!r || !Array.isArray(r.values)) return 0;
+        const v = r.values[11]; // 12월
+        return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+      };
+      // BS 의 본사AP·제품AP 는 이미 row.values 에서 음수로 저장됨 (fs-mapping 의 .map(v => -v) 처리)
+      // → 그대로 사용하면 PL(sim) 운전자본 계산식 (AR + 재고 + AP) 에 정합. 추가 negate 불필요.
+      const payload = {
+        wc_ar_direct: findVal12('직영AR'),
+        wc_ar_dealer: findVal12('대리상AR'),
+        wc_ap_hq: findVal12('본사AP'),
+        wc_ap_goods: findVal12('제품AP'),
+      };
+      const res = await fetch('/api/pl-forecast/wc-snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error ?? '저장 실패');
+      setWcSnapshotSavedAt(json.savedAt ?? new Date().toISOString());
+    } catch (err) {
+      setWcSnapshotError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setWcSnapshotSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 5) {
@@ -855,6 +907,28 @@ export default function Home() {
                     ? <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
                     : <ChevronLeft className="h-3.5 w-3.5 text-slate-400" />}
                 </button>
+                {/* 운전자본 저장 — PL(sim) 시나리오 모달 기존계획 갱신 */}
+                {cfYear === 2026 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleSaveWcSnapshot}
+                      disabled={wcSnapshotSaving || !cfWorkingCapitalData || cfWorkingCapitalData.length === 0}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-100 disabled:opacity-50"
+                      title="운전자본표 12월 (직영AR·대리상AR·본사AP·제품AP) 을 파일/연말기준운전자본_snapshot.json 으로 저장 — PL(sim) 시나리오 모달 기존계획 갱신"
+                    >
+                      {wcSnapshotSaving ? '저장 중…' : '운전자본 저장'}
+                    </button>
+                    {wcSnapshotSavedAt && (
+                      <span className="text-[11px] text-slate-500" title={`마지막 저장: ${new Date(wcSnapshotSavedAt).toLocaleString('ko-KR')}`}>
+                        저장됨 {new Date(wcSnapshotSavedAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                    {wcSnapshotError && (
+                      <span className="text-[11px] text-red-500">{wcSnapshotError}</span>
+                    )}
+                  </>
+                )}
                 <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
                   <span className="relative flex h-1.5 w-1.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>

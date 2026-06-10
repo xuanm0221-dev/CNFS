@@ -33,6 +33,7 @@ export default function AnnualCashPlan() {
   const [editedAnalysis, setEditedAnalysis] = useState<EditableAnalysis | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
+
   // 데이터 로딩
   const loadCFData = async (year: number) => {
     try {
@@ -98,7 +99,7 @@ export default function AnnualCashPlan() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    
+
     Promise.all([
       loadCFData(wcYear),
       loadWCStatementData(wcYear),
@@ -112,6 +113,7 @@ export default function AnnualCashPlan() {
         setLoading(false);
       });
   }, [wcYear]);
+
 
   // 저장된 분석 데이터 로드
   useEffect(() => {
@@ -366,7 +368,7 @@ export default function AnnualCashPlan() {
           >
             {workingCapitalMonthsCollapsed ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
           </button>
-          
+
           {editMode && (
             <>
               <button
