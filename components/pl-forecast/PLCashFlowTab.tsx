@@ -1230,7 +1230,7 @@ export default function PLCashFlowTab() {
     const opening = cashBorrowingOpening('borrowing');
     const end2026 = cashBorrowing2026('borrowing');
 
-    // 비용증가 분석 TOP 3: 영업활동 > 비용 하위 12개 중 "계획대비증감(금액)" 가 가장 음수인 3개
+    // 비용증가 분석 TOP 3: 영업활동 > 비용 하위 12개 중 "계획 대비" 가 가장 음수인 3개
     //   계획대비증감 = Rolling - 계획(N-1). 비용은 음수이므로:
     //     - 음수 → Rolling이 계획보다 더 음수 → 비용 더 많이 사용 (= 계획 대비 비용 증가)
     //     - 양수 → 계획보다 비용 덜 씀 (= 계획 대비 비용 절감)
@@ -1347,7 +1347,7 @@ export default function PLCashFlowTab() {
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-20 bg-navy text-white">
                 <tr>
-                  <th rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-left sticky left-0 z-30 bg-navy min-w-[220px]">
+                  <th rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-left sticky left-0 z-30 bg-navy w-[200px] min-w-[200px] max-w-[200px]">
                     <button
                       type="button"
                       onClick={toggleAllCF}
@@ -1360,22 +1360,22 @@ export default function PLCashFlowTab() {
                         : <ChevronDown className="h-4 w-4" strokeWidth={2.5} />}
                     </button>
                   </th>
-                  <th rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-center min-w-[120px]">2025년(합계)</th>
+                  <th rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-center w-[110px] min-w-[110px] max-w-[110px]">2025년(합계)</th>
                   <th colSpan={2} className="border-b border-r border-slate-200 py-2 px-4 text-center bg-slate-500">전월계획</th>
                   {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
-                    <th key={`cf-header-${month}`} rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-center min-w-[84px]">
+                    <th key={`cf-header-${month}`} rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-center w-[110px] min-w-[110px] max-w-[110px]">
                       {month}
                     </th>
                   ))}
                   <th colSpan={4} className="border-b border-r border-slate-200 py-2 px-4 text-center bg-navy-light">2026년 Rolling</th>
                 </tr>
                 <tr>
-                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[120px] bg-slate-500">2026년계획(N-1)</th>
-                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[100px] bg-slate-500">계획-전년</th>
-                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[120px] bg-navy-light">2026년(합계)</th>
-                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[100px] bg-navy-light">Rolling-전년</th>
-                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[120px] bg-navy-light">계획대비증감(금액)</th>
-                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[100px] bg-navy-light">계획대비(%)</th>
+                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-slate-500">2026년계획(N-1)</th>
+                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-slate-500">계획-전년</th>
+                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">2026년합계</th>
+                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">전년비</th>
+                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">계획 대비</th>
+                  <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">계획 대비%</th>
                 </tr>
               </thead>
               <tbody>
@@ -1506,23 +1506,23 @@ export default function PLCashFlowTab() {
               <table className="w-full border-collapse text-sm">
                 <thead className="bg-navy text-white">
                   <tr>
-                    <th rowSpan={2} className="border-b border-r border-slate-200 py-2.5 px-4 text-left sticky left-0 z-10 bg-navy min-w-[200px]">현금잔액과 차입금잔액표</th>
-                    <th rowSpan={2} className="border-b border-r border-slate-200 py-2.5 px-4 text-center min-w-[120px]">기초잔액</th>
+                    <th rowSpan={2} className="border-b border-r border-slate-200 py-2.5 px-4 text-left sticky left-0 z-10 bg-navy w-[200px] min-w-[200px] max-w-[200px]">현금잔액과 차입금잔액표</th>
+                    <th rowSpan={2} className="border-b border-r border-slate-200 py-2.5 px-4 text-center w-[110px] min-w-[110px] max-w-[110px]">2025년(기말)</th>
                     <th colSpan={2} className="border-b border-r border-slate-200 py-1.5 px-4 text-center bg-slate-500">전월계획</th>
                     {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month) => (
-                      <th key={`balance-header-${month}`} rowSpan={2} className="border-b border-r border-slate-200 py-2.5 px-4 text-center min-w-[84px]">
+                      <th key={`balance-header-${month}`} rowSpan={2} className="border-b border-r border-slate-200 py-2.5 px-4 text-center w-[110px] min-w-[110px] max-w-[110px]">
                         {month}
                       </th>
                     ))}
                     <th colSpan={4} className="border-b border-r border-slate-200 py-1.5 px-4 text-center bg-navy-light">2026년 Rolling</th>
                   </tr>
                   <tr>
-                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center min-w-[120px] bg-slate-500">2026년계획(N-1)</th>
-                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center min-w-[100px] bg-slate-500">계획-전년</th>
-                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center min-w-[120px] bg-navy-light">기말잔액</th>
-                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center min-w-[100px] bg-navy-light">Rolling-전년</th>
-                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center min-w-[120px] bg-navy-light">계획대비증감(금액)</th>
-                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center min-w-[100px] bg-navy-light">계획대비(%)</th>
+                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-slate-500">2026년계획(N-1)</th>
+                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-slate-500">계획-전년</th>
+                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">2026년(기말)</th>
+                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">전년비</th>
+                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">계획 대비</th>
+                    <th className="border-b border-r border-slate-200 py-1.5 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">계획 대비%</th>
                   </tr>
                 </thead>
                 <tbody className="bg-gray-50">
@@ -1575,7 +1575,7 @@ export default function PLCashFlowTab() {
               <table className="w-full border-collapse text-sm">
                 <thead className="bg-navy text-white">
                   <tr>
-                    <th rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-left sticky left-0 z-20 bg-navy min-w-[200px]">
+                    <th rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-left sticky left-0 z-20 bg-navy w-[200px] min-w-[200px] max-w-[200px]">
                       <button
                         type="button"
                         onClick={toggleAllWC}
@@ -1588,22 +1588,22 @@ export default function PLCashFlowTab() {
                           : <ChevronDown className="h-4 w-4" strokeWidth={2.5} />}
                       </button>
                     </th>
-                    <th rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-center min-w-[120px]">2025년(기말)</th>
+                    <th rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-center w-[110px] min-w-[110px] max-w-[110px]">2025년(기말)</th>
                     <th colSpan={2} className="border-b border-r border-slate-200 py-2 px-4 text-center bg-slate-500">전월계획</th>
                     {!monthsCollapsed && PL_CF_MONTH_LABELS.map((month, monthIndex) => (
-                      <th key={`wc-header-${month}`} rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-center min-w-[84px]">
+                      <th key={`wc-header-${month}`} rowSpan={2} className="border-b border-r border-slate-200 py-3 px-4 text-center w-[110px] min-w-[110px] max-w-[110px]">
                         {formatWorkingCapitalMonthHeader(month, monthIndex)}
                       </th>
                     ))}
                     <th colSpan={4} className="border-b border-r border-slate-200 py-2 px-4 text-center bg-navy-light">2026년 Rolling</th>
                   </tr>
                   <tr>
-                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[120px] bg-slate-500">2026년연간계획(N-1)</th>
-                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[100px] bg-slate-500">계획-전년</th>
-                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[120px] bg-navy-light">2026년(기말)</th>
-                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[100px] bg-navy-light">Rolling-전년</th>
-                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[120px] bg-navy-light">계획대비증감(금액)</th>
-                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center min-w-[100px] bg-navy-light">계획대비(%)</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-slate-500">2026년계획(N-1)</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-slate-500">계획-전년</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">2026년(기말)</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">전년비</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">계획 대비</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">계획 대비%</th>
                   </tr>
                 </thead>
                 <tbody>

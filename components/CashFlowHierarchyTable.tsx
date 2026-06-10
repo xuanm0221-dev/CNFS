@@ -128,20 +128,20 @@ export default function CashFlowHierarchyTable({
             {monthsCollapsed && hasPlanCols ? (
               <>
                 <tr>
-                  <th rowSpan={2} className="border border-gray-200 py-3 px-4 text-left sticky left-0 z-30 bg-navy min-w-[200px]">
+                  <th rowSpan={2} className="border border-gray-200 py-3 px-4 text-left sticky left-0 z-30 bg-navy w-[200px] min-w-[200px] max-w-[200px]">
                     {titleCell}
                   </th>
-                  <th rowSpan={2} className="border border-gray-200 py-3 px-4 text-center min-w-[120px]">2025년(합계)</th>
-                  <th colSpan={2} className="border border-gray-200 py-3 px-4 text-center min-w-[120px] bg-slate-500">전월계획</th>
-                  <th colSpan={4} className="border border-gray-200 py-3 px-4 text-center min-w-[120px] bg-navy-light">2026년(예상)</th>
+                  <th rowSpan={2} className="border border-gray-200 py-3 px-4 text-center w-[120px] min-w-[120px] max-w-[120px]">2025년(합계)</th>
+                  <th colSpan={2} className="border border-gray-200 py-3 px-4 text-center bg-slate-500">전월계획</th>
+                  <th colSpan={4} className="border border-gray-200 py-3 px-4 text-center bg-navy-light">2026년(예상)</th>
                 </tr>
                 <tr>
-                  <th className="border border-gray-200 py-2 px-4 text-center min-w-[110px] bg-slate-500">2026년계획(N-1)</th>
-                  <th className="border border-gray-200 py-2 px-4 text-center min-w-[110px] bg-slate-500">계획-전년</th>
-                  <th className="border border-gray-200 py-2 px-4 text-center min-w-[110px] bg-navy-light">2026년합계</th>
-                  <th className="border border-gray-200 py-2 px-4 text-center min-w-[100px] bg-navy-light">전년비</th>
-                  <th className="border border-gray-200 py-2 px-4 text-center min-w-[110px] bg-navy-light">계획 대비</th>
-                  <th className="border border-gray-200 py-2 px-4 text-center min-w-[90px] bg-navy-light">계획 대비%</th>
+                  <th className="border border-gray-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-slate-500">2026년계획(N-1)</th>
+                  <th className="border border-gray-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-slate-500">계획-전년</th>
+                  <th className="border border-gray-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">2026년합계</th>
+                  <th className="border border-gray-200 py-2 px-4 text-center w-[100px] min-w-[100px] max-w-[100px] bg-navy-light">전년비</th>
+                  <th className="border border-gray-200 py-2 px-4 text-center w-[110px] min-w-[110px] max-w-[110px] bg-navy-light">계획 대비</th>
+                  <th className="border border-gray-200 py-2 px-4 text-center w-[90px] min-w-[90px] max-w-[90px] bg-navy-light">계획 대비%</th>
                 </tr>
               </>
             ) : (
