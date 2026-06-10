@@ -90,21 +90,40 @@ export async function GET(req: NextRequest) {
         if (!VARIABLE_COST_ACCOUNTS.has(account) && !FIXED_COST_ACCOUNTS.has(account)) continue;
 
         const monthly = empty12();
-        for (let i = 0; i < 12; i += 1) {
-          if (i < planStart) continue; // 실적월은 ratio 산출 대상 외
-          const cost = toNullableNumber(row[MONTH_KEYS[i]]);
-          if (cost === null) continue;
 
-          if (FIXED_COST_ACCOUNTS.has(account)) {
-            // 고정비: 절대 금액 그대로
+        if (FIXED_COST_ACCOUNTS.has(account)) {
+          // ── 고정비: 절대 금액 그대로 (월별 분포 유지, 왜곡 없음) ──
+          for (let i = 0; i < 12; i += 1) {
+            if (i < planStart) continue; // 실적월 스킵
+            const cost = toNullableNumber(row[MONTH_KEYS[i]]);
+            if (cost === null) continue;
             monthly[i] = cost;
-          } else {
-            // 변동비: cost / 실판매출 비율
+          }
+        } else {
+          // ── 변동비: 계획월 (6~12월) 합계 가중평균 ratio 단일값 사용 ──
+          // 이유: PL_brand CSV 의 월별 매출-비용 시점 mismatch 가 있어,
+          //   월별 ratio 직접 사용 시 PL(sim) 동적 실판매출과 매핑이 어긋남.
+          //   합계 가중평균 ratio = Σ비용 ÷ Σ실판매출 (6~12월) 로 통일하면
+          //   매출-비용 시점 의존성 제거되고 PL(sim) 매출 분포에 따라 비례 추정 가능.
+          let sumCost = 0;
+          let sumSales = 0;
+          let anyCost = false;
+          for (let i = planStart; i < 12; i += 1) {
+            const cost = toNullableNumber(row[MONTH_KEYS[i]]);
             const sales = salesByMonth[i];
-            if (sales === null || sales === 0) continue;
-            monthly[i] = cost / sales;
+            if (cost === null || sales === null) continue;
+            sumCost += cost;
+            sumSales += sales;
+            anyCost = true;
+          }
+          if (anyCost && sumSales !== 0) {
+            const avgRatio = sumCost / sumSales;
+            for (let i = planStart; i < 12; i += 1) {
+              monthly[i] = avgRatio; // 모든 계획월에 동일 ratio (= 표·계산 모두 동일값 표시)
+            }
           }
         }
+
         result.brands[brand][account] = monthly;
       }
     }

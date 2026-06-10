@@ -216,7 +216,7 @@ export function calculatePL(
     });
     const r리테일매출 = r대리상.map((v, i) => v + r직영[i]);
     리테일매출Rows.push(
-      { account: '리테일매출', level: 0, isGroup: true, isCalculated: true, isBold: true, isHighlight: 'mint', values: r리테일매출, format: 'number' as const },
+      { account: '리테일매출', displayLabel: '리테일매출(실판)', level: 0, isGroup: true, isCalculated: true, isBold: true, isHighlight: 'mint', values: r리테일매출, format: 'number' as const },
       { account: '리테일_대리상', displayLabel: '대리상', level: 1, isGroup: true, isCalculated: true, values: r대리상, format: 'number' as const },
       { account: '리테일_대리상_의류', displayLabel: '의류', level: 2, isGroup: false, isCalculated: false, values: r대리상_의류, format: 'number' as const },
       { account: '리테일_대리상_ACC', displayLabel: 'ACC', level: 2, isGroup: false, isCalculated: false, values: r대리상_ACC, format: 'number' as const },

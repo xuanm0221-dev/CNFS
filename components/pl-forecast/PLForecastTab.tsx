@@ -892,6 +892,10 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
   const [activeBrand, setActiveBrand] = useState<string | null>(null);
   // 메인 PL 테이블 월/분기 뷰 모드 (시나리오는 해당 없음)
   const [viewMode, setViewMode] = useState<'월' | '분기'>('월');
+  // 손익계산서 차액 컬럼 (현지 − sim) 토글 — 기본 숨김
+  const [showLocalVsSim, setShowLocalVsSim] = useState<boolean>(false);
+  // 손익계산서 26년 연간 (현지) — account 별 (활성 브랜드/법인에 따라 다른 출처)
+  const [localPLAnnualByAccount, setLocalPLAnnualByAccount] = useState<Record<string, number | null>>({});
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(['리테일매출', 'Tag매출', '실판매출', '매출원가 합계', '직접비', '영업비', '재무&관리차이(-)']));
   const [logicGuideCollapsed, setLogicGuideCollapsed] = useState<boolean>(true);
   const [monthlyInputs, setMonthlyInputs] = useState<MonthlyInputs>(emptyMonthlyInputs);
@@ -1734,6 +1738,50 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       mounted = false;
     };
   }, [growthParams]);
+
+  // 손익계산서(현지) 26년 연간 데이터 — 활성 브랜드 따라 법인 또는 브랜드 PL 호출
+  // PL(sim) 26년 연간과 차액 비교용
+  useEffect(() => {
+    let mounted = true;
+    interface FsPlRow {
+      account: string;
+      values: (number | null)[];
+      comparisons?: { currYearAnnual?: number | null };
+      children?: FsPlRow[];
+    }
+    const url = activeBrand === null
+      ? `/api/fs/pl?year=2026&baseMonth=12`
+      : `/api/fs/pl/brand?brand=${activeBrand}&year=2026&baseMonth=12`;
+    fetch(url, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { rows: [] }))
+      .then((json: { rows?: FsPlRow[] }) => {
+        if (!mounted) return;
+        const annualByAccount: Record<string, number | null> = {};
+        const flatten = (rows: FsPlRow[]): void => {
+          for (const r of rows) {
+            if (!r || !r.account) continue;
+            // currYearAnnual 우선, 없으면 values[0..11] 합산
+            let ann: number | null = null;
+            if (r.comparisons && r.comparisons.currYearAnnual != null) {
+              ann = r.comparisons.currYearAnnual;
+            } else if (Array.isArray(r.values)) {
+              let s = 0; let any = false;
+              for (let i = 0; i < 12 && i < r.values.length; i += 1) {
+                const v = r.values[i];
+                if (v != null && Number.isFinite(v)) { s += v; any = true; }
+              }
+              ann = any ? s : null;
+            }
+            annualByAccount[r.account] = ann;
+            if (r.children && r.children.length) flatten(r.children);
+          }
+        };
+        flatten(json.rows ?? []);
+        setLocalPLAnnualByAccount(annualByAccount);
+      })
+      .catch(() => { /* 실패시 빈 객체 */ });
+    return () => { mounted = false; };
+  }, [activeBrand]);
 
   // PL forecast actual 리테일 — Snowflake sale_amt (실판), 24h 캐시
   const fetchRetailActualSnowflake = (force = false) => {
@@ -3676,6 +3724,20 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
               <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500">
                 단위: CNY K
               </div>
+
+              {/* 손익계산서 차액 (sim − 현지) 컬럼 토글 — 기본 숨김 */}
+              <button
+                type="button"
+                onClick={() => setShowLocalVsSim((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  showLocalVsSim
+                    ? 'border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+                title="실판매출(V-) 이하 행에서 PL(sim) 26년 연간 − 손익계산서 26년 연간(현지) 차액 표시"
+              >
+                sim−현지 {showLocalVsSim ? '숨기기' : '보기'}
+              </button>
             </div>
           </div>
         </div>
@@ -3689,11 +3751,8 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead className="sticky top-0 z-20">
               <tr>
-                <th className="sticky left-0 z-30 min-w-[260px] border-b border-r border-slate-200 bg-navy px-4 py-3 text-center font-semibold text-white">
+                <th className="sticky left-0 z-30 w-[200px] min-w-[200px] max-w-[200px] border-b border-r border-slate-200 bg-navy px-2 py-3 text-center font-semibold text-white">
                   PL Forecast (FY26)
-                </th>
-                <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white">
-                  25년(연간)
                 </th>
                 {(viewMode === '분기' ? QUARTER_HEADERS : MONTH_HEADERS).map((label, idx) => {
                   // (F) 마커: 출처가 계획·계산 (Snowflake 실적 외) 인 경우
@@ -3705,22 +3764,40 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                   return (
                     <th
                       key={label}
-                      className={`${viewMode === '분기' ? 'min-w-[130px]' : 'min-w-[105px]'} border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white`}
+                      className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white"
                     >
                       {label}{isForecast ? '(F)' : ''}
                     </th>
                   );
                 })}
-                <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white">
+                {/* 빈공간 - 월 vs 연간 집계 구분 */}
+                <th className="w-[16px] min-w-[16px] max-w-[16px] bg-slate-100 px-0 py-3 !border-0" aria-hidden />
+                <th className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white">
+                  25년(연간)
+                </th>
+                <th className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white">
                   26년(연간)
                 </th>
-                <th className="min-w-[100px] border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white">
+                <th className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-navy px-3 py-3 text-center font-semibold text-white">
                   YoY
                 </th>
                 {viewMode !== '분기' && (
-                  <th className="min-w-[120px] border-b border-slate-300 bg-slate-700 px-3 py-3 text-center font-semibold text-slate-50">
-                    {latestActualMonth > 0 ? `YTD(1~${latestActualMonth}월)` : 'YTD'}
-                  </th>
+                  <>
+                    {/* 빈공간 - 연간 집계 vs YTD 구분 */}
+                    <th className="w-[16px] min-w-[16px] max-w-[16px] bg-slate-100 px-0 py-3 !border-0" aria-hidden />
+                    <th className="w-[110px] min-w-[110px] max-w-[110px] border-b border-slate-300 bg-slate-700 px-3 py-3 text-center font-semibold text-slate-50">
+                      {latestActualMonth > 0 ? `YTD(1~${latestActualMonth}월)` : 'YTD'}
+                    </th>
+                  </>
+                )}
+                {/* 손익계산서 차액 (sim − 현지) — 토글 시에만 표시 */}
+                {showLocalVsSim && (
+                  <>
+                    <th className="w-[16px] min-w-[16px] max-w-[16px] bg-slate-100 px-0 py-3 !border-0" aria-hidden />
+                    <th className="w-[110px] min-w-[110px] max-w-[110px] border-b border-slate-300 bg-purple-700 px-3 py-3 text-center font-semibold text-white">
+                      sim−현지
+                    </th>
+                  </>
                 )}
               </tr>
             </thead>
@@ -3765,9 +3842,9 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                 return (
                   <tr
                     key={row.account}
-                    className={`${rowTone} ${hasThickDivider ? '[&>td]:!border-b-[3px] [&>td]:!border-b-slate-400' : ''} ${isOrangeRow ? '[&>td]:!text-orange-700' : ''} transition-colors hover:bg-sky-50/50`}
+                    className={`${rowTone} ${hasThickDivider ? '[&>td:not([aria-hidden])]:!border-b-[3px] [&>td:not([aria-hidden])]:!border-b-slate-400' : ''} ${isOrangeRow ? '[&>td]:!text-orange-700' : ''} transition-colors hover:bg-sky-50/50`}
                   >
-                    <td className="sticky left-0 z-10 border-b border-r border-slate-200 px-4 py-2.5" style={{ paddingLeft: `${16 + row.level * 18}px` }}>
+                    <td className={`sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] border-b border-r border-slate-200 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis ${isYoyRow ? '' : isYellowRow ? 'bg-highlight-yellow' : isOrangeRow ? 'bg-highlight-orange' : isMintRow ? 'bg-highlight-mint' : isSkyRow ? 'bg-highlight-sky' : isWhiteRateRow ? 'bg-white' : 'bg-slate-50'}`} style={{ paddingLeft: `${12 + row.level * 12}px`, paddingRight: '8px' }} title={accountLabel}>
                       <div className="flex items-center gap-2">
                         <span className={isYoyRow ? 'text-slate-400' : row.isBold ? 'font-semibold text-slate-800' : 'text-slate-700'}>{accountLabel}</span>
                         {row.isGroup ? (
@@ -3792,7 +3869,6 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                         )}
                       </div>
                     </td>
-                    <td className={`border-b border-r border-slate-200 px-3 py-2.5 text-right ${isYoyRow ? 'text-slate-400' : 'text-slate-700'}`}>{formatValue(series.annual2025, row.format)}</td>
                     {viewMode === '분기'
                       ? [0, 1, 2, 3].map((qIdx) => {
                           const decimals = isYoyRow ? 0 : 1;
@@ -3808,11 +3884,17 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                             {renderMonthInput(row, monthIndex)}
                           </td>
                         ))}
-                    <td className={`border-b border-r border-slate-200 px-3 py-2.5 text-right font-medium ${isYoyRow ? 'text-slate-400' : 'text-slate-800'} ${isYoyRow ? '' : isYellowRow ? 'bg-highlight-yellow' : isOrangeRow ? 'bg-highlight-orange' : isMintRow ? 'bg-highlight-mint' : isSkyRow ? 'bg-highlight-sky' : isWhiteRateRow ? 'bg-white' : 'bg-slate-50'}`}>
+                    {/* 빈공간 - 월 vs 연간 집계 구분 */}
+                    <td className="bg-slate-100 px-0 !border-0" aria-hidden />
+                    <td className={`border-b border-r border-slate-200 px-3 py-2.5 text-right ${isYoyRow ? 'text-slate-400' : 'text-slate-700'}`}>{formatValue(series.annual2025, row.format)}</td>
+                    <td className={`border-b border-r border-slate-200 px-3 py-2.5 text-right font-bold ${isYoyRow ? 'text-slate-400' : 'text-slate-800'} ${isYoyRow ? '' : isYellowRow ? 'bg-highlight-yellow' : isOrangeRow ? 'bg-highlight-orange' : isMintRow ? 'bg-highlight-mint' : isSkyRow ? 'bg-highlight-sky' : isWhiteRateRow ? 'bg-white' : 'bg-slate-50'}`}>
                       {formatValue(annual26, row.format, isYoyRow ? 0 : 1)}
                     </td>
                     <td className={`border-b border-r border-slate-200 px-3 py-2.5 text-right ${isYoyRow ? 'text-slate-400' : 'text-slate-500'} ${isYoyRow ? '' : isYellowRow ? 'bg-highlight-yellow' : isOrangeRow ? 'bg-highlight-orange' : isMintRow ? 'bg-highlight-mint' : isSkyRow ? 'bg-highlight-sky' : isWhiteRateRow ? 'bg-white' : 'bg-slate-50'}`}>{yoyText}</td>
                     {viewMode !== '분기' && (
+                    <>
+                    {/* 빈공간 - 연간 집계 vs YTD 구분 */}
+                    <td className="bg-slate-100 px-0 !border-0" aria-hidden />
                     <td className={`border-b border-slate-200 px-3 py-2.5 text-right font-medium ${isYoyRow ? 'text-slate-400' : 'text-slate-800'} ${isYoyRow ? '' : isYellowRow ? 'bg-highlight-yellow' : isOrangeRow ? 'bg-highlight-orange' : isMintRow ? 'bg-highlight-mint' : isSkyRow ? 'bg-highlight-sky' : isWhiteRateRow ? 'bg-white' : 'bg-slate-50'}`}>
                       {(() => {
                         if (latestActualMonth <= 0) return '';
@@ -3871,7 +3953,53 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                         return formatValue(ytdValue, row.format);
                       })()}
                     </td>
+                    </>
                     )}
+                    {/* 손익계산서 차액 (현지 − sim) — 실판매출(V-) 이하 행에서만 값 표시 */}
+                    {showLocalVsSim && (() => {
+                      // YoY 행은 비율이라 비교 대상 외, 실판매출(V+) 는 PL(sim) 만의 환산행
+                      const skipForDiff =
+                        row.account === 'YOY (리테일)'
+                        || row.account === 'YOY (V+)'
+                        || row.account === '실판매출(V+)';
+                      // PL(sim) 계정명 → 손익계산서(fs/pl) 계정명 매핑 (서로 다른 키 통일)
+                      const PL_SIM_TO_LOCAL: Record<string, string> = {
+                        '리테일매출_대리상': '리테일_대리상',
+                        '리테일매출_직영': '리테일_직영',
+                        'Tag매출_대리상': '대리상',
+                        'Tag매출_의류': '대리상_의류',   // PL(sim) 의 의류 = 대리상 의류만
+                        'Tag매출_ACC': '대리상_ACC',     // PL(sim) 의 ACC = 대리상 ACC만
+                        'Tag매출_직영': '직영',
+                      };
+                      const localAccountKey = PL_SIM_TO_LOCAL[row.account] ?? row.account;
+                      const localAnnual = localPLAnnualByAccount[localAccountKey] ?? null;
+                      let diff: number | null = null;
+                      if (!skipForDiff && localAnnual != null && annual26 != null) {
+                        // sim − 현지: PL(sim) − 손익계산서
+                        diff = annual26 - localAnnual;
+                      }
+                      return (
+                        <>
+                          <td className="w-[16px] min-w-[16px] max-w-[16px] bg-slate-100 px-0 !border-0" aria-hidden />
+                          <td className="w-[110px] min-w-[110px] max-w-[110px] border-b border-slate-200 bg-purple-50/60 px-3 py-2.5 text-right">
+                            {(() => {
+                              if (skipForDiff || diff == null) return <span className="text-slate-300">-</span>;
+                              const isPct = row.format === 'percent';
+                              // 비율은 그대로, 금액은 원 → 천위안 (K) 변환 (다른 컬럼과 단위 통일)
+                              const diffDisplay = isPct ? diff : Math.round(diff / 1000);
+                              if (Math.abs(diffDisplay) < (isPct ? 0.00005 : 1)) {
+                                return <span className="text-purple-400">-</span>;
+                              }
+                              const sign = diffDisplay > 0 ? '+' : '';
+                              const text = isPct
+                                ? `${sign}${(diffDisplay * 100).toFixed(1)}%p`
+                                : `${sign}${diffDisplay.toLocaleString()}`;
+                              return <span className="text-purple-700 font-medium">{text}</span>;
+                            })()}
+                          </td>
+                        </>
+                      );
+                    })()}
                   </tr>
                 );
               })}
@@ -4026,24 +4154,28 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                 <table className="w-full border-separate border-spacing-0 text-sm">
                   <thead>
                     <tr>
-                      <th className="sticky left-0 z-10 min-w-[260px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">대리상 출고표</th>
-                      <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">전년 연간</th>
+                      <th className="sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] border-b border-r border-slate-200 bg-navy px-2 py-2 text-center font-semibold text-white">대리상 출고표</th>
                       {(viewMode === '분기' ? QUARTER_HEADERS : MONTH_HEADERS).map((label, idx) => {
                         const isForecast = viewMode === '분기'
                           ? (idx + 1) * 3 > snowflakeLatestMonth
                           : idx >= snowflakeLatestMonth;
                         return (
-                          <th key={`dealer-ship-h-${label}`} className={`${viewMode === '분기' ? 'min-w-[130px]' : 'min-w-[105px]'} border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white`}>
+                          <th key={`dealer-ship-h-${label}`} className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
                             {label}{isForecast ? ' (F)' : ''}
                           </th>
                         );
                       })}
-                      <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">연간(sim)</th>
-                      <th className="min-w-[140px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
+                      {/* 빈공간 - 월 vs 연간 집계 구분 */}
+                      <th className="w-[16px] min-w-[16px] max-w-[16px] bg-slate-100 px-0 py-2 !border-0" aria-hidden />
+                      <th className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">25년(연간)</th>
+                      <th className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">연간(sim)</th>
+                      <th className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
                         연간(현지계획)
                       </th>
-                      <th className="min-w-[120px] border-b border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
-                        현지 − sim
+                      {/* 빈공간 - 현지계획 vs 차이 구분 (PL Forecast 와 컬럼 수·폭 동일하게) */}
+                      <th className="w-[16px] min-w-[16px] max-w-[16px] bg-slate-100 px-0 py-2 !border-0" aria-hidden />
+                      <th className="w-[110px] min-w-[110px] max-w-[110px] border-b border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
+                        sim − 현지
                       </th>
                     </tr>
                   </thead>
@@ -4073,18 +4205,15 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                       };
                       return (
                         <tr key={`dealer-ship-${r.label}`} className={rowCls}>
-                          <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit px-3 py-2 text-slate-800" style={r.isYoy ? { paddingLeft: 28 } : undefined}>
+                          <td className="sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] border-b border-r border-slate-200 bg-inherit py-2 text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis" style={r.isYoy ? { paddingLeft: 28, paddingRight: 8 } : { paddingLeft: 12, paddingRight: 8 }} title={r.label}>
                             {r.label}
-                          </td>
-                          <td className="border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
-                            {r.isYoy ? '' : formatKRow(sumArr(r.denom))}
                           </td>
                           {viewMode === '분기'
                             ? [0, 1, 2, 3].map((qi) => {
                                 const start = qi * 3;
                                 const end = start + 3;
                                 return (
-                                  <td key={`dealer-ship-${r.label}-q${qi}`} className="border-b border-r border-slate-200 px-3 py-2 text-right">
+                                  <td key={`dealer-ship-${r.label}-q${qi}`} className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 px-3 py-2 text-right">
                                     {r.isYoy
                                       ? formatPctRow(yoy(sumRange(r.num, start, end), sumRange(r.denom, start, end)))
                                       : formatKRow(sumRange(r.num, start, end))}
@@ -4092,29 +4221,37 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                                 );
                               })
                             : MONTH_HEADERS.map((_, mi) => (
-                                <td key={`dealer-ship-${r.label}-${mi}`} className="border-b border-r border-slate-200 px-3 py-2 text-right">
+                                <td key={`dealer-ship-${r.label}-${mi}`} className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 px-3 py-2 text-right">
                                   {r.isYoy
                                     ? formatPctRow(yoy(r.num[mi], r.denom[mi]))
                                     : formatKRow(r.num[mi])}
                                 </td>
                               ))}
-                          <td className="border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
+                          {/* 빈공간 - 월 vs 연간 집계 구분 */}
+                          <td className="w-[16px] min-w-[16px] max-w-[16px] bg-slate-100 px-0 !border-0" aria-hidden />
+                          <td className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
+                            {r.isYoy ? '' : formatKRow(sumArr(r.denom))}
+                          </td>
+                          <td className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
                             {r.isYoy
                               ? formatPctRow(yoy(sumArr(r.num), sumArr(r.denom)))
                               : formatKRow(sumArr(r.num))}
                           </td>
-                          <td className="border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
+                          <td className="w-[110px] min-w-[110px] max-w-[110px] border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
                             {r.isYoy
                               ? formatPctRow(yoy(sumArr(r.localPlan), sumArr(r.denom)))
                               : formatKRow(sumArr(r.localPlan))}
                           </td>
-                          <td className="border-b border-slate-200 bg-purple-50/60 px-3 py-2 text-right">
+                          {/* 빈공간 - 현지계획 vs 차이 구분 (PL Forecast 와 동일 컬럼 수·폭) */}
+                          <td className="w-[16px] min-w-[16px] max-w-[16px] bg-slate-100 px-0 !border-0" aria-hidden />
+                          <td className="w-[110px] min-w-[110px] max-w-[110px] border-b border-slate-200 bg-purple-50/60 px-3 py-2 text-right">
                             {(() => {
                               if (r.isYoy) return '';
                               const local = sumArr(r.localPlan);
                               const sim = sumArr(r.num);
                               if (local == null || sim == null) return '';
-                              const diff = local - sim;
+                              // sim − 현지: 출고sim − 현지계획
+                              const diff = sim - local;
                               if (Math.round(diff) === 0) return <span className="text-purple-400">-</span>;
                               return (
                                 <span className="text-purple-700 font-medium">
