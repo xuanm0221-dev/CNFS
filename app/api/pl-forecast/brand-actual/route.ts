@@ -69,7 +69,8 @@ function readBrandCsv(year: number, brand: SalesBrand, latestActualMonth: number
   const csvPath = path.join(process.cwd(), '파일', 'PL_brand', BRAND_TO_DIR[brand], `${year}.csv`);
   if (!fs.existsSync(csvPath)) return;
   const content = fs.readFileSync(csvPath, 'utf-8').replace(/^﻿/, '');
-  const parsed = Papa.parse<CsvRow>(content, { header: true, skipEmptyLines: true });
+  // transformHeader: 헤더 컬럼명에 끼어든 공백 제거 (' 1월 ' → '1월') — MLB CSV 처럼 헤더에 공백이 있어도 안전
+  const parsed = Papa.parse<CsvRow>(content, { header: true, skipEmptyLines: true, transformHeader: (h) => h.trim() });
 
   for (const row of parsed.data) {
     const account = (row['계정과목'] ?? '').trim();

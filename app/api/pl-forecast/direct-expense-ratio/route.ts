@@ -73,7 +73,8 @@ export async function GET(req: NextRequest) {
       const csvPath = path.join(process.cwd(), '파일', 'PL_brand', BRAND_TO_DIR[brand], `${year}.csv`);
       if (!fs.existsSync(csvPath)) continue;
       const content = fs.readFileSync(csvPath, 'utf-8').replace(/^﻿/, '');
-      const parsed = Papa.parse<CsvRow>(content, { header: true, skipEmptyLines: true });
+      // transformHeader: 헤더 공백 제거 (' 1월 ' → '1월') — MLB CSV 처럼 헤더에 공백이 끼어 있어도 안전
+      const parsed = Papa.parse<CsvRow>(content, { header: true, skipEmptyLines: true, transformHeader: (h) => h.trim() });
 
       // 실판매출 행 먼저 찾기 (변동비 비율 분모)
       const salesRow = parsed.data.find((row) => (row['계정과목'] ?? '').trim() === '실판매출');
