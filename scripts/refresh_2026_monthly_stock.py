@@ -22,7 +22,7 @@ import sys
 import time
 import requests
 
-BASE_URL = "http://localhost:3000"
+BASE_URL = os.environ.get("REFRESH_BASE_URL", "http://localhost:3000")
 ENDPOINT = "monthly-stock"
 YEAR = 2026
 

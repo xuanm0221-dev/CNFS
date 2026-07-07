@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 type Brand = 'MLB' | 'MLB KIDS';
 
 export interface CumulativeCostRateBrandData {
-  months: string[]; // 25년1월, ..., 26년5월, 전체
+  months: string[]; // 25년1월, ..., 26년6월, 전체
   rows: {
     CN원가율: (number | null)[];
     IMP원가율: (number | null)[];

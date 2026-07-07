@@ -71,7 +71,7 @@ async function readSavedRetailPlan(year: number): Promise<SavedRetailPlanStore |
 
 /**
  * 연도별 결산월(=latestActualMonth) — 부분 실적 데이터 영향 받지 않도록 상수 기반.
- *   BASE_YEAR(=2026): BASE_MONTH(=4)까지 실적, 그 이후 계획
+ *   BASE_YEAR(=2026): BASE_MONTH(=6)까지 실적, 그 이후 계획
  *   그 외 연도(2025 등): 12 (전체 실적)
  */
 function getLatestActualMonth(year: number): number {
