@@ -151,7 +151,7 @@ export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNum
           if (중 === '매출수금') result.매출수금_yoy = cSub - pSub;
           if (중 === '물품대') result.물품대_yoy = cSub - pSub;
         }
-        // 비용 하위 12개 소분류 yoy → 가장 많이 증가한 (yoy 가장 음수) 3개 추출
+        // 비용 하위 12개 소분류 yoy → 절대치 큰 4개 (증가/감소 혼합, 0M(±1M 미만) 제외)
         const expenseDeltas: Array<{ name: string; yoy: number; curr: number; prev: number }> = [];
         for (const r of data2026.rows) {
           if (r.대분류 !== '영업활동' || r.중분류 !== '비용') continue;
@@ -161,9 +161,9 @@ export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNum
           expenseDeltas.push({ name: r.소분류, yoy: c - p, curr: c, prev: p });
         }
         result.비용증감_top3 = expenseDeltas
-          .filter((e) => e.yoy < 0)
-          .sort((a, b) => a.yoy - b.yoy)
-          .slice(0, 3);
+          .filter((e) => Math.round(e.yoy / 1_000_000) !== 0)
+          .sort((a, b) => Math.abs(b.yoy) - Math.abs(a.yoy))
+          .slice(0, 4);
       } else if (대 === '자산성지출') {
         result.자산성지출_26 = curr;
         result.자산성지출_yoy = yoy;
@@ -238,8 +238,8 @@ export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNum
       }
       result.netCash_planVs = netCurrAll - netPlanAll;
 
-      // 비용증감_top3 (계획대비 기준): 영업활동/비용 소분류 12개에서 planVs 가 가장 음수인 3개
-      // (= 계획 대비 비용이 가장 많이 증가한 항목)
+      // 비용증감_top3 (계획대비 기준): 영업활동/비용 소분류 12개에서 planVs 절대치 큰 4개
+      // (증가/감소 혼합, 0M(±1M 미만) 제외. yoy = Rolling − 계획, 비용 증가 = yoy<0)
       const expenseByPlanVs: Array<{ name: string; yoy: number; curr: number; prev: number }> = [];
       for (const r of data2026.rows) {
         if (r.대분류 !== '영업활동' || r.중분류 !== '비용') continue;
@@ -249,9 +249,9 @@ export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNum
         expenseByPlanVs.push({ name: r.소분류, yoy: c - p, curr: c, prev: p });
       }
       result.비용증감_top3 = expenseByPlanVs
-        .filter((e) => e.yoy < 0)
-        .sort((a, b) => a.yoy - b.yoy)
-        .slice(0, 3);
+        .filter((e) => Math.round(e.yoy / 1_000_000) !== 0)
+        .sort((a, b) => Math.abs(b.yoy) - Math.abs(a.yoy))
+        .slice(0, 4);
     }
   }
 

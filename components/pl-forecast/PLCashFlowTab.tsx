@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, ChevronRight, ChevronLeft } from 'lucide-react';
 import { formatNumber, getRecoveryMonthLabelsAsN월 } from '@/lib/utils';
 import { buildWcPlanByKeyFromBsWorkingCapital } from '@/lib/wc-plan-from-bs';
-import { BASE_YEAR_MONTH } from '@/lib/base-month';
+import { BASE_YEAR_MONTH, BASE_MONTH } from '@/lib/base-month';
 import type { TableRow } from '@/lib/types';
 import CFExplanationPanel from '@/components/CFExplanationPanel';
 import type { CFExplanationNumbers } from '@/lib/cf-explanation-data';
@@ -1230,10 +1230,11 @@ export default function PLCashFlowTab() {
     const opening = cashBorrowingOpening('borrowing');
     const end2026 = cashBorrowing2026('borrowing');
 
-    // 비용증가 분석 TOP 3: 영업활동 > 비용 하위 12개 중 "계획 대비" 가 가장 음수인 3개
+    // 비용 증감 분석 절대치 TOP 4: 영업활동 > 비용 하위 12개 중 "계획 대비"(=Rolling−계획) 절대값이 큰 4개
     //   계획대비증감 = Rolling - 계획(N-1). 비용은 음수이므로:
-    //     - 음수 → Rolling이 계획보다 더 음수 → 비용 더 많이 사용 (= 계획 대비 비용 증가)
-    //     - 양수 → 계획보다 비용 덜 씀 (= 계획 대비 비용 절감)
+    //     - 음수 → Rolling이 계획보다 더 음수 → 비용 더 많이 사용 (= 계획 대비 비용 증가, 표시 +XM)
+    //     - 양수 → 계획보다 비용 덜 씀 (= 계획 대비 비용 절감, 표시 △XM)
+    //   0M(±1M 미만) 항목은 제외.
     const EXPENSE_ITEMS: Array<{ key: string; name: string }> = [
       { key: 'operating_expenses_ad', name: '광고비' },
       { key: 'operating_expenses_platform', name: '온라인 플랫폼비용' },
@@ -1248,14 +1249,14 @@ export default function PLCashFlowTab() {
       { key: 'operating_expenses_corporate_tax', name: '법인세' },
       { key: 'operating_expenses_other_cost', name: '기타비용' },
     ];
-    const expenseTop3 = EXPENSE_ITEMS
+    const expenseTop4 = EXPENSE_ITEMS
       .map((item) => {
         const planVsRolling = cfPlanVsRollingAmount(item.key) ?? 0;
         return { name: item.name, yoy: planVsRolling, curr: 0, prev: 0 };
       })
-      .filter((e) => e.yoy < 0) // 음수 = Rolling이 계획보다 비용 더 많이 사용 (= 계획 대비 비용 증가)
-      .sort((a, b) => a.yoy - b.yoy) // 가장 음수 (계획 대비 가장 많이 증가) 순
-      .slice(0, 3);
+      .filter((e) => Math.round(e.yoy / 1_000_000) !== 0) // 0M(±1M 미만) 제외 — 증가/감소 모두 포함
+      .sort((a, b) => Math.abs(b.yoy) - Math.abs(a.yoy)) // 절대치 큰 순
+      .slice(0, 4);
 
     return {
       영업활동_25: staticCfRow('operating'),
@@ -1288,7 +1289,7 @@ export default function PLCashFlowTab() {
       매입채무_yoy: wcYoyK('wc_ap') * 1000,
       대리상AR_26: wcK('wc_ar_dealer') * 1000,
       대리상AR_yoy: wcYoyK('wc_ar_dealer') * 1000,
-      비용증감_top3: expenseTop3,
+      비용증감_top3: expenseTop4,
       매출수금_planVs: cfPlanVsRollingAmount('operating_receipts') ?? 0,
       물품대_planVs: cfPlanVsRollingAmount('operating_payments') ?? 0,
       영업활동_planVs: cfPlanVsRollingAmount('operating') ?? 0,
@@ -1316,9 +1317,9 @@ export default function PLCashFlowTab() {
     () => getRecoveryMonthLabelsAsN월(creditRecovery.baseYearMonth, creditRecovery.recoveries.length),
     [creditRecovery.baseYearMonth, creditRecovery.recoveries.length],
   );
-  const hasWorkingCapitalActualMonth = (monthIndex: number) =>
-    [HARDCODED_WC_MONTHLY_K.wc_ar_direct, HARDCODED_WC_MONTHLY_K.wc_ar_dealer, HARDCODED_WC_MONTHLY_K.wc_ap_hq, HARDCODED_WC_MONTHLY_K.wc_ap_goods]
-      .some((series) => series[monthIndex] != null);
+  // 실적/계획 경계는 기준월(BASE_MONTH) 기준. monthIndex 0-based → monthIndex < BASE_MONTH 이면 실적, 이후는 (F).
+  // 재고자산은 재고자산(sim)에서 기준월까지 실적. AR/AP는 연말(12월) 값만 CF에 반영되므로 월별 라벨은 기준월을 따름.
+  const hasWorkingCapitalActualMonth = (monthIndex: number) => monthIndex < BASE_MONTH;
   const formatWorkingCapitalMonthHeader = (month: string, monthIndex: number) =>
     hasWorkingCapitalActualMonth(monthIndex) ? month : `${month}(F)`;
 

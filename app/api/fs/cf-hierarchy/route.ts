@@ -153,6 +153,16 @@ export async function GET(request: NextRequest) {
       return base;
     };
 
+    // 부모/집계 행의 계획대비%([18])는 자식 %의 합이 아니라 부모 자신의 금액으로 재계산해야 함.
+    // (예상·계획·계획대비 등 금액 컬럼은 원소별 합산이 맞지만, %는 분모가 다르므로 합산 불가.)
+    // hasPlan(len=19)일 때만 [18]이 존재.
+    const recomputePlanPct = (vals: number[]): number[] => {
+      if (hasPlan && vals.length >= 19) {
+        vals[18] = vals[15] !== 0 ? (vals[17] / Math.abs(vals[15])) * 100 : 0;
+      }
+      return vals;
+    };
+
     const rows: CFHierarchyApiRow[] = [];
 
     for (const 대분류명 of ordered대분류) {
@@ -223,12 +233,12 @@ export async function GET(request: NextRequest) {
           const idx = rows.findIndex(
             (r) => r.level === 1 && r.중분류 === 중분류명 && r.isGroup
           );
-          if (idx >= 0) rows[idx].values = [...중분류Values];
+          if (idx >= 0) rows[idx].values = recomputePlanPct([...중분류Values]);
         }
       }
 
       const idx = rows.findIndex((r) => r.level === 0 && r.account === 대분류명);
-      if (idx >= 0) rows[idx].values = [...대분류Values];
+      if (idx >= 0) rows[idx].values = recomputePlanPct([...대분류Values]);
     }
 
     // net cash: 대분류(level 0) 행들의 컬럼별 합계
@@ -241,7 +251,7 @@ export async function GET(request: NextRequest) {
       level: 0,
       account: 'net cash',
       isGroup: false,
-      values: netCashValues,
+      values: recomputePlanPct(netCashValues),
     });
 
     const columns = is2025

@@ -7,11 +7,6 @@ function M(value: number): string {
   return `△${Math.abs(m)}M`;
 }
 
-function Mabs(value: number): string {
-  const m = Math.round(Math.abs(value) / 1_000_000);
-  return `${m}M`;
-}
-
 /** M(value) 환산 시 절대값 1M 미만이면 0M 으로 간주 (= 무시) */
 function isZeroM(value: number): boolean {
   return Math.round(value / 1_000_000) === 0;
@@ -33,9 +28,6 @@ const EXPENSE_EXPLANATIONS: Record<string, string[]> = {
     '창고 이전 비용 2M, 업체 부담 예정이었으나 협의 결과 중국법인 부담으로 변경',
     '본사 은행 지급보증수수료 지급 (전월 계획 미반영, 비용 인식은 완료)',
   ],
-  '법인세': [
-    '5-6월 위탁생산 출고 비중 증가에 따른 이익 증가로 법인세 {AMOUNT}',
-  ],
   '이자비용': [
     '차입실행 금액 전월 계획 대비 증가로 이자비용 {AMOUNT} (연말 차입잔액은 변화 없음)',
   ],
@@ -43,20 +35,21 @@ const EXPENSE_EXPLANATIONS: Record<string, string[]> = {
 
 const NUMBER_MARKERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 
-// 비용 분석 라인 빌더 — TOP 3 항목 메인 라인 + 각 항목별 하드코딩 부연 설명(연속 번호)
-function buildExpenseAnalysisLines(top3: CFExplanationNumbers['비용증감_top3']): string[] {
-  if (top3.length === 0) {
+// 비용 분석 라인 빌더 — 절대치 TOP 4 항목 메인 라인 + 각 항목별 하드코딩 부연 설명(연속 번호)
+// 부호: yoy = Rolling − 계획 (비용은 음수). 비용 증가 = yoy<0 → +XM, 비용 감소 = yoy>0 → △XM (= M(-yoy))
+function buildExpenseAnalysisLines(items: CFExplanationNumbers['비용증감_top3']): string[] {
+  if (items.length === 0) {
     return ['ㄴ 비용 항목 계획 대비 모두 절감 또는 변동 없음.'];
   }
-  const mainLine = `ㄴ 비용증가 분석: ${top3.map((t) => `${t.name} +${Mabs(t.yoy)}`).join(', ')}.`;
+  const mainLine = `ㄴ 비용 증감 분석: ${items.map((t) => `${t.name} ${M(-t.yoy)}`).join(', ')}.`;
   const lines = [mainLine];
 
   let markerIdx = 0;
-  for (const item of top3) {
+  for (const item of items) {
     const explanations = EXPENSE_EXPLANATIONS[item.name];
     if (!explanations) continue;
     for (const exp of explanations) {
-      const filled = exp.replace('{AMOUNT}', `+${Mabs(item.yoy)}`);
+      const filled = exp.replace('{AMOUNT}', M(-item.yoy));
       const marker = NUMBER_MARKERS[markerIdx] ?? `(${markerIdx + 1})`;
       lines.push(`　　${marker} ${filled}`);
       markerIdx += 1;
