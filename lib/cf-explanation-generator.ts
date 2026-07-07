@@ -81,7 +81,7 @@ export function generateCFExplanationContent(n: CFExplanationNumbers): CFExplana
       // 영업활동: 매출수금/물품대 중 0 아닌 것만 표시
       const opParts: string[] = [];
       if (!isZeroM(n.매출수금_planVs)) opParts.push(`매출수금 ${M(n.매출수금_planVs)}`);
-      if (!isZeroM(n.물품대_planVs)) opParts.push(`물품대 ${M(n.물품대_planVs)}`);
+      if (!isZeroM(n.물품대_planVs)) opParts.push(`물품대 ${M(-n.물품대_planVs)}`); // 지출(유출) 항목 → 부호 반전
       if (opParts.length > 0) {
         lines.push(`영업활동: ${opParts.join(', ')} 계획대비.`);
       } else if (n.비용증감_top3.length > 0) {
@@ -91,9 +91,11 @@ export function generateCFExplanationContent(n: CFExplanationNumbers): CFExplana
       // 비용 분석 (always show if has top3)
       lines.push(...buildExpenseAnalysisLines(n.비용증감_top3));
       // 자산성지출 / 기타수익 / 차입금 / Net Cash: 0 아닐 때만
-      if (!isZeroM(n.자산성지출_planVs)) lines.push(`자산성지출: ${M(n.자산성지출_planVs)} 계획대비.`);
+      // 지출(유출) 항목(자산성지출·차입금·물품대)은 M(-planVs) — 지출 증가 +XM, 지출 감소 △XM.
+      // 수입 항목(매출수금·기타수익)·Net Cash(현금 관점)는 M(planVs) 그대로.
+      if (!isZeroM(n.자산성지출_planVs)) lines.push(`자산성지출: ${M(-n.자산성지출_planVs)} 계획대비.`);
       if (!isZeroM(n.기타수익_planVs)) lines.push(`기타수익: ${M(n.기타수익_planVs)} 계획대비.`);
-      if (!isZeroM(n.차입금_planVs)) lines.push(`차입금: ${M(n.차입금_planVs)} 계획대비.`);
+      if (!isZeroM(n.차입금_planVs)) lines.push(`차입금: ${M(-n.차입금_planVs)} 계획대비.`);
       if (!isZeroM(n.netCash_planVs)) lines.push(`Net Cash: ${M(n.netCash_planVs)} 계획대비.`);
       return lines;
     })(),
