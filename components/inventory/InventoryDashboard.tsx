@@ -138,6 +138,8 @@ const OTB_SEASONS_LIST = ['27F', '27S', '26F', '26S', '25F'] as const;
 type OtbSeason = typeof OTB_SEASONS_LIST[number];
 type OtbBrand = AnnualPlanBrand;
 type OtbData = Record<OtbSeason, Record<OtbBrand, number>>;
+type OtbSource = 'SF' | 'HC'; // SF=Snowflake 라이브, HC=하드코딩 목표
+type OtbSourceMap = Record<OtbSeason, Record<OtbBrand, OtbSource>>;
 
 const TXT_HQ_PURCHASE_HEADER = '본사 매입';
 const TXT_ANNUAL_PLAN_TITLE = '26년 시즌별 연간 출고계획표';
@@ -147,7 +149,6 @@ const TXT_PLAN_UNIT = '(단위: CNY K)';
 const TXT_OTB_SECTION = '대리상 OTB';
 const TXT_OTB_UNIT = '(단위: CNY K)';
 const TXT_SEASON = '시즌';
-const TXT_EDIT = '수정';
 const TXT_SAVE = '저장';
 const TXT_PLAN_ICON = '📋';
 const TXT_COLLAPSE = '▲ 접기';
@@ -174,14 +175,10 @@ function derivePlanFromMonth(
 const DRIVER_COLUMN_HEADERS = ['전년', '계획금액', '계획YOY', 'Rolling금액', 'RollingYOY', '계획대비 증감', '계획대비 증감(%)'] as const;
 const INDEPENDENT_DRIVER_COLUMN_HEADERS = ['Rolling'] as const;
 const INDEPENDENT_DRIVER_ROWS = ['대리상 리테일 성장율', '본사 리테일 성장율'] as const;
-const DEPENDENT_DRIVER_ROWS = ['대리상출고', '본사상품매입', '본사기말재고'] as const;
 
 function formatDriverPercent(value: number): string {
   return `${100 + value}%`;
 }
-
-type DependentPlanRowLabel = (typeof DEPENDENT_DRIVER_ROWS)[number];
-type DependentPlanValueMap = Partial<Record<DependentPlanRowLabel, Record<AnnualPlanBrand, number | null>>>;
 
 function formatDriverNumber(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return '-';
@@ -824,8 +821,6 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   const [shipmentOpen, setShipmentOpen] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [annualPlanOpen, setAnnualPlanOpen] = useState(false);
-  const [dependentPlanOpen, setDependentPlanOpen] = useState(false);
-  const [dependentPlanValues, setDependentPlanValues] = useState<DependentPlanValueMap>({});
   // 재고자산 주요지표는 모달로 이동하면서 항상 펼쳐 표시 → 접힘 상태 불필요
   const [inventoryBrandOpen, setInventoryBrandOpen] = useState<Record<AnnualPlanBrand, boolean>>({
     MLB: true,
@@ -840,12 +835,11 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   });
   // 브랜드별 PL용 모달 — null이면 닫힘, 브랜드명이면 그 브랜드 모달 오픈
   const [plModalBrand, setPlModalBrand] = useState<AnnualPlanBrand | null>(null);
-  const [dependentPlanInitialLoading, setDependentPlanInitialLoading] = useState(false);
   const [otbData, setOtbData] = useState<OtbData | null>(null);
   const [otbLoading, setOtbLoading] = useState(false);
   const [otbError, setOtbError] = useState<string | null>(null);
-  const [otbEditMode, setOtbEditMode] = useState(false);
-  const [otbDraft, setOtbDraft] = useState<OtbData | null>(null);
+  // OTB는 읽기전용: max(하드코딩 목표, Snowflake 실제). 수기 편집 폐지 (목표 변경은 otb-db.ts 수정).
+  const [otbSource, setOtbSource] = useState<OtbSourceMap | null>(null); // 셀별 SF/HC 출처
   // 직영 ACC 예산 (입고완료·발주완료·발주기준월) – M 단위
   const [hqAccBudget, setHqAccBudget] = useState<Record<string, HqAccBudgetEntry>>(() => ({
     ...DEFAULT_HQ_ACC_BUDGET,
@@ -1218,10 +1212,11 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
         const res = await fetch('/api/inventory/otb?year=2026', { cache: 'no-store' });
         if (cancelled) return;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = (await res.json()) as { data?: OtbData | null; error?: string };
+        const json = (await res.json()) as { data?: OtbData | null; source?: OtbSourceMap | null; error?: string };
         if (cancelled) return;
         if (json.error) throw new Error(json.error);
         setOtbData(json.data ?? null);
+        setOtbSource(json.source ?? null);
       } catch (e) {
         if (!cancelled) setOtbError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -1548,44 +1543,6 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   // 2025쨌2026?????곷떒 ?쒕뒗 ?붾퀎 ?ш퀬?붿븸 + 由ы뀒??留ㅼ텧 + 異쒓퀬留ㅼ텧 + 留ㅼ엯?곹뭹?쇰줈 援ъ꽦
   // 2026???뚮쭔 ACC 紐⑺몴 ?ш퀬二쇱닔 ?ㅻ쾭?덉씠 ?곸슜
 
-  useEffect(() => {
-    if (year !== 2026) {
-      setDependentPlanValues({});
-      setDependentPlanInitialLoading(false);
-      return;
-    }
-    let mounted = true;
-    setDependentPlanInitialLoading(true);
-
-    const loadDependentPlanValues = async (silent = false) => {
-      try {
-        const res = await fetch('/api/inventory/dependent-plan', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted || !res.ok || !Array.isArray(json?.rows)) return;
-
-        const next: DependentPlanValueMap = {};
-        for (const row of json.rows as { label?: string; values?: Record<string, number | null> }[]) {
-          const label = (row.label ?? '') as DependentPlanRowLabel;
-          if (!DEPENDENT_DRIVER_ROWS.includes(label)) continue;
-          next[label] = {
-            MLB: row.values?.MLB ?? null,
-            'MLB KIDS': row.values?.['MLB KIDS'] ?? null,
-            DISCOVERY: row.values?.DISCOVERY ?? null,
-          };
-        }
-        setDependentPlanValues(next);
-      } catch {
-        // ignore
-      } finally {
-        if (!silent && mounted) setDependentPlanInitialLoading(false);
-      }
-    };
-
-    loadDependentPlanValues(false);
-    return () => {
-      mounted = false;
-    };
-  }, [year]);
 
   const effectiveRetailData = useMemo<RetailSalesResponse | null>(() => {
     return retailData;
@@ -3242,7 +3199,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   }, [year, brand, effectiveDealerMonthlyDisplayData, effectiveHqMonthlyDisplayData, publishMonthlyInventoryTotalByBrand]);
   const yoyPending = year === 2026 && !prevYearError && (prevYearLoading || !prevYearTableData);
   const statusLoading =
-    loading || monthlyLoading || retailLoading || shipmentLoading || purchaseLoading || recalcLoading || yoyPending || dependentPlanInitialLoading;
+    loading || monthlyLoading || retailLoading || shipmentLoading || purchaseLoading || recalcLoading || yoyPending;
   const statusError = !!error || !!monthlyError || !!retailError || !!shipmentError || !!purchaseError || prevYearError;
   const statusErrorMessage = error || monthlyError || retailError || shipmentError || purchaseError || prevYearError || null;
 
@@ -3409,21 +3366,6 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     await saveAnnualPlanToServer(2026, annualShipmentPlanDraft2026);
   }, [annualShipmentPlanDraft2026]);
 
-  const handleOtbEditStart = useCallback(() => {
-    setOtbDraft(otbData ? (JSON.parse(JSON.stringify(otbData)) as OtbData) : null);
-    setOtbEditMode(true);
-  }, [otbData]);
-
-  const handleOtbCellChange = useCallback((sesn: OtbSeason, brand: OtbBrand, valueK: number) => {
-    setOtbDraft((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        [sesn]: { ...prev[sesn], [brand]: valueK * 1000 },
-      };
-    });
-  }, []);
-
   const handleHqAccBudgetSave = useCallback(async () => {
     const toSave: Record<string, HqAccBudgetEntry> = { ...DEFAULT_HQ_ACC_BUDGET };
     for (const bb of ANNUAL_PLAN_BRANDS) {
@@ -3458,28 +3400,6 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
       setHqAccBudgetSaving(false);
     }
   }, [hqAccBudgetDraft, hqAccAmountText]);
-
-  const handleOtbSave = useCallback(async () => {
-    if (!otbDraft) return;
-    setOtbData(otbDraft);
-    setOtbEditMode(false);
-    const payload: Record<string, Record<string, number>> = {};
-    for (const sesn of OTB_SEASONS_LIST) {
-      payload[sesn] = {};
-      for (const b of ANNUAL_PLAN_BRANDS) {
-        payload[sesn][b] = Math.round((otbDraft[sesn]?.[b] ?? 0) / 1000);
-      }
-    }
-    try {
-      await fetch('/api/inventory/otb', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: payload }),
-      });
-    } catch {
-      // 서버 저장 실패 시 로컬 state는 유지
-    }
-  }, [otbDraft]);
 
   return (
     <div className="bg-gray-50 overflow-auto h-[calc(100vh-112px)]">
@@ -4205,7 +4125,7 @@ ORDER BY YYYYMM;
                       onClick={handleAnnualPlanEditStart}
                       className="px-3 py-1.5 text-xs rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
                     >
-                      {TXT_EDIT}
+                      본사 의류매입 수정
                     </button>
                   ) : (
                     <button
@@ -4275,23 +4195,6 @@ ORDER BY YYYYMM;
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-xs font-semibold text-gray-600">{TXT_OTB_SECTION}</span>
                     <span className="text-xs text-gray-400">{TXT_OTB_UNIT}</span>
-                    {!otbEditMode ? (
-                      <button
-                        type="button"
-                        onClick={handleOtbEditStart}
-                        className="px-3 py-1 text-xs rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                      >
-                        {TXT_EDIT}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleOtbSave}
-                        className="px-3 py-1 text-xs rounded border border-sky-600 bg-sky-600 text-white hover:bg-sky-700"
-                      >
-                        {TXT_SAVE}
-                      </button>
-                    )}
                   </div>
                   <div className="overflow-x-auto rounded border border-gray-200">
                     {otbLoading ? (
@@ -4318,27 +4221,24 @@ ORDER BY YYYYMM;
                             <tr key={sesn} className={isSnowflakeRow ? 'bg-blue-50 hover:bg-blue-100' : 'bg-white hover:bg-gray-50'}>
                               <td className="px-3 py-2 border-b border-gray-200 font-medium text-gray-700">{sesn}</td>
                               {ANNUAL_PLAN_BRANDS.map((b) => {
-                                const activeData = otbEditMode ? otbDraft : otbData;
-                                const raw = activeData?.[sesn]?.[b] ?? 0;
+                                const raw = otbData?.[sesn]?.[b] ?? 0;
                                 const valueK = Math.round(raw / 1000);
+                                const src = otbSource?.[sesn]?.[b];
                                 return (
                                   <td key={b} className="px-2 py-1.5 border-b border-gray-200">
-                                    {otbEditMode ? (
-                                      <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={String(valueK)}
-                                        onChange={(e) => {
-                                          const n = parseInt(e.target.value.replace(/[^\d-]/g, ''), 10);
-                                          handleOtbCellChange(sesn, b as OtbBrand, Number.isNaN(n) ? 0 : n);
-                                        }}
-                                        className="w-full text-right text-xs px-1.5 py-1 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-sky-400"
-                                      />
-                                    ) : (
-                                      <span className="block text-right text-gray-700 tabular-nums">
+                                    <span className="flex items-center justify-end gap-1 tabular-nums">
+                                      {valueK !== 0 && src && (
+                                        <span
+                                          className={`shrink-0 rounded px-1 text-[9px] font-bold leading-tight ${src === 'SF' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}
+                                          title={src === 'SF' ? 'Snowflake 실제 발주 (라이브)' : '하드코딩 목표값 (변경 시 클로드에 요청)'}
+                                        >
+                                          {src}
+                                        </span>
+                                      )}
+                                      <span className="text-right text-gray-700">
                                         {valueK === 0 ? '-' : valueK.toLocaleString()}
                                       </span>
-                                    )}
+                                    </span>
                                   </td>
                                 );
                               })}
@@ -4349,8 +4249,9 @@ ORDER BY YYYYMM;
                       </table>
                     )}
                   </div>
-                  <p className="mt-1 text-[10px] text-gray-400">
-                    ※ MLB·MLB KIDS·DISCOVERY: 별도 목표 적용
+                  <p className="mt-1 text-[10px] text-gray-400 leading-relaxed">
+                    ※ 배지 <span className="rounded bg-emerald-100 px-1 text-[9px] font-bold text-emerald-700">SF</span> = Snowflake 실제 발주(라이브) · <span className="rounded bg-slate-200 px-1 text-[9px] font-bold text-slate-600">HC</span> = 하드코딩 목표값
+                    <br />※ OTB = 목표 vs 실제 중 <b>큰 값</b> 자동 표시. <b>HC 셀의 목표 변경 필요 시 클로드에게 요청</b> (otb-db.ts 수정).
                   </p>
                 </div>
 
@@ -4359,65 +4260,6 @@ ORDER BY YYYYMM;
           </div>
         )}
 
-        {year === 2026 && (
-          <div className="mt-10 border-t border-gray-300 pt-8">
-            <button
-              type="button"
-              onClick={() => setDependentPlanOpen((v) => !v)}
-              className="flex items-center gap-2 w-full text-left py-1"
-            >
-              <SectionIcon>
-                <span className="text-lg">◫</span>
-              </SectionIcon>
-              <span className="text-sm font-bold text-slate-900">종속변수 계획값</span>
-              <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                  </span>
-                  Live
-                </span>
-              <span className="ml-3 text-gray-400 text-xs shrink-0">
-                {dependentPlanOpen ? TXT_COLLAPSE : TXT_EXPAND}
-              </span>
-            </button>
-            <div className={`${dependentPlanOpen ? 'mt-3' : 'hidden'} overflow-x-auto rounded-xl border border-slate-200 shadow-inner`}>
-              <table className="min-w-full border-collapse text-xs">
-                <thead>
-                  <tr>
-                    <th className="min-w-[140px] border border-slate-300 bg-slate-900 px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide text-white">항목</th>
-                    {ANNUAL_PLAN_BRANDS.map((brand) => (
-                      <th
-                        key={`dependent-plan-header-${brand}`}
-                        className="min-w-[100px] border border-slate-300 bg-slate-900 px-3 py-2.5 text-center text-[11px] font-semibold tracking-wide text-white"
-                      >
-                        {brand}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {DEPENDENT_DRIVER_ROWS.map((rowLabel) => (
-                    <tr key={`dependent-plan-row-${rowLabel}`} className="bg-white odd:bg-slate-50/80">
-                      <td className="border-b border-slate-200 px-3 py-2.5 font-semibold text-slate-700">{rowLabel}</td>
-                      {ANNUAL_PLAN_BRANDS.map((brand) => {
-                        const value = dependentPlanValues[rowLabel]?.[brand];
-                        return (
-                          <td
-                            key={`dependent-plan-cell-${rowLabel}-${brand}`}
-                            className={`border-b border-slate-200 px-3 py-2.5 text-right ${value == null ? 'text-gray-300' : 'text-slate-900'}`}
-                          >
-                            {value == null ? '-' : formatDriverNumber(value)}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {/* 대리상 리테일매출 */}
         {year === 2025 && ANNUAL_PLAN_BRANDS.some((b) => (retailDataByBrand[b]?.dealer?.rows?.length ?? 0) > 0) && (

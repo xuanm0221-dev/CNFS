@@ -12,6 +12,10 @@ export type OtbSeason = typeof OTB_SEASONS[number];
 
 export type OtbData = Record<OtbSeason, Record<OtbBrand, number>>;
 
+/** 셀별 값 출처: SF=Snowflake 라이브 발주, HC=하드코딩 목표 */
+export type OtbSource = 'SF' | 'HC';
+export type OtbSourceMap = Record<OtbSeason, Record<OtbBrand, OtbSource>>;
+
 /** 브랜드 → brd_account_cd 매핑 */
 const BRD_ACCOUNT_CD_MAP: Record<OtbBrand, string> = {
   'MLB': 'M',
@@ -38,12 +42,12 @@ WHERE 1=1
 `.trim();
 }
 
-/** MLB OTB 하드코딩 값 (CNY 단위, API 호출 없이 고정) */
+/** MLB OTB 하드코딩 값 = 목표/계획 (CNY 단위). 계획 변경 시 이 값을 직접 수정. */
 const MLB_OTB_HARDCODE: Record<OtbSeason, number> = {
   '27F': 0,
-  '27S': 250_774_488,
-  '26F': 2_478_248_132,
-  '26S': 2_313_951_571,
+  '27S': 250_774_000,
+  '26F': 2_705_402_000, // 목표 (Snowflake 실제가 이걸 넘으면 실제 사용)
+  '26S': 2_316_846_000, // 목표
   '25F': 200_000_000,
 };
 
@@ -75,24 +79,34 @@ const DISCOVERY_OTB_HARDCODE: Record<OtbSeason, number> = {
 const SNOWFLAKE_QUERY_PAIRS: Array<{ brand: OtbBrand; season: OtbSeason }> = [
   { brand: 'MLB', season: '26S' },
   { brand: 'MLB', season: '26F' },
+  { brand: 'MLB', season: '27S' },
+  { brand: 'MLB', season: '27F' },
   { brand: 'MLB KIDS', season: '26S' },
   { brand: 'MLB KIDS', season: '26F' },
+  { brand: 'MLB KIDS', season: '27S' },
+  { brand: 'MLB KIDS', season: '27F' },
+  { brand: 'DISCOVERY', season: '26S' },
+  { brand: 'DISCOVERY', season: '26F' },
+  { brand: 'DISCOVERY', season: '27S' },
+  { brand: 'DISCOVERY', season: '27F' },
 ];
 
-export async function fetchOtbData(): Promise<OtbData> {
-  // 빈 구조 초기화 후 하드코딩 베이스 깔기
+export async function fetchOtbData(): Promise<{ data: OtbData; source: OtbSourceMap }> {
+  // 빈 구조 초기화 후 하드코딩 베이스 깔기 (source 는 전부 HC 로 시작)
   const data: OtbData = {} as OtbData;
+  const source: OtbSourceMap = {} as OtbSourceMap;
   for (const season of OTB_SEASONS) {
     data[season] = {
       MLB: MLB_OTB_HARDCODE[season],
       'MLB KIDS': MLB_KIDS_OTB_HARDCODE[season],
       DISCOVERY: DISCOVERY_OTB_HARDCODE[season],
     };
+    source[season] = { MLB: 'HC', 'MLB KIDS': 'HC', DISCOVERY: 'HC' };
   }
 
-  // Snowflake 조회 대상 (MLB·KIDS 의 26S/26F) 만 조회 후 비교
-  //   - Snowflake > 하드코딩 → Snowflake 채택 (발주 추가됨)
-  //   - Snowflake ≤ 하드코딩 → 하드코딩 유지 (안전한 최대값 유지)
+  // Snowflake 조회 대상만 조회 후 비교
+  //   - Snowflake > 하드코딩 → Snowflake 채택(SF) (발주 추가됨)
+  //   - Snowflake ≤ 하드코딩 → 하드코딩 유지(HC) (안전한 최대값)
   const results = await Promise.all(
     SNOWFLAKE_QUERY_PAIRS.map(({ brand, season }) =>
       executeSnowflakeQuery<OtbQueryRow>(buildOtbQuery(BRD_ACCOUNT_CD_MAP[brand], season))
@@ -105,9 +119,10 @@ export async function fetchOtbData(): Promise<OtbData> {
     const sfVal = Number(value);
     const hcVal = data[season][brand]; // 위에서 하드코딩으로 초기화된 베이스 값
     if (sfVal > hcVal) {
-      data[season][brand] = sfVal; // SF 가 더 크면 채택, 아니면 하드코딩 유지
+      data[season][brand] = sfVal; // SF 가 더 크면 채택
+      source[season][brand] = 'SF';
     }
   }
 
-  return data;
+  return { data, source };
 }
