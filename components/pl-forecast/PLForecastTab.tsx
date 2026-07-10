@@ -50,6 +50,15 @@ interface SalesRowDef {
 
 const SALES_BRANDS: SalesBrand[] = ['MLB', 'MLB KIDS', 'DISCOVERY', 'DUVETICA', 'SUPRA'];
 const DEALER_CLOTH_SEASONS: SalesSeason[] = ['당년S', '당년F', '1년차', '차기시즌'];
+// 당년F(26F): OTB 전량이 아니라 일부만 출고 → 당년F 연간 = OTB(26F) × 브랜드별 출고율
+// (DUVETICA·SUPRA는 26F OTB 없음(0)이라 값 무관)
+const DEALER_CURRF_SHIPMENT_RATE: Record<SalesBrand, number> = {
+  MLB: 0.98,
+  'MLB KIDS': 0.90,
+  DISCOVERY: 0.98,
+  DUVETICA: 1.0,
+  SUPRA: 1.0,
+};
 const FIXED_COST_ACCOUNTS = new Set(['기타(직접비)', '대리상지원금', '감가상각비']);
 
 // ScenarioKey, ScenarioDef, SCENARIO_DEFS, SCENARIO_ORDER → plForecastConfig.ts 에서 import
@@ -2351,15 +2360,19 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
   // 대리상 시즌별 월 분배:
   //   1~결산월: Snowflake 실적
   //   결산월+1 ~ 11월: 26년대리상출고계획.csv 값 (null → 0)
-  //   12월: 연간 OTB − (1~11월 합계)
+  //   12월: 연간 OTB − (1~11월 합계)  ← 미배분 잔여를 12월에 몰아넣음 (당년F·1년차·차기시즌)
+  //   ※ 당년S(봄)는 ~6월 출고 완료라 잔여 밀어넣기 안 함 → 12월도 CSV값 (useOtbResidual=false)
   const dealerSeasonMonthlyByBrand = useMemo(() => {
     const actualCutoffMonth =
       brandActualAvailableMonths.length === 0 ? 0 : Math.max(...brandActualAvailableMonths);
 
+    // useOtbResidual=true: 12월 = 연간 OTB − (1~11월 합) (미배분 잔여를 12월에)
+    // useOtbResidual=false: 12월도 그냥 CSV값 (당년S처럼 시즌 조기 종료 → 잔여 밀어넣기 안 함)
     const buildSeries = (
       brand: SalesBrand,
       season: SalesSeason,
       annualOtb: number,
+      useOtbResidual = true,
     ): (number | null)[] => {
       const actual = salesSupportActualByBrand[brand]?.[season] ?? new Array(12).fill(null);
       const csv = dealerShipmentPlanByBrand[brand]?.[season] ?? new Array(12).fill(null);
@@ -2367,12 +2380,15 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       for (let i = 0; i < actualCutoffMonth; i += 1) {
         if (actual[i] !== null) out[i] = actual[i];
       }
-      for (let i = actualCutoffMonth; i < 11; i += 1) {
+      const csvEnd = useOtbResidual ? 11 : 12; // 잔여 안 쓰면 12월도 CSV
+      for (let i = actualCutoffMonth; i < csvEnd; i += 1) {
         out[i] = csv[i] ?? 0;
       }
-      let sumFirst11 = 0;
-      for (let i = 0; i < 11; i += 1) sumFirst11 += (out[i] as number) ?? 0;
-      out[11] = annualOtb - sumFirst11;
+      if (useOtbResidual) {
+        let sumFirst11 = 0;
+        for (let i = 0; i < 11; i += 1) sumFirst11 += (out[i] as number) ?? 0;
+        out[11] = annualOtb - sumFirst11;
+      }
       return out;
     };
 
@@ -2385,8 +2401,9 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     };
 
     for (const brand of SALES_BRANDS) {
-      result[brand].당년S = buildSeries(brand, '당년S', otbByBrand[brand].currS);
-      result[brand].당년F = buildSeries(brand, '당년F', otbByBrand[brand].currF);
+      // 당년S(봄): OTB 잔여 밀어넣기 안 함 → 출고표(실적+CSV) 그대로. annualOtb 미사용.
+      result[brand].당년S = buildSeries(brand, '당년S', 0, false);
+      result[brand].당년F = buildSeries(brand, '당년F', otbByBrand[brand].currF * DEALER_CURRF_SHIPMENT_RATE[brand]);
       result[brand]['1년차'] = buildSeries(brand, '1년차', otbByBrand[brand].year1);
       result[brand].차기시즌 = buildSeries(brand, '차기시즌', otbByBrand[brand].next);
     }

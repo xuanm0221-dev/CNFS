@@ -177,8 +177,8 @@ export const SCENARIO_DEFS: Record<ScenarioKey, ScenarioDef> = {
     borderColor: '#3b5f93',
     headerBgColor: '#2f4f7f',
     headerColor: '#ffffff',
-    dealerGrowthRate: { MLB: 5, 'MLB KIDS': -3, DISCOVERY: 280, DUVETICA: 0, SUPRA: 0 },
-    hqGrowthRate: { MLB: 15, 'MLB KIDS': 8, DISCOVERY: 137, DUVETICA: 0, SUPRA: 0 },
+    dealerGrowthRate: { MLB: 5, 'MLB KIDS': -3, DISCOVERY: 300, DUVETICA: 0, SUPRA: 0 },
+    hqGrowthRate: { MLB: 15, 'MLB KIDS': 8, DISCOVERY: 100, DUVETICA: 0, SUPRA: 0 },
   },
   positive: {
     key: 'positive',
@@ -187,8 +187,8 @@ export const SCENARIO_DEFS: Record<ScenarioKey, ScenarioDef> = {
     color: '#059669',
     bgColor: '#ecfdf5',
     borderColor: '#059669',
-    dealerGrowthRate: { MLB: 10, 'MLB KIDS': 5, DISCOVERY: 330, DUVETICA: 0, SUPRA: 0 },
-    hqGrowthRate: { MLB: 20, 'MLB KIDS': 15, DISCOVERY: 200, DUVETICA: 0, SUPRA: 0 },
+    dealerGrowthRate: { MLB: 10, 'MLB KIDS': 5, DISCOVERY: 350, DUVETICA: 0, SUPRA: 0 },
+    hqGrowthRate: { MLB: 20, 'MLB KIDS': 15, DISCOVERY: 150, DUVETICA: 0, SUPRA: 0 },
   },
   negative: {
     key: 'negative',
@@ -197,8 +197,8 @@ export const SCENARIO_DEFS: Record<ScenarioKey, ScenarioDef> = {
     color: '#dc2626',
     bgColor: '#fef2f2',
     borderColor: '#dc2626',
-    dealerGrowthRate: { MLB: 0, 'MLB KIDS': -5, DISCOVERY: 280, DUVETICA: 0, SUPRA: 0 },
-    hqGrowthRate: { MLB: 4, 'MLB KIDS': 0, DISCOVERY: 137, DUVETICA: 0, SUPRA: 0 },
+    dealerGrowthRate: { MLB: 0, 'MLB KIDS': -5, DISCOVERY: 250, DUVETICA: 0, SUPRA: 0 },
+    hqGrowthRate: { MLB: 4, 'MLB KIDS': 0, DISCOVERY: 50, DUVETICA: 0, SUPRA: 0 },
   },
 };
 
