@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { readCSV } from '@/lib/csv';
+import { readAdjustCSV } from '@/lib/csv';
 import { calculatePL, calculateComparisonData } from '@/lib/fs-mapping';
 import { loadCorporatePLFromBrands } from '@/lib/pl-corporate-loader';
 import { loadRetailPLForCorporate, makeEmptyRetailPLData } from '@/lib/retail-pl-loader';
@@ -32,11 +32,11 @@ export async function GET(request: NextRequest) {
     // 법인 PL = 5개 브랜드 PL CSV 합산 (별도 법인 CSV 미사용)
     const data = await loadCorporatePLFromBrands(year);
 
-    // 재무조정 데이터 읽기 (법인 전체 = MLB에 반영)
+    // 재무조정 데이터 읽기 (법인 = 전 브랜드 조정사항 합산)
     const adjustFilePath = path.join(process.cwd(), '파일', '재무조정', `${year}.csv`);
-    let adjustData: Awaited<ReturnType<typeof readCSV>> | undefined;
+    let adjustData: Awaited<ReturnType<typeof readAdjustCSV>>['total'] | undefined;
     try {
-      adjustData = await readCSV(adjustFilePath, year);
+      adjustData = (await readAdjustCSV(adjustFilePath, year)).total;
     } catch { /* 파일 없으면 무시 */ }
 
     // 리테일매출 (2025/2026만 — Snowflake CHN.dw_sale 기반)
@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
     if (year === 2025) {
       const data2024 = await loadCorporatePLFromBrands(2024);
       const adjustFilePath2024 = path.join(process.cwd(), '파일', '재무조정', '2024.csv');
-      let adjustData2024: Awaited<ReturnType<typeof readCSV>> | undefined;
-      try { adjustData2024 = await readCSV(adjustFilePath2024, 2024); } catch { /* 무시 */ }
+      let adjustData2024: Awaited<ReturnType<typeof readAdjustCSV>>['total'] | undefined;
+      try { adjustData2024 = (await readAdjustCSV(adjustFilePath2024, 2024)).total; } catch { /* 무시 */ }
       const rows2024 = calculatePL(data2024, false, adjustData2024);
       tableRows = calculateComparisonData(tableRows, rows2024, baseMonth);
     }
@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
     if (year === 2026) {
       const data2025 = await loadCorporatePLFromBrands(2025);
       const adjustFilePath2025 = path.join(process.cwd(), '파일', '재무조정', '2025.csv');
-      let adjustData2025: Awaited<ReturnType<typeof readCSV>> | undefined;
-      try { adjustData2025 = await readCSV(adjustFilePath2025, 2025); } catch { /* 무시 */ }
+      let adjustData2025: Awaited<ReturnType<typeof readAdjustCSV>>['total'] | undefined;
+      try { adjustData2025 = (await readAdjustCSV(adjustFilePath2025, 2025)).total; } catch { /* 무시 */ }
       const retailData2025 = (await loadRetailPLForCorporate(2025)) ?? makeEmptyRetailPLData();
       const rows2025 = calculatePL(data2025, false, adjustData2025, retailData2025);
       tableRows = calculateComparisonData(tableRows, rows2025, baseMonth);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { readCSV } from '@/lib/csv';
+import { readCSV, readAdjustCSV } from '@/lib/csv';
 import { calculatePL, calculateComparisonData } from '@/lib/fs-mapping';
 import { loadRetailPLByBrand, makeEmptyRetailPLData } from '@/lib/retail-pl-loader';
 
@@ -45,12 +45,10 @@ export async function GET(request: NextRequest) {
     const filePath = path.join(process.cwd(), '파일', 'PL_brand', brand, `${year}.csv`);
     const data = await readCSV(filePath, year);
 
-    // MLB일 때만 재무조정 데이터 반영
-    let adjustData: Awaited<ReturnType<typeof readCSV>> | undefined;
-    if (brand === 'mlb') {
-      const adjustFilePath = path.join(process.cwd(), '파일', '재무조정', `${year}.csv`);
-      try { adjustData = await readCSV(adjustFilePath, year); } catch { /* 파일 없으면 무시 */ }
-    }
+    // 재무조정 데이터: 해당 브랜드 행만 반영 (브랜드 컬럼 기준)
+    let adjustData: Awaited<ReturnType<typeof readAdjustCSV>>['byBrand'][string] | undefined;
+    const adjustFilePath = path.join(process.cwd(), '파일', '재무조정', `${year}.csv`);
+    try { adjustData = (await readAdjustCSV(adjustFilePath, year)).byBrand[brand]; } catch { /* 파일 없으면 무시 */ }
 
     // 리테일매출 (2025/2026만)
     const retailData = (await loadRetailPLByBrand(year, brand)) ?? undefined;
@@ -62,11 +60,9 @@ export async function GET(request: NextRequest) {
     if (year === 2025) {
       const filePath2024 = path.join(process.cwd(), '파일', 'PL_brand', brand, '2024.csv');
       const data2024 = await readCSV(filePath2024, 2024);
-      let adjustData2024: Awaited<ReturnType<typeof readCSV>> | undefined;
-      if (brand === 'mlb') {
-        const adjustFilePath2024 = path.join(process.cwd(), '파일', '재무조정', '2024.csv');
-        try { adjustData2024 = await readCSV(adjustFilePath2024, 2024); } catch { /* 무시 */ }
-      }
+      let adjustData2024: Awaited<ReturnType<typeof readAdjustCSV>>['byBrand'][string] | undefined;
+      const adjustFilePath2024 = path.join(process.cwd(), '파일', '재무조정', '2024.csv');
+      try { adjustData2024 = (await readAdjustCSV(adjustFilePath2024, 2024)).byBrand[brand]; } catch { /* 무시 */ }
       const rows2024 = calculatePL(data2024, true, adjustData2024);
       tableRows = calculateComparisonData(tableRows, rows2024, baseMonth);
     }
@@ -74,11 +70,9 @@ export async function GET(request: NextRequest) {
     if (year === 2026) {
       const filePath2025 = path.join(process.cwd(), '파일', 'PL_brand', brand, '2025.csv');
       const data2025 = await readCSV(filePath2025, 2025);
-      let adjustData2025: Awaited<ReturnType<typeof readCSV>> | undefined;
-      if (brand === 'mlb') {
-        const adjustFilePath2025 = path.join(process.cwd(), '파일', '재무조정', '2025.csv');
-        try { adjustData2025 = await readCSV(adjustFilePath2025, 2025); } catch { /* 무시 */ }
-      }
+      let adjustData2025: Awaited<ReturnType<typeof readAdjustCSV>>['byBrand'][string] | undefined;
+      const adjustFilePath2025 = path.join(process.cwd(), '파일', '재무조정', '2025.csv');
+      try { adjustData2025 = (await readAdjustCSV(adjustFilePath2025, 2025)).byBrand[brand]; } catch { /* 무시 */ }
       const retailData2025 = (await loadRetailPLByBrand(2025, brand)) ?? makeEmptyRetailPLData();
       const rows2025 = calculatePL(data2025, true, adjustData2025, retailData2025);
       tableRows = calculateComparisonData(tableRows, rows2025, baseMonth);

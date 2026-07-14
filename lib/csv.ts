@@ -93,6 +93,87 @@ export async function readCSV(filePath: string, year: number): Promise<Financial
   return finalResult;
 }
 
+// 재무조정 CSV의 "브랜드" 컬럼 값을 코드 브랜드키로 정규화
+// (MLB→mlb, MLB KIDS/KIDS→kids, DISCOVERY→discovery, DUVETICA→duvetica, SUPRA→supra)
+export function normalizeAdjustBrand(raw: string): string | null {
+  const s = (raw || '').trim().toUpperCase();
+  if (s === 'MLB') return 'mlb';
+  if (s === 'MLB KIDS' || s === 'KIDS') return 'kids';
+  if (s === 'DISCOVERY') return 'discovery';
+  if (s === 'DUVETICA') return 'duvetica';
+  if (s === 'SUPRA') return 'supra';
+  return null;
+}
+
+// 재무조정 CSV 읽기 (컬럼: 브랜드, 조정사항, 1월~12월)
+// 반환: byBrand(브랜드키 → 조정사항별 FinancialData[]) + total(전 브랜드 조정사항 합산 = 법인)
+// account 키는 "조정사항"(2번째 컬럼). 브랜드는 정규화해 분리.
+export async function readAdjustCSV(
+  filePath: string,
+  year: number
+): Promise<{ byBrand: Record<string, FinancialData[]>; total: FinancialData[] }> {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    try {
+      const buffer = fs.readFileSync(filePath);
+      content = iconv.decode(buffer, 'cp949');
+    } catch {
+      throw new Error(`CSV 파일을 읽을 수 없습니다: ${filePath}`);
+    }
+  }
+
+  const parsed = Papa.parse<string[]>(content, { header: false, skipEmptyLines: true });
+  const rows = parsed.data;
+  if (rows.length < 2) return { byBrand: {}, total: [] };
+
+  // 월 컬럼: 0=브랜드, 1=조정사항 이후부터 "N월" 탐지
+  const headers = rows[0];
+  const monthColumns: { index: number; month: number }[] = [];
+  headers.forEach((header, index) => {
+    if (index <= 1) return;
+    const month = parseMonthColumn(header);
+    if (month !== null) monthColumns.push({ index, month });
+  });
+
+  const byBrandMap = new Map<string, Map<string, number[]>>(); // 브랜드키 → 조정사항 → [12]
+  const totalMap = new Map<string, number[]>();                 // 조정사항 → [12]
+
+  const addVal = (m: Map<string, number[]>, account: string, month: number, value: number) => {
+    let arr = m.get(account);
+    if (!arr) { arr = new Array(12).fill(0); m.set(account, arr); }
+    arr[month - 1] += value;
+  };
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const brandKey = normalizeAdjustBrand(row[0] ?? '');
+    const account = (row[1] ?? '').trim();
+    if (!brandKey || !account) continue;
+    for (const { index, month } of monthColumns) {
+      const value = cleanNumericValue(row[index] || '0');
+      if (!byBrandMap.has(brandKey)) byBrandMap.set(brandKey, new Map());
+      addVal(byBrandMap.get(brandKey)!, account, month, value);
+      addVal(totalMap, account, month, value);
+    }
+  }
+
+  const toFD = (m: Map<string, number[]>): FinancialData[] => {
+    const out: FinancialData[] = [];
+    for (const [account, arr] of m) {
+      for (let mo = 0; mo < 12; mo++) {
+        out.push({ year, month: mo + 1, account, value: arr[mo] });
+      }
+    }
+    return out;
+  };
+
+  const byBrand: Record<string, FinancialData[]> = {};
+  for (const [brandKey, m] of byBrandMap) byBrand[brandKey] = toFD(m);
+  return { byBrand, total: toFD(totalMap) };
+}
+
 // 월별 데이터 맵 생성 (account -> [month1, ..., month12])
 export function createMonthDataMap(data: FinancialData[]): Map<string, number[]> {
   const map = new Map<string, number[]>();

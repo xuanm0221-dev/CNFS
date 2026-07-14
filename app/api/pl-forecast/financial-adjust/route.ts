@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { readCSV } from '@/lib/csv';
+import { readAdjustCSV } from '@/lib/csv';
 import { createMonthDataMap, getAccountValues } from '@/lib/fs-mapping';
+import { FinancialData } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,17 +22,28 @@ export async function GET(req: NextRequest) {
     }
 
     const filePath = path.join(process.cwd(), '파일', '재무조정', `${year}.csv`);
-    const data = await readCSV(filePath, year);
-    const map = createMonthDataMap(data);
+    const { byBrand, total } = await readAdjustCSV(filePath, year);
 
-    const accounts: Record<string, (number | null)[]> = {};
-    for (const acc of ADJUST_ACCOUNTS) {
-      accounts[acc] = getAccountValues(map, acc);
+    // 조정사항별 월배열(accounts) 형태로 변환
+    const buildAccounts = (data: FinancialData[]): Record<string, (number | null)[]> => {
+      const map = createMonthDataMap(data);
+      const accounts: Record<string, (number | null)[]> = {};
+      for (const acc of ADJUST_ACCOUNTS) accounts[acc] = getAccountValues(map, acc);
+      return accounts;
+    };
+
+    // 브랜드별(byBrand) + 법인 합계(total)
+    const byBrandAccounts: Record<string, Record<string, (number | null)[]>> = {};
+    for (const [brand, data] of Object.entries(byBrand)) {
+      byBrandAccounts[brand] = buildAccounts(data);
     }
 
-    return NextResponse.json({ year, accounts }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(
+      { year, byBrand: byBrandAccounts, total: buildAccounts(total) },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch {
     // 파일 없으면 빈 데이터 반환
-    return NextResponse.json({ year: 2026, accounts: {} }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ year: 2026, byBrand: {}, total: {} }, { headers: { 'Cache-Control': 'no-store' } });
   }
 }

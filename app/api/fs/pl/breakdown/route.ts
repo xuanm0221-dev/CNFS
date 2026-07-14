@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { readCSV } from '@/lib/csv';
+import { readCSV, readAdjustCSV } from '@/lib/csv';
 import { calculatePL, calculateComparisonData, calculateBrandBreakdown } from '@/lib/fs-mapping';
 import { loadCorporatePLFromBrands } from '@/lib/pl-corporate-loader';
 import { loadRetailPLByBrand, loadRetailPLForCorporate, makeEmptyRetailPLData } from '@/lib/retail-pl-loader';
@@ -33,10 +33,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 재무조정 데이터 읽기 헬퍼
+    // 재무조정 데이터 읽기 헬퍼 (byBrand: 브랜드별 · total: 법인 합산)
     const loadAdjustData = async (y: number) => {
       const p = path.join(process.cwd(), '파일', '재무조정', `${y}.csv`);
-      try { return await readCSV(p, y); } catch { return undefined; }
+      try { return await readAdjustCSV(p, y); } catch { return undefined; }
     };
 
     // 법인 PL = 5개 브랜드 PL CSV 합산 (별도 법인 CSV 미사용)
@@ -44,13 +44,13 @@ export async function GET(request: NextRequest) {
     const adjustData = await loadAdjustData(year);
     // 리테일매출 (2025/2026만)
     const corpRetail = (await loadRetailPLForCorporate(year)) ?? undefined;
-    let corporateRows = calculatePL(corporateData, false, adjustData, corpRetail);
+    let corporateRows = calculatePL(corporateData, false, adjustData?.total, corpRetail);
 
     // 2025년인 경우 2024년 대비 비교 데이터 추가
     if (year === 2025) {
       const corporateData2024 = await loadCorporatePLFromBrands(2024);
       const adjustData2024 = await loadAdjustData(2024);
-      const corporateRows2024 = calculatePL(corporateData2024, false, adjustData2024);
+      const corporateRows2024 = calculatePL(corporateData2024, false, adjustData2024?.total);
       corporateRows = calculateComparisonData(corporateRows, corporateRows2024, baseMonth);
     }
     // 2026년인 경우 2025년 대비 비교 데이터 추가
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       const adjustData2025 = await loadAdjustData(2025);
       // 2025 retail이 null이면 빈 RetailPLData fallback (리테일매출 행이 prev에도 존재해야 YoY 매칭됨)
       const corpRetail2025 = (await loadRetailPLForCorporate(2025)) ?? makeEmptyRetailPLData();
-      const corporateRows2025 = calculatePL(corporateData2025, false, adjustData2025, corpRetail2025);
+      const corporateRows2025 = calculatePL(corporateData2025, false, adjustData2025?.total, corpRetail2025);
       corporateRows = calculateComparisonData(corporateRows, corporateRows2025, baseMonth);
     }
 
@@ -70,8 +70,8 @@ export async function GET(request: NextRequest) {
       try {
         const brandFilePath = path.join(process.cwd(), '파일', 'PL_brand', brand, `${year}.csv`);
         const brandData = await readCSV(brandFilePath, year);
-        // MLB일 때만 재무조정 반영
-        const brandAdjust = brand === 'mlb' ? adjustData : undefined;
+        // 재무조정: 해당 브랜드 행만 반영
+        const brandAdjust = adjustData?.byBrand[brand];
         const brandRetail = (await loadRetailPLByBrand(year, brand)) ?? undefined;
         let brandRows = calculatePL(brandData, true, brandAdjust, brandRetail);
 
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
         if (year === 2025) {
           const brandFilePath2024 = path.join(process.cwd(), '파일', 'PL_brand', brand, '2024.csv');
           const brandData2024 = await readCSV(brandFilePath2024, 2024);
-          const brandAdjust2024 = brand === 'mlb' ? await loadAdjustData(2024) : undefined;
+          const brandAdjust2024 = (await loadAdjustData(2024))?.byBrand[brand];
           const brandRows2024 = calculatePL(brandData2024, true, brandAdjust2024);
           brandRows = calculateComparisonData(brandRows, brandRows2024, baseMonth);
         }
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
         if (year === 2026) {
           const brandFilePath2025 = path.join(process.cwd(), '파일', 'PL_brand', brand, '2025.csv');
           const brandData2025 = await readCSV(brandFilePath2025, 2025);
-          const brandAdjust2025 = brand === 'mlb' ? await loadAdjustData(2025) : undefined;
+          const brandAdjust2025 = (await loadAdjustData(2025))?.byBrand[brand];
           // 2025 retail null이면 zero fallback (리테일매출 행이 prev에 존재해야 YoY 매칭됨)
           const brandRetail2025 = (await loadRetailPLByBrand(2025, brand)) ?? makeEmptyRetailPLData();
           const brandRows2025 = calculatePL(brandData2025, true, brandAdjust2025, brandRetail2025);

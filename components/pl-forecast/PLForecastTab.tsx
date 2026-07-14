@@ -1112,9 +1112,10 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     DUVETICA: {},
     SUPRA: {},
   });
-  // 재무조정 데이터 (FY26 + FY25)
-  const [financialAdjust26, setFinancialAdjust26] = useState<Record<string, (number | null)[]>>({});
-  const [financialAdjust25, setFinancialAdjust25] = useState<Record<string, (number | null)[]>>({});
+  // 재무조정 데이터 (FY26 + FY25) — byBrand: 브랜드별 · total: 법인 합계
+  type AdjustState = { byBrand: Record<string, Record<string, (number | null)[]>>; total: Record<string, (number | null)[]> };
+  const [financialAdjust26, setFinancialAdjust26] = useState<AdjustState>({ byBrand: {}, total: {} });
+  const [financialAdjust25, setFinancialAdjust25] = useState<AdjustState>({ byBrand: {}, total: {} });
 
   const [directExpenseRatioLoading, setDirectExpenseRatioLoading] = useState<boolean>(false);
   const [directExpenseRatioError, setDirectExpenseRatioError] = useState<string | null>(null);
@@ -1489,8 +1490,8 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
         const json26 = await res26.json();
         const json25 = await res25.json();
         if (!mounted) return;
-        setFinancialAdjust26(json26.accounts ?? {});
-        setFinancialAdjust25(json25.accounts ?? {});
+        setFinancialAdjust26({ byBrand: json26.byBrand ?? {}, total: json26.total ?? {} });
+        setFinancialAdjust25({ byBrand: json25.byBrand ?? {}, total: json25.total ?? {} });
       } catch { /* 무시 */ }
     };
     fetchAdjust();
@@ -1873,11 +1874,11 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
 
   const calculatedByBrand = useMemo(() => {
     const result: Record<ForecastLeafBrand, CalculatedSeries> = {
-      mlb: deriveCalculated(monthlyInputs.mlb, ANNUAL_2025_RAW_BY_BRAND.mlb, financialAdjust26, financialAdjust25),
-      kids: deriveCalculated(monthlyInputs.kids, ANNUAL_2025_RAW_BY_BRAND.kids),
-      discovery: deriveCalculated(monthlyInputs.discovery, ANNUAL_2025_RAW_BY_BRAND.discovery),
-      duvetica: deriveCalculated(monthlyInputs.duvetica, ANNUAL_2025_RAW_BY_BRAND.duvetica),
-      supra: deriveCalculated(monthlyInputs.supra, ANNUAL_2025_RAW_BY_BRAND.supra),
+      mlb: deriveCalculated(monthlyInputs.mlb, ANNUAL_2025_RAW_BY_BRAND.mlb, financialAdjust26.byBrand.mlb, financialAdjust25.byBrand.mlb),
+      kids: deriveCalculated(monthlyInputs.kids, ANNUAL_2025_RAW_BY_BRAND.kids, financialAdjust26.byBrand.kids, financialAdjust25.byBrand.kids),
+      discovery: deriveCalculated(monthlyInputs.discovery, ANNUAL_2025_RAW_BY_BRAND.discovery, financialAdjust26.byBrand.discovery, financialAdjust25.byBrand.discovery),
+      duvetica: deriveCalculated(monthlyInputs.duvetica, ANNUAL_2025_RAW_BY_BRAND.duvetica, financialAdjust26.byBrand.duvetica, financialAdjust25.byBrand.duvetica),
+      supra: deriveCalculated(monthlyInputs.supra, ANNUAL_2025_RAW_BY_BRAND.supra, financialAdjust26.byBrand.supra, financialAdjust25.byBrand.supra),
     };
     return result;
   }, [monthlyInputs, financialAdjust26, financialAdjust25]);
@@ -1906,7 +1907,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
         (ANNUAL_2025_RAW_BY_BRAND.supra[account] ?? 0);
     }
 
-    return deriveCalculated(corporateRawMonthly, annualRaw, financialAdjust26, financialAdjust25);
+    return deriveCalculated(corporateRawMonthly, annualRaw, financialAdjust26.total, financialAdjust25.total);
   }, [monthlyInputs, financialAdjust26, financialAdjust25]);
 
   const ADJUST_ROW_ACCOUNTS = new Set([
@@ -1914,10 +1915,11 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
   ]);
   const rowDefs = useMemo(() => {
     const base = activeBrand === null ? ROWS_CORPORATE : ROWS_BRAND;
-    // 재무조정 행은 법인 또는 MLB일 때만 표시
-    if (activeBrand === null || activeBrand === 'mlb') return base;
+    // 재무조정 행은 법인, 또는 해당 브랜드에 재무조정 데이터가 있을 때만 표시
+    const brandHasAdjust = activeBrand !== null && !!financialAdjust26.byBrand[activeBrand];
+    if (activeBrand === null || brandHasAdjust) return base;
     return base.filter((r) => !ADJUST_ROW_ACCOUNTS.has(r.account));
-  }, [activeBrand]);
+  }, [activeBrand, financialAdjust26]);
 
   const SCENARIO_SUMMARY_ACCOUNTS = ['리테일매출', '실판매출(V+)', '영업이익(관리식)', '영업이익률(관리식)', '영업이익(IFRS)', '영업이익률(IFRS)'];
 
@@ -3402,11 +3404,11 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
 
         // Step 6: calculatedByBrand
         const scCB: Record<ForecastLeafBrand, CalculatedSeries> = {
-          mlb: deriveCalculated(scMI.mlb, ANNUAL_2025_RAW_BY_BRAND.mlb, financialAdjust26, financialAdjust25),
-          kids: deriveCalculated(scMI.kids, ANNUAL_2025_RAW_BY_BRAND.kids),
-          discovery: deriveCalculated(scMI.discovery, ANNUAL_2025_RAW_BY_BRAND.discovery),
-          duvetica: deriveCalculated(scMI.duvetica, ANNUAL_2025_RAW_BY_BRAND.duvetica),
-          supra: deriveCalculated(scMI.supra, ANNUAL_2025_RAW_BY_BRAND.supra),
+          mlb: deriveCalculated(scMI.mlb, ANNUAL_2025_RAW_BY_BRAND.mlb, financialAdjust26.byBrand.mlb, financialAdjust25.byBrand.mlb),
+          kids: deriveCalculated(scMI.kids, ANNUAL_2025_RAW_BY_BRAND.kids, financialAdjust26.byBrand.kids, financialAdjust25.byBrand.kids),
+          discovery: deriveCalculated(scMI.discovery, ANNUAL_2025_RAW_BY_BRAND.discovery, financialAdjust26.byBrand.discovery, financialAdjust25.byBrand.discovery),
+          duvetica: deriveCalculated(scMI.duvetica, ANNUAL_2025_RAW_BY_BRAND.duvetica, financialAdjust26.byBrand.duvetica, financialAdjust25.byBrand.duvetica),
+          supra: deriveCalculated(scMI.supra, ANNUAL_2025_RAW_BY_BRAND.supra, financialAdjust26.byBrand.supra, financialAdjust25.byBrand.supra),
         };
 
         // Step 7: corporateCalculated
@@ -3426,7 +3428,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
         for (const account of RAW_ACCOUNTS) {
           corpAnnual[account] = (ANNUAL_2025_RAW_BY_BRAND.mlb[account] ?? 0) + (ANNUAL_2025_RAW_BY_BRAND.kids[account] ?? 0) + (ANNUAL_2025_RAW_BY_BRAND.discovery[account] ?? 0) + (ANNUAL_2025_RAW_BY_BRAND.duvetica[account] ?? 0) + (ANNUAL_2025_RAW_BY_BRAND.supra[account] ?? 0);
         }
-        const scCorpCalc = deriveCalculated(corpRaw, corpAnnual, financialAdjust26, financialAdjust25);
+        const scCorpCalc = deriveCalculated(corpRaw, corpAnnual, financialAdjust26.total, financialAdjust25.total);
 
         const sb = (get: (b: SalesBrand) => (number | null)[]) => sumSeries(sumSeries(sumSeries(sumSeries(get('MLB'), get('MLB KIDS')), get('DISCOVERY')), get('DUVETICA')), get('SUPRA'));
 
