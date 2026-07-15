@@ -354,6 +354,16 @@ export function calculatePL(
     const 매출재무식 = 실판매출.map((v, i) => v + 매출조정재무식[i]);
     const 영업이익률재무식 = 매출재무식.map((v, i) => (v !== 0 ? 영업이익재무식[i] / v : null));
 
+    // 내부거래 차이(-) — 재무&관리차이(-)와 별개 그룹. 영업이익(IFRS)에는 영향 없음.
+    const 내부거래항목 = ['Discovery 반품'];
+    const 내부거래values = 내부거래항목.map(acc => getAccountValues(adjMap, acc));
+    const 내부거래차이 = 영업이익재무식.map((_, i) =>
+      내부거래values.reduce((sum, arr) => sum + arr[i], 0)
+    );
+    const 영업이익내부거래제거전 = 영업이익재무식.map((v, i) => v - 내부거래차이[i]);
+    // CN 재무식 영업이익률 = 내부거래 제거전 영업이익(현지기준) / 실판매출(V-)
+    const CN재무식영업이익률 = 실판매출.map((v, i) => (v !== 0 ? 영업이익내부거래제거전[i] / v : null));
+
     rows.push(
       {
         account: '재무&관리차이(-)',
@@ -401,6 +411,44 @@ export function calculatePL(
         isBold: true,
         isHighlight: 'yellow' as const,
         values: 영업이익률재무식,
+        format: 'percent',
+      },
+      {
+        account: '내부거래 차이(-)',
+        level: 0,
+        isGroup: true,
+        isCalculated: true,
+        isBold: true,
+        isHighlight: 'gray' as const,
+        values: 내부거래차이,
+        format: 'number',
+      },
+      ...내부거래항목.map((acc, idx) => ({
+        account: acc,
+        level: 1,
+        isGroup: false,
+        isCalculated: false,
+        values: 내부거래values[idx],
+        format: 'number' as const,
+      })),
+      {
+        account: '내부거래 제거전 영업이익(현지기준)',
+        level: 0,
+        isGroup: false,
+        isCalculated: true,
+        isBold: true,
+        isHighlight: 'gray' as const,
+        values: 영업이익내부거래제거전,
+        format: 'number',
+      },
+      {
+        account: 'CN 재무식 영업이익률',
+        level: 0,
+        isGroup: false,
+        isCalculated: true,
+        isBold: true,
+        isHighlight: 'gray' as const,
+        values: CN재무식영업이익률,
         format: 'percent',
       },
     );
@@ -474,7 +522,7 @@ export function calculateComparisonData(
     const monthYoY = calculateYoY(currYearMonth, prevYearMonth);
     
     // 비율 항목인지 확인
-    const isRatioAccount = row.account === '(Tag 대비 원가율)' || row.account === '영업이익률(관리식)' || row.account === '영업이익률(IFRS)';
+    const isRatioAccount = row.account === '(Tag 대비 원가율)' || row.account === '영업이익률(관리식)' || row.account === '영업이익률(IFRS)' || row.account === 'CN 재무식 영업이익률';
 
     let prevYearYTD: number | null = null;
     let currYearYTD: number | null = null;
@@ -558,6 +606,30 @@ export function calculateComparisonData(
 
           currYearAnnual = currAnnual매출재무 !== 0 ? currAnnual영업이익재무 / currAnnual매출재무 : null;
           prevYearAnnual = prevAnnual매출재무 !== 0 ? prevAnnual영업이익재무 / prevAnnual매출재무 : null;
+        }
+      } else if (row.account === 'CN 재무식 영업이익률') {
+        // CN 재무식 영업이익률 = 내부거래 제거전 영업이익(현지기준) / 실판매출(V-)
+        const curr제거전 = currAccountMap.get('내부거래 제거전 영업이익(현지기준)');
+        const prev제거전 = prevAccountMap.get('내부거래 제거전 영업이익(현지기준)');
+        const curr실판매출 = currAccountMap.get('실판매출');
+        const prev실판매출 = prevAccountMap.get('실판매출');
+
+        if (curr제거전 && prev제거전 && curr실판매출 && prev실판매출) {
+          const currYTD제거전 = calculateYTD(curr제거전.values);
+          const prevYTD제거전 = calculateYTD(prev제거전.values);
+          const currYTD실판매출 = calculateYTD(curr실판매출.values);
+          const prevYTD실판매출 = calculateYTD(prev실판매출.values);
+
+          currYearYTD = currYTD실판매출 !== 0 ? currYTD제거전 / currYTD실판매출 : null;
+          prevYearYTD = prevYTD실판매출 !== 0 ? prevYTD제거전 / prevYTD실판매출 : null;
+
+          const currAnnual제거전 = calculateAnnual(curr제거전.values);
+          const prevAnnual제거전 = calculateAnnual(prev제거전.values);
+          const currAnnual실판매출 = calculateAnnual(curr실판매출.values);
+          const prevAnnual실판매출 = calculateAnnual(prev실판매출.values);
+
+          currYearAnnual = currAnnual실판매출 !== 0 ? currAnnual제거전 / currAnnual실판매출 : null;
+          prevYearAnnual = prevAnnual실판매출 !== 0 ? prevAnnual제거전 / prevAnnual실판매출 : null;
         }
       }
     } else {

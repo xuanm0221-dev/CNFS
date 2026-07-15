@@ -255,6 +255,7 @@ export default function FinancialTable({
     '(Tag 대비 원가율)': { numerator: '매출원가', denominator: 'Tag매출', multiplier: 1.13 },
     '영업이익률(관리식)': { numerator: '영업이익(관리식)', denominator: '실판매출' },
     '영업이익률(IFRS)': { numerator: '영업이익(IFRS)', denominator: '매출(IFRS)' },
+    'CN 재무식 영업이익률': { numerator: '내부거래 제거전 영업이익(현지기준)', denominator: '실판매출' },
   };
 
   // 분기값 산출: 일반 행은 단순 합, 비율 행은 분자/분모 합산 후 비율 재계산

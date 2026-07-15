@@ -129,6 +129,10 @@ export const ROWS_CORPORATE: ForecastRowDef[] = [
   { account: '매출(IFRS)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
   { account: '영업이익(IFRS)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
   { account: '영업이익률(IFRS)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
+  { account: '내부거래 차이(-)', level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
+  { account: 'Discovery 반품', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '내부거래 제거전 영업이익(현지기준)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
+  { account: 'CN 재무식 영업이익률', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
 ];
 
 export const ROWS_BRAND: ForecastRowDef[] = ROWS_CORPORATE.filter(
@@ -139,6 +143,9 @@ export const FINANCIAL_ADJUST_ACCOUNTS: string[] = [
   '사용권자산', '재무비용', '이연수익', '반품충당부채',
   '매출원가조정(credit)', '기타', '리베이트', '정부보조금',
 ];
+
+// 내부거래 차이(-) 하위 계정 — 재무&관리차이(-)와 별개 (영업이익(IFRS)에 영향 없음)
+export const INTERCOMPANY_ADJUST_ACCOUNTS: string[] = ['Discovery 반품'];
 
 // ─── 시나리오 공용 타입 & 상수 ───────────────────────────────────────────────
 export type SalesBrand = 'MLB' | 'MLB KIDS' | 'DISCOVERY' | 'DUVETICA' | 'SUPRA';

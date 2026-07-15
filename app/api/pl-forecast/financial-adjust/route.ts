@@ -11,6 +11,8 @@ const ADJUST_ACCOUNTS = [
   '사용권자산', '재무비용', '이연수익', '반품충당부채',
   '매출원가조정(credit)', '기타', '리베이트', '정부보조금',
   '매출조정(재무식)',
+  // 내부거래 차이(-) 하위 — 재무&관리차이(-)에는 합산되지 않음
+  'Discovery 반품',
 ];
 
 export async function GET(req: NextRequest) {

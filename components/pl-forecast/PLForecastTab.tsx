@@ -16,6 +16,7 @@ import {
   ROWS_BRAND,
   ROWS_CORPORATE,
   FINANCIAL_ADJUST_ACCOUNTS,
+  INTERCOMPANY_ADJUST_ACCOUNTS,
   SCENARIO_DEFS,
   SCENARIO_ORDER,
   computeEffectiveGrowthRates,
@@ -739,6 +740,28 @@ function deriveCalculated(
       return oi / sales;
     });
 
+    // 내부거래 차이(-) — 재무&관리차이(-)와 별개 그룹 (영업이익(IFRS)에는 영향 없음)
+    for (const acc of INTERCOMPANY_ADJUST_ACCOUNTS) {
+      monthly[acc] = adjustData26[acc] ?? new Array(12).fill(0);
+    }
+    monthly['내부거래 차이(-)'] = makeMonthlyArray((idx) =>
+      INTERCOMPANY_ADJUST_ACCOUNTS.reduce((sum, acc) => sum + ((monthly[acc]?.[idx]) ?? 0), 0)
+    );
+    // 내부거래 제거전 영업이익(현지기준) = 영업이익(IFRS) - 내부거래 차이(-)
+    monthly['내부거래 제거전 영업이익(현지기준)'] = makeMonthlyArray((idx) => {
+      const oi = monthly['영업이익(IFRS)']?.[idx] ?? null;
+      const inter = monthly['내부거래 차이(-)']?.[idx] ?? 0;
+      if (oi === null) return null;
+      return oi - inter;
+    });
+    // CN 재무식 영업이익률 = 내부거래 제거전 영업이익(현지기준) / 실판매출(V-)
+    monthly['CN 재무식 영업이익률'] = makeMonthlyArray((idx) => {
+      const oi = monthly['내부거래 제거전 영업이익(현지기준)']?.[idx] ?? null;
+      const sales = monthly['실판매출']?.[idx] ?? null;
+      if (oi === null || sales === null || sales === 0) return null;
+      return oi / sales;
+    });
+
     // FY25 연간: 하위 계정
     if (adjustData25 && Object.keys(adjustData25).length > 0) {
       for (const acc of FINANCIAL_ADJUST_ACCOUNTS) {
@@ -759,6 +782,25 @@ function deriveCalculated(
     annual2025['영업이익률(IFRS)'] =
       (annual2025['매출(IFRS)'] ?? 0) !== 0
         ? (annual2025['영업이익(IFRS)'] as number) / (annual2025['매출(IFRS)'] as number)
+        : null;
+
+    // FY25 연간: 내부거래 차이(-) + 내부거래 제거전 영업이익(현지기준)
+    if (adjustData25 && Object.keys(adjustData25).length > 0) {
+      for (const acc of INTERCOMPANY_ADJUST_ACCOUNTS) {
+        const arr = adjustData25[acc] ?? new Array(12).fill(0);
+        annual2025[acc] = arr.reduce((s: number, v) => s + ((v as number) ?? 0), 0);
+      }
+    } else {
+      for (const acc of INTERCOMPANY_ADJUST_ACCOUNTS) annual2025[acc] = 0;
+    }
+    annual2025['내부거래 차이(-)'] = INTERCOMPANY_ADJUST_ACCOUNTS.reduce(
+      (sum, acc) => sum + ((annual2025[acc] as number) ?? 0), 0
+    );
+    annual2025['내부거래 제거전 영업이익(현지기준)'] =
+      ((annual2025['영업이익(IFRS)'] ?? 0) as number) - ((annual2025['내부거래 차이(-)'] ?? 0) as number);
+    annual2025['CN 재무식 영업이익률'] =
+      (annual2025['실판매출'] ?? 0) !== 0
+        ? (annual2025['내부거래 제거전 영업이익(현지기준)'] as number) / (annual2025['실판매출'] as number)
         : null;
   }
 
@@ -1912,6 +1954,8 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
 
   const ADJUST_ROW_ACCOUNTS = new Set([
     '재무&관리차이(-)', ...FINANCIAL_ADJUST_ACCOUNTS, '매출(IFRS)', '영업이익(IFRS)', '영업이익률(IFRS)',
+    '내부거래 차이(-)', ...INTERCOMPANY_ADJUST_ACCOUNTS, '내부거래 제거전 영업이익(현지기준)',
+    'CN 재무식 영업이익률',
   ]);
   const rowDefs = useMemo(() => {
     const base = activeBrand === null ? ROWS_CORPORATE : ROWS_BRAND;
@@ -2188,6 +2232,14 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       const annualSales = sumOrNull(getRowSeries('매출(IFRS)').monthly);
       if (annualOiF === null || annualSales === null || annualSales === 0) return null;
       return annualOiF / annualSales;
+    }
+
+    // 율은 단순 합산 불가 — 분자/분모 연간 합으로 재계산
+    if (account === 'CN 재무식 영업이익률') {
+      const annualPre = sumOrNull(getRowSeries('내부거래 제거전 영업이익(현지기준)').monthly);
+      const annualSales = sumOrNull(getRowSeries('실판매출').monthly);
+      if (annualPre === null || annualSales === null || annualSales === 0) return null;
+      return annualPre / annualSales;
     }
 
     if (account === '(Tag 대비 원가율)') {
@@ -3061,6 +3113,12 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
       if (oiF === null || sales === null || sales === 0) return null;
       return oiF / sales;
     }
+    if (account === 'CN 재무식 영업이익률') {
+      const pre = sumOrNull(gs('내부거래 제거전 영업이익(현지기준)'));
+      const sales = sumOrNull(gs('실판매출'));
+      if (pre === null || sales === null || sales === 0) return null;
+      return pre / sales;
+    }
     if (account === '(Tag 대비 원가율)') {
       const tag = sumOrNull(gs('Tag매출'));
       const cogs = sumOrNull(gs('매출원가'));
@@ -3825,7 +3883,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                 const series = getRowSeries(row.account);
                 const annual26 = getAnnual26Value(row.account);
                 const isYoyRow = YOY_ROW_ACCOUNTS.has(row.account);
-                const isRateYoY = row.account === '영업이익률(관리식)' || row.account === '영업이익률(IFRS)' || row.account === '(Tag 대비 원가율)';
+                const isRateYoY = row.account === '영업이익률(관리식)' || row.account === '영업이익률(IFRS)' || row.account === '(Tag 대비 원가율)' || row.account === 'CN 재무식 영업이익률';
                 const yoyText = isYoyRow
                   ? ''
                   : isRateYoY
@@ -3960,6 +4018,11 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                             const oiYtd = sumOrNull(getRowSeries('영업이익(IFRS)').monthly.slice(0, latestActualMonth));
                             const salesYtd = sumOrNull(getRowSeries('매출(IFRS)').monthly.slice(0, latestActualMonth));
                             return oiYtd !== null && salesYtd !== null && salesYtd !== 0 ? formatValue(oiYtd / salesYtd, 'percent') : '';
+                          }
+                          if (row.account === 'CN 재무식 영업이익률') {
+                            const preYtd = sumOrNull(getRowSeries('내부거래 제거전 영업이익(현지기준)').monthly.slice(0, latestActualMonth));
+                            const salesYtd = sumOrNull(getRowSeries('실판매출').monthly.slice(0, latestActualMonth));
+                            return preYtd !== null && salesYtd !== null && salesYtd !== 0 ? formatValue(preYtd / salesYtd, 'percent') : '';
                           }
                           if (row.account === '(Tag 대비 원가율)') {
                             const cogsYtd = sumOrNull(getRowSeries('매출원가').monthly.slice(0, latestActualMonth));
