@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Download } from 'lucide-react';
 import Tabs from '@/components/Tabs';
 import Header from '@/components/Header';
 import YearTabs from '@/components/YearTabs';
@@ -42,6 +42,7 @@ export default function Home() {
   const [plMonthsCollapsed, setPlMonthsCollapsed] = useState<boolean>(true); // PL 월별 데이터 접기
   const [plQuarterlyMode, setPlQuarterlyMode] = useState<boolean>(true); // PL 분기보기 (월별 12개 컬럼을 1Q~4Q 4개 컬럼으로 교체) — 기본값 true
   const [plAllRowsCollapsed, setPlAllRowsCollapsed] = useState<boolean>(true); // PL 모든 행 접기
+  const [plJsonDownloading, setPlJsonDownloading] = useState<boolean>(false); // 손익계산서 JSON 다운로드 진행중
   const [summaryData, setSummaryData] = useState<ExecutiveSummaryData | null>(null);
   const [plData, setPlData] = useState<TableRow[] | null>(null);
   const [bsData, setBsData] = useState<TableRow[] | null>(null);
@@ -286,6 +287,65 @@ export default function Home() {
     []
   );
   const tabTypes: TabType[] = ['SUMMARY', 'PL', 'BS', 'CF', 'CREDIT', 'INVENTORY', 'PL', 'PL_CF'];
+
+  // 손익계산서 JSON 다운로드 — 선택 연도의 전 브랜드(법인 포함) × 월별 1~12월 × 계정 전체
+  // values는 API가 이미 1~12월 12개만 반환 (분기/YTD/연간은 UI 파생값이라 미포함)
+  const downloadPlJson = async () => {
+    setPlJsonDownloading(true);
+    try {
+      const year = plYear;
+      const baseParam = year === 2025 || year === 2026 ? `&baseMonth=${baseMonth}` : '';
+
+      const results = await Promise.all(
+        brands.map(async (b) => {
+          const url =
+            b.id === null
+              ? `/api/fs/pl?year=${year}${baseParam}`
+              : `/api/fs/pl/brand?brand=${b.id}&year=${year}${baseParam}`;
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) throw new Error(`${b.label} 데이터를 불러오지 못했습니다.`);
+          const json = await res.json();
+          const rows: TableRow[] = json.rows ?? [];
+          // 손익계산서 표 구조 그대로 (레벨·포맷 등 메타 포함). 전년대비 비교값(comparisons)은 월별이 아니라 제외.
+          return [
+            b.label,
+            rows.map((r) => ({
+              account: r.account,
+              ...(r.displayLabel ? { displayLabel: r.displayLabel } : {}),
+              level: r.level,
+              isGroup: r.isGroup,
+              isCalculated: r.isCalculated,
+              ...(r.isBold ? { isBold: r.isBold } : {}),
+              ...(r.isHighlight ? { isHighlight: r.isHighlight } : {}),
+              format: r.format ?? 'number',
+              values: r.values,
+            })),
+          ] as const;
+        })
+      );
+
+      // 대시보드는 한국시간(KST) 기준
+      const kstIso = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('Z', '+09:00');
+      const payload = {
+        year,
+        exportedAt: kstIso,
+        note: '월별 1~12월 손익계산서 (계정 전체). values = [1월, 2월, …, 12월]',
+        brands: Object.fromEntries(results),
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `손익계산서_${year}_월별_브랜드별_${kstIso.slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'JSON 다운로드에 실패했습니다.');
+    } finally {
+      setPlJsonDownloading(false);
+    }
+  };
 
   // 데이터 로딩
   const loadData = async (type: TabType, year?: number, month?: number, brand?: string | null) => {
@@ -673,6 +733,17 @@ export default function Home() {
                 <YearTabs years={[2024, 2025, 2026]} activeYear={plYear} onChange={setPlYear} />
                 <div className="h-6 w-px bg-slate-300 mx-1"></div>
                 <BrandTabs brands={brands} activeBrand={plBrand} onChange={setPlBrand} />
+
+                {/* JSON 다운로드 — 선택 연도 × 전 브랜드 × 월별 1~12월 × 계정 전체 */}
+                <button
+                  onClick={downloadPlJson}
+                  disabled={plJsonDownloading}
+                  title={`${plYear}년 브랜드별·월별(1~12월) 손익계산서 전체 계정 JSON 다운로드`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5 text-slate-400" />
+                  {plJsonDownloading ? '생성 중…' : `${plYear} JSON`}
+                </button>
 
                 {/* 컨트롤 버튼 (펼치기/월별/YTD) */}
                 <div className="ml-auto flex items-center gap-1.5">
