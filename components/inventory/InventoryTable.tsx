@@ -212,10 +212,14 @@ export default function InventoryTable({
   vsSimByKey,
 }: Props) {
   const titleMeta = parseTitleMeta(title);
-  const isWoiEditable = year === 2026 && !!onWoiChange;
+  const isWoiEditable = (year === 2026 || year === 2027) && !!onWoiChange;
   const isAccRow = (key: string) => ACC_KEYS.includes(key as AccKey);
   const isClothingLeafRow = (row: InventoryRow | YoyRow) => !isYoyRow(row) && SEASON_KEYS.includes((row as InventoryRow).key as SeasonKey);
   const isWoiEditableForRow = (row: InventoryRow) => isWoiEditable && row.isLeaf && isAccRow(row.key);
+  // 2027: OTB(2026 동일) 반영 셀 = 의류 당년F/당년S/차기시즌 (대리상 Sell-in · 본사 대리상출고)
+  const isOtb2027Season = (row: InventoryRow | YoyRow) =>
+    year === 2027 && !isYoyRow(row) && (row as InventoryRow).isLeaf
+    && ['당년F', '당년S', '차기시즌'].includes((row as InventoryRow).key);
   const isHqSellEditableForRow = (row: InventoryRow) =>
     year === 2026 &&
     tableType === 'hq' &&
@@ -316,6 +320,12 @@ export default function InventoryTable({
               <th className={TH} style={{ width: '5%', minWidth: 50 }}>
                 {sellInLabel}<br />
                 <span className="font-normal text-[10px] text-slate-500">(연간)</span>
+                {year === 2027 && tableType === 'hq' && (
+                  <>
+                    <br />
+                    <span className="font-normal text-[10px] text-red-600">(수입+위탁)</span>
+                  </>
+                )}
               </th>
               <th className={TH} style={{ width: '5%', minWidth: 50 }}>
                 {sellOutLabel}<br />
@@ -421,7 +431,10 @@ export default function InventoryTable({
                     : formatKValue(row.opening)}
                 </td>
                 {/* Sell-in (연간) — 2026 본사 leaf면 편집 가능 */}
-                <td className={`${cellCls(row)} ${getHqSellInBoxClass(tableType, row)} ${getDealerYoySellInBoxClass(tableType, row)}`}>
+                <td
+                  className={`${cellCls(row)} ${getHqSellInBoxClass(tableType, row)} ${getDealerYoySellInBoxClass(tableType, row)}`}
+                  title={tableType === 'dealer' && isOtb2027Season(row) ? '2026년 OTB' : undefined}
+                >
                   {isYoyRow(row) ? (() => { const v = 'yoySellIn' in row ? row.yoySellIn : yoySellIn; return v != null ? formatPct(v * 100) : '-'; })() : isHqSellEditableForRow(row as InventoryRow) && onHqSellInChange ? (
                     <div
                       className={`${editableCellCls} ${editableCellBgCls}`}
@@ -452,7 +465,10 @@ export default function InventoryTable({
                   )}
                 </td>
                 {/* Sell-out (연간) — 2026 본사 leaf면 편집 가능 */}
-                <td className={`${cellCls(row)} ${getDealerYoySellOutBoxClass(tableType, row)}`}>
+                <td
+                  className={`${cellCls(row)} ${getDealerYoySellOutBoxClass(tableType, row)}`}
+                  title={tableType === 'hq' && isOtb2027Season(row) ? '2026년 OTB' : undefined}
+                >
                   {isYoyRow(row) ? (() => { const v = 'yoySellOut' in row ? row.yoySellOut : yoySellOut; return v != null ? formatPct(v * 100) : '-'; })() : isHqSellEditableForRow(row as InventoryRow) && onHqSellOutChange ? (
                     <div
                       className={`${editableCellCls} ${editableCellBgCls}`}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { ScenarioKey, SalesBrand } from '@/components/pl-forecast/plForecastConfig';
 import { SCENARIO_DEFS, SCENARIO_ORDER } from '@/components/pl-forecast/plForecastConfig';
 
-const YEARS = [2025, 2026];
+const YEARS = [2025, 2026, 2027];
 
 /** 성장률 입력 컨트롤 — 표 제목 우측용 */
 export interface GrowthRateControlProps {
@@ -148,8 +148,8 @@ export default function InventoryFilterBar({
 
         <div className="h-4 w-px bg-gray-300 flex-shrink-0" />
 
-        {/* 재고,리테일,출고,입고 저장 / 저장완료+재계산 — 2025년은 확정 실적이므로 미표시 */}
-        {year !== 2025 && (
+        {/* 재고,리테일,출고,입고 저장 / 저장완료+재계산 — 2025(확정 실적)·2027(파생 sim)은 미표시 */}
+        {year === 2026 && (
           !snapshotSaved ? (
             <button
               type="button"

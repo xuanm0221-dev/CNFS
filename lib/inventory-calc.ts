@@ -239,7 +239,7 @@ export function applyAccTargetWoiOverlay(
   accHqHoldingWoi: Record<AccKey, number>,
   year: number
 ): { dealer: InventoryTableData; hq: InventoryTableData } {
-  if (year !== 2026) return { dealer, hq };
+  if (year !== 2026 && year !== 2027) return { dealer, hq };
   const yearDays = calcYearDays(year);
 
   const dealerByKey = Object.fromEntries(

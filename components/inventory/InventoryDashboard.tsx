@@ -14,6 +14,7 @@ import {
   hqTotalClosingAfterDisplay,
   retailAnnualTotalsByRowKey,
 } from '@/lib/inventory-top-table-pipeline';
+import { build2027BrandTables, buildPattern2025, type Pattern2025 } from '@/lib/build-2027-inventory';
 import { SCENARIO_DEFS, SCENARIO_ORDER, BRAND_GROWTH_OFFSET, computeEffectiveGrowthRates, type ScenarioKey, type SalesBrand, type ScenarioInventoryPayload } from '@/components/pl-forecast/plForecastConfig';
 import {
   saveSnapshot,
@@ -41,6 +42,8 @@ const INVENTORY_HQ_CLOSING_KEY = 'inventory_hq_closing_totals';
 const INVENTORY_MONTHLY_TOTAL_KEY = 'inventory_monthly_total_closing';
 const INVENTORY_PURCHASE_MONTHLY_KEY = 'inventory_purchase_monthly_by_brand';
 const INVENTORY_SHIPMENT_MONTHLY_KEY = 'inventory_shipment_monthly_by_brand';
+// 2026 탭이 실제 표시한 재고자산표(브랜드별 대리상·본사) — 2027 기준표로 재사용(기초=26기말 정확 일치)
+const INVENTORY_2026_TOPTABLE_KEY = 'inventory_2026_toptable_by_brand';
 const ANNUAL_PLAN_BRANDS = ['MLB', 'MLB KIDS', 'DISCOVERY'] as const;
 
 /**
@@ -690,6 +693,29 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   const [scenarioInvClosing, setScenarioInvClosing] = useState<Partial<Record<ScenarioKey, Partial<Record<SalesBrand, number>>>> | null>(null);
   const [scenarioInvSavedAt, setScenarioInvSavedAt] = useState<string | null>(null);
 
+  // 2027 파생 재고자산표(브랜드별) — 2026 연간(실시간) 기준 → 리테일 성장·2025 패턴 배부 → 26기말 기초 롤포워드
+  const [topTables2027ByBrand, setTopTables2027ByBrand] = useState<Partial<Record<AnnualPlanBrand, TopTablePair>>>({});
+  const [topTable2027Loading, setTopTable2027Loading] = useState(false);
+  // 2027 성장률(2026 대비, "percent-100" 저장). 기본: MLB 대리상+5·본사+15 / KIDS·DISC 동일(0)
+  const [growth2027ByBrand, setGrowth2027ByBrand] = useState<Record<AnnualPlanBrand, number>>({
+    MLB: 5, 'MLB KIDS': 0, DISCOVERY: 0,
+  });
+  const [growth2027HqByBrand, setGrowth2027HqByBrand] = useState<Record<AnnualPlanBrand, number>>({
+    MLB: 15, 'MLB KIDS': 0, DISCOVERY: 0,
+  });
+  // 2027 ACC 목표 재고주수(시뮬, 2026과 독립). ACC 출고·매입 역산에 사용
+  const [accTargetWoiDealer2027, setAccTargetWoiDealer2027] = useState<Record<AccKey, number>>({
+    '신발': 30, '모자': 20, '가방': 25.5, '기타': 39,
+  } as Record<AccKey, number>);
+  const [accTargetWoiHq2027, setAccTargetWoiHq2027] = useState<Record<AccKey, number>>({
+    '신발': 10, '모자': 8, '가방': 10, '기타': 10,
+  } as Record<AccKey, number>);
+  const [accHqHoldingWoi2027, setAccHqHoldingWoi2027] = useState<Record<AccKey, number>>({
+    '신발': 30, '모자': 20, '가방': 30, '기타': 30,
+  } as Record<AccKey, number>);
+  // 2026 기준표/패턴 캐시 (성장률 무관) — 성장률 조정 시 재fetch 없이 재합성
+  const [basis2027ByBrand, setBasis2027ByBrand] = useState<Partial<Record<AnnualPlanBrand, { basis: TopTablePair; retail2026: RetailSalesResponse; pattern2025: Pattern2025 }>>>({});
+
   // 마운트 시 기존 시나리오 재고 JSON 불러오기
   useEffect(() => {
     fetch('/api/inventory/scenario-inventory')
@@ -935,7 +961,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   const fetchData = useCallback(async () => {
     // 2025/2026 재고자산 데이터는 탭별로 월별/출하/출고/매입 각각으로 나뉘어 로드됩니다.
     // (기존 /api/inventory fallback이 있어도 초기 데이터타입 불일치가 발생)
-    if (year === 2025 || year === 2026) {
+    if (year === 2025 || year === 2026 || year === 2027) {
       setLoading(false);
       setError(null);
       setData(null);
@@ -1122,6 +1148,12 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     };
 
     const run = async () => {
+      if (year === 2027) {
+        // 2027 은 별도 합성 effect(topTables2027ByBrand)가 처리 — API 실적 없음
+        setSnapshotSaved(false);
+        setSnapshotSavedAt(null);
+        return;
+      }
       if (brand === '전체') {
         setSnapshotSaved(false);
         setSnapshotSavedAt(null);
@@ -1229,6 +1261,138 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
       cancelled = true;
     };
   }, [year]);
+
+  // 2027-A: 2026(실시간)·2025 데이터 로드 → 2026 기준표/패턴 캐시 (성장률 무관, 느린 fetch)
+  useEffect(() => {
+    if (year !== 2027) {
+      setTopTable2027Loading(false);
+      return;
+    }
+    let cancelled = false;
+    setTopTable2027Loading(true);
+
+    const run = async () => {
+      try {
+        const [otbJson, plan2026] = await Promise.all([
+          fetch('/api/inventory/otb?year=2026', { cache: 'no-store' })
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
+          fetchAnnualPlanFromServer(2026),
+        ]);
+        if (cancelled) return;
+        const otb2026 = (otbJson?.data ?? null) as OtbData | null;
+        const annualPlan2026 = plan2026 ?? createEmptyAnnualShipmentPlan();
+
+        // 2026 탭이 저장해둔 표시 재고자산표 (있으면 2027 기초=26기말이 정확히 일치)
+        let published2026: Partial<Record<AnnualPlanBrand, TopTablePair>> | null = null;
+        try {
+          const raw = localStorage.getItem(INVENTORY_2026_TOPTABLE_KEY);
+          if (raw) published2026 = (JSON.parse(raw).values ?? null) as Partial<Record<AnnualPlanBrand, TopTablePair>> | null;
+        } catch {
+          published2026 = null;
+        }
+
+        const next: Partial<Record<AnnualPlanBrand, { basis: TopTablePair; retail2026: RetailSalesResponse; pattern2025: Pattern2025 }>> = {};
+        await Promise.all(
+          ANNUAL_PLAN_BRANDS.map(async (b) => {
+            const [m26, r26, s26, p26, s25, p25] = await Promise.all([
+              fetch(`/api/inventory/monthly-stock?${new URLSearchParams({ year: '2026', brand: b })}`).then((r) => r.json()),
+              fetch(`/api/inventory/retail-sales?${new URLSearchParams({ year: '2026', brand: b, growthRate: String(growthRateByBrand[b]), growthRateHq: String(growthRateHqByBrand[b]) })}`).then((r) => r.json()),
+              fetch(`/api/inventory/shipment-sales?${new URLSearchParams({ year: '2026', brand: b })}`).then((r) => r.json()),
+              fetch(`/api/inventory/purchase?${new URLSearchParams({ year: '2026', brand: b })}`).then((r) => r.json()),
+              fetch(inventoryUrl('shipment-sales', 2025, b)).then((r) => r.json()),
+              fetch(inventoryUrl('purchase', 2025, b)).then((r) => r.json()),
+            ]);
+            if (cancelled) return;
+            if (
+              (m26 as { error?: string }).error ||
+              (r26 as { error?: string }).error ||
+              (s26 as { error?: string }).error ||
+              (p26 as { error?: string }).error ||
+              !Array.isArray((m26 as MonthlyStockResponse).dealer?.rows)
+            ) {
+              return;
+            }
+            // 2026 기준표: 2026 탭이 저장한 표시값(정확 일치) 우선 → 없으면 라이브 재계산 fallback
+            const otbDealerSellIn = otbToDealerSellInPlan(otb2026, b);
+            const basis = published2026?.[b] ?? finalize2026InventoryTopTable(
+              m26 as MonthlyStockResponse,
+              r26 as RetailSalesResponse,
+              s26 as ShipmentSalesResponse,
+              p26 as PurchaseResponse,
+              accTargetWoiDealer,
+              accTargetWoiHq,
+              accHqHoldingWoi,
+              annualPlanToHqSellInPlan(annualPlan2026, b),
+              { ...hqSellOutPlan, ...otbDealerSellIn },
+            );
+            next[b] = {
+              basis,
+              retail2026: r26 as RetailSalesResponse,
+              pattern2025: buildPattern2025(s25 as ShipmentSalesResponse, p25 as PurchaseResponse),
+            };
+          }),
+        );
+        if (!cancelled) setBasis2027ByBrand(next);
+      } catch {
+        if (!cancelled) setBasis2027ByBrand({});
+      } finally {
+        if (!cancelled) setTopTable2027Loading(false);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, growthRateByBrand, growthRateHqByBrand, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, hqSellOutPlan]);
+
+  // 2027-B: 캐시된 2026 기준표 + 2027 성장률 → 즉시 재합성 (성장률 조정 시 재fetch 없음)
+  useEffect(() => {
+    if (year !== 2027) return;
+    const brands = ANNUAL_PLAN_BRANDS.filter((b) => basis2027ByBrand[b]);
+    if (brands.length === 0) return;
+
+    const perBrandTables: Partial<Record<AnnualPlanBrand, TopTablePair>> = {};
+    const perBrandMonthly: Partial<Record<LeafBrand, MonthlyStockResponse>> = {};
+    const perBrandRetail: Partial<Record<LeafBrand, RetailSalesResponse>> = {};
+    const perBrandShipment: Partial<Record<LeafBrand, ShipmentSalesResponse>> = {};
+    const perBrandPurchase: Partial<Record<LeafBrand, PurchaseResponse>> = {};
+    for (const b of brands) {
+      const cached = basis2027ByBrand[b]!;
+      const built = build2027BrandTables({
+        brand: b,
+        basis2026: cached.basis,
+        retail2026: cached.retail2026,
+        pattern2025: cached.pattern2025,
+        dealerGrowthFactor: 1 + (growth2027ByBrand[b] ?? 0) / 100,
+        hqGrowthFactor: 1 + (growth2027HqByBrand[b] ?? 0) / 100,
+        accTargetWoiDealer: accTargetWoiDealer2027,
+        accTargetWoiHq: accTargetWoiHq2027,
+        accHqHoldingWoi: accHqHoldingWoi2027,
+      });
+      perBrandTables[b] = { dealer: built.dealer, hq: built.hq };
+      perBrandMonthly[b] = built.monthly;
+      perBrandRetail[b] = built.retail;
+      perBrandShipment[b] = built.shipment;
+      perBrandPurchase[b] = built.purchase;
+    }
+    setTopTables2027ByBrand(perBrandTables);
+    setMonthlyDataByBrand(perBrandMonthly);
+    setRetailDataByBrand(perBrandRetail);
+    setShipmentDataByBrand(perBrandShipment);
+    setPurchaseDataByBrand(perBrandPurchase);
+    const mList = ANNUAL_PLAN_BRANDS.map((b) => perBrandMonthly[b]).filter(Boolean) as MonthlyStockResponse[];
+    const rList = ANNUAL_PLAN_BRANDS.map((b) => perBrandRetail[b]).filter(Boolean) as RetailSalesResponse[];
+    const sList = ANNUAL_PLAN_BRANDS.map((b) => perBrandShipment[b]).filter(Boolean) as ShipmentSalesResponse[];
+    const pList = ANNUAL_PLAN_BRANDS.map((b) => perBrandPurchase[b]).filter(Boolean) as PurchaseResponse[];
+    if (mList.length) setMonthlyData(aggregateMonthlyStock(mList));
+    if (rList.length) setRetailData(aggregateRetailSales(rList));
+    if (sList.length) setShipmentData(aggregateShipmentSales(sList));
+    if (pList.length) setPurchaseData(aggregatePurchase(pList));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, basis2027ByBrand, growth2027ByBrand, growth2027HqByBrand, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi]);
 
   // 직영 ACC 예산 fetch (마운트 시 한 번)
   useEffect(() => {
@@ -1561,6 +1725,13 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   }, [year, retailDataByBrand]);
 
   const topTableData = useMemo(() => {
+    if (year === 2027) {
+      const tables = ANNUAL_PLAN_BRANDS
+        .map((b) => topTables2027ByBrand[b])
+        .filter((t): t is TopTablePair => !!t);
+      if (tables.length === 0) return null;
+      return aggregateTopTables(tables, 2027);
+    }
     if (
       (year !== 2025 && year !== 2026) ||
       !monthlyData ||
@@ -1653,7 +1824,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
       );
     }
     return built;
-  }, [year, brand, monthlyData, effectiveRetailData, shipmentData, purchaseData, monthlyDataByBrand, retailDataByBrand, shipmentDataByBrand, purchaseDataByBrand, annualShipmentPlan2026, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, hqSellOutPlan, otbData]);
+  }, [year, brand, monthlyData, effectiveRetailData, shipmentData, purchaseData, monthlyDataByBrand, retailDataByBrand, shipmentDataByBrand, purchaseDataByBrand, annualShipmentPlan2026, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi, hqSellOutPlan, otbData, topTables2027ByBrand]);
 
   // 대리상 리테일매출(보정) 연간 합계 = 대리상 재고자산표 Sell-out (K→원 변환)
   // 재고자산표 key('재고자산합계') → 리테일표 key('매출합계') 매핑
@@ -1749,6 +1920,15 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
 
   // 브랜드별 전년(2025) top table — YOY 비교용
   const perBrandPrevYearTableData = useMemo<Partial<Record<AnnualPlanBrand, TopTablePair>>>(() => {
+    if (year === 2027) {
+      // 2027 전년비교 = 2026 기준표 → Sell-in/Sell-out·상품매입/대리상출고/본사판매 YoY 표시
+      const result: Partial<Record<AnnualPlanBrand, TopTablePair>> = {};
+      for (const b of ANNUAL_PLAN_BRANDS) {
+        const cached = basis2027ByBrand[b];
+        if (cached) result[b] = cached.basis;
+      }
+      return result;
+    }
     if (year !== 2026) return {};
     const result: Partial<Record<AnnualPlanBrand, TopTablePair>> = {};
     for (const b of ANNUAL_PLAN_BRANDS) {
@@ -1761,7 +1941,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
       }
     }
     return result;
-  }, [year, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, prevYearPurchaseDataByBrand]);
+  }, [year, prevYearMonthlyDataByBrand, prevYearRetailDataByBrand, prevYearShipmentDataByBrand, prevYearPurchaseDataByBrand, basis2027ByBrand]);
 
   // retailDealerAnnualTotalByRowKey / retailHqAnnualTotalByRowKey 는
   // perBrandRetailDealerAnnualByKey / perBrandRetailHqAnnualByKey 이후에 정의 (아래 참조)
@@ -1881,7 +2061,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     );
   }, [year, topTableData, retailDealerAnnualTotalByRowKey, retailHqAnnualTotalByRowKey]);
 
-  const shouldUseTopTableOnly = year === 2025 || year === 2026;
+  const shouldUseTopTableOnly = year === 2025 || year === 2026 || year === 2027;
   const dealerTableData = shouldUseTopTableOnly
     ? (topTableDisplayData?.dealer ?? topTableData?.dealer ?? null)
     : (topTableData?.dealer ?? data?.dealer ?? null);
@@ -2075,6 +2255,9 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
       if (year === 2026) {
         const t = buildBrand2026TopTable(b);
         if (t) result[b] = t;
+      } else if (year === 2027) {
+        const t = topTables2027ByBrand[b];
+        if (t) result[b] = t;
       } else if (year === 2025) {
         const mData = monthlyDataByBrand[b];
         const rData = retailDataByBrand[b];
@@ -2088,7 +2271,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     return result;
   }, [year, brand, buildBrand2026TopTable, monthlyDataByBrand, monthlyData,
       retailDataByBrand, retailData, shipmentDataByBrand, shipmentData,
-      purchaseDataByBrand, purchaseData]);
+      purchaseDataByBrand, purchaseData, topTables2027ByBrand]);
 
   // 브랜드별 2026 display overlay (공유 파이프라인)
   const perBrandTopTableDisplayData = useMemo<Partial<Record<AnnualPlanBrand, TopTablePair>>>(() => {
@@ -2109,6 +2292,22 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     }
     return result;
   }, [year, perBrandTopTable, perBrandRetailDealerAnnualByKey, perBrandRetailHqAnnualByKey]);
+
+  // 2026 탭이 실제 표시하는 재고자산표(display 반영)를 저장 → 2027 기준표로 사용 (2027 기초 = 2026 기말 정확 일치)
+  useEffect(() => {
+    if (typeof window === 'undefined' || year !== 2026) return;
+    const payload: Partial<Record<AnnualPlanBrand, TopTablePair>> = {};
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const t = perBrandTopTableDisplayData[b] ?? perBrandTopTable[b];
+      if (t) payload[b] = t;
+    }
+    if (Object.keys(payload).length === 0) return;
+    try {
+      localStorage.setItem(INVENTORY_2026_TOPTABLE_KEY, JSON.stringify({ values: payload, updatedAt: Date.now() }));
+    } catch {
+      // ignore quota errors
+    }
+  }, [year, perBrandTopTable, perBrandTopTableDisplayData]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || year !== 2026) return;
@@ -3199,7 +3398,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   }, [year, brand, effectiveDealerMonthlyDisplayData, effectiveHqMonthlyDisplayData, publishMonthlyInventoryTotalByBrand]);
   const yoyPending = year === 2026 && !prevYearError && (prevYearLoading || !prevYearTableData);
   const statusLoading =
-    loading || monthlyLoading || retailLoading || shipmentLoading || purchaseLoading || recalcLoading || yoyPending;
+    loading || monthlyLoading || retailLoading || shipmentLoading || purchaseLoading || recalcLoading || yoyPending || topTable2027Loading;
   const statusError = !!error || !!monthlyError || !!retailError || !!shipmentError || !!purchaseError || prevYearError;
   const statusErrorMessage = error || monthlyError || retailError || shipmentError || purchaseError || prevYearError || null;
 
@@ -3228,6 +3427,19 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
       accHqHoldingWoiRef.current = next;
       return next;
     });
+  }, []);
+
+  // 2027 시뮬: ACC 목표 재고주수 인라인 편집 (표에서 직접) — 2027 전용 state 갱신
+  const handleWoiChange2027 = useCallback((tableType: 'dealer' | 'hq', rowKey: string, newWoi: number) => {
+    if (!ACC_KEYS.includes(rowKey as AccKey)) return;
+    if (tableType === 'dealer') {
+      setAccTargetWoiDealer2027((prev) => ({ ...prev, [rowKey]: newWoi }));
+    } else {
+      setAccTargetWoiHq2027((prev) => ({ ...prev, [rowKey]: newWoi }));
+    }
+  }, []);
+  const handleHqHoldingWoiChange2027 = useCallback((rowKey: AccKey, newWoi: number) => {
+    setAccHqHoldingWoi2027((prev) => ({ ...prev, [rowKey]: newWoi }));
   }, []);
 
   const handleHqSellOutChange = useCallback((rowKey: RowKey, newSellOutTotal: number) => {
@@ -3414,7 +3626,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
         onSave={handleSave}
         onRecalc={handleRecalc}
         canSave={!!(monthlyData && retailData && shipmentData && purchaseData)}
-        allBrandsBgLoaded={year === 2025 || (year === 2026 && allBrandsBgLoaded)}
+        allBrandsBgLoaded={year === 2025 || (year === 2026 && allBrandsBgLoaded) || (year === 2027 && !topTable2027Loading)}
         brandBgLoadedCount={year === 2026 ? brandBgLoadedCount : 0}
         totalBrands={ANNUAL_PLAN_BRANDS.length}
         scenarioInvStatus={year === 2026 ? scenarioInvStatus : undefined}
@@ -3434,6 +3646,70 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
         {statusErrorMessage && !statusLoading && !dealerTableData && (
           <div className="py-10 text-center text-red-500 text-sm">{statusErrorMessage}</div>
         )}
+        {/* 2027 성장률 조정 (시뮬) — 조정 시 재fetch 없이 즉시 재계산 */}
+        {year === 2027 && (
+          <div className="mb-6 mt-4" style={{ paddingLeft: '1.5%', paddingRight: '1.5%' }}>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_6px_18px_rgba(15,23,42,0.06)]">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-slate-800">2027 리테일 성장율 (2026 대비)</span>
+                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200">시뮬 · 조정 시 자동 재계산</span>
+                {topTable2027Loading && <span className="text-[11px] text-slate-400">데이터 로딩중…</span>}
+              </div>
+              <div className="mb-3 text-xs text-slate-500">
+                대리상 = 대리상 리테일(판매) 성장 · 본사 = 직영 리테일 성장. 공급(OTB·본사매입·출고)은 2026 동일, 기초재고 = 2026 기말.
+              </div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                {ANNUAL_PLAN_BRANDS.map((b) => (
+                  <div key={`g2027-${b}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span className="text-sm font-bold text-slate-800">{b}</span>
+                    <span className="text-slate-300">:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-xs font-medium ${100 + growth2027ByBrand[b] >= 100 ? 'text-sky-700' : 'text-rose-700'}`}>대리상</span>
+                      <input
+                        type="number"
+                        className={`w-[64px] rounded-md border px-2 py-1 text-right text-sm font-semibold tabular-nums shadow-sm focus:outline-none focus:ring-2 ${
+                          100 + growth2027ByBrand[b] >= 100
+                            ? 'border-sky-300 bg-sky-50 text-sky-900 focus:border-sky-500 focus:ring-sky-100'
+                            : 'border-rose-300 bg-rose-50 text-rose-900 focus:border-rose-500 focus:ring-rose-100'
+                        }`}
+                        value={100 + growth2027ByBrand[b]}
+                        onChange={(e) => {
+                          const raw = Number(e.target.value);
+                          if (!Number.isFinite(raw)) return;
+                          setGrowth2027ByBrand((prev) => ({ ...prev, [b]: raw - 100 }));
+                        }}
+                        step={1}
+                      />
+                      <span className="text-xs text-slate-500">%</span>
+                    </div>
+                    <span className="text-slate-300">|</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-xs font-medium ${100 + growth2027HqByBrand[b] >= 100 ? 'text-sky-700' : 'text-rose-700'}`}>본사</span>
+                      <input
+                        type="number"
+                        className={`w-[64px] rounded-md border px-2 py-1 text-right text-sm font-semibold tabular-nums shadow-sm focus:outline-none focus:ring-2 ${
+                          100 + growth2027HqByBrand[b] >= 100
+                            ? 'border-sky-300 bg-sky-50 text-sky-900 focus:border-sky-500 focus:ring-sky-100'
+                            : 'border-rose-300 bg-rose-50 text-rose-900 focus:border-rose-500 focus:ring-rose-100'
+                        }`}
+                        value={100 + growth2027HqByBrand[b]}
+                        onChange={(e) => {
+                          const raw = Number(e.target.value);
+                          if (!Number.isFinite(raw)) return;
+                          setGrowth2027HqByBrand((prev) => ({ ...prev, [b]: raw - 100 }));
+                        }}
+                        step={1}
+                      />
+                      <span className="text-xs text-slate-500">%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-xs text-slate-400">ACC 목표 재고주수는 아래 재고자산표에서 직접 수정하세요 (ACC 행의 재고주수 셀 클릭 · 본사판매용은 본사표 하단).</div>
+            </div>
+          </div>
+        )}
+
         {/* 브랜드별 대리상 판매추정 / 판매 섹션 (2026) */}
         {year === 2026 && (() => {
           const ESTIMATE_TABLES = [
@@ -3996,15 +4272,17 @@ ORDER BY YYYYMM;
                   >
                     YoY 컬럼 {isYoyOpen ? '접기 ▲' : '펼치기 ▼'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setPlModalBrand(b)}
-                    disabled={!perBrandTopTableDisplayData[b] && !perBrandTopTable[b]}
-                    className="shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100 disabled:opacity-50"
-                    title={`${b} PL용 재고자산표 모달 열기`}
-                  >
-                    PL용 보기 ↗
-                  </button>
+                  {year !== 2027 && (
+                    <button
+                      type="button"
+                      onClick={() => setPlModalBrand(b)}
+                      disabled={!perBrandTopTableDisplayData[b] && !perBrandTopTable[b]}
+                      className="shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100 disabled:opacity-50"
+                      title={`${b} PL용 재고자산표 모달 열기`}
+                    >
+                      PL용 보기 ↗
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -4029,7 +4307,7 @@ ORDER BY YYYYMM;
                     sellOutLabel="Sell-out"
                     tableType="dealer"
                     prevYearData={prevData?.dealer ?? null}
-                    onWoiChange={year === 2026 ? handleWoiChange : undefined}
+                    onWoiChange={year === 2026 ? handleWoiChange : year === 2027 ? handleWoiChange2027 : undefined}
                     prevYearTotalOpening={undefined}
                     prevYearTotalSellIn={prevData?.dealer.rows.find((r) => r.key === '재고자산합계')?.sellInTotal}
                     prevYearTotalSellOut={prevData?.dealer.rows.find((r) => r.key === '재고자산합계')?.sellOutTotal}
@@ -4059,7 +4337,7 @@ ORDER BY YYYYMM;
                     sellOutLabel="대리상출고"
                     tableType="hq"
                     prevYearData={prevData?.hq ?? null}
-                    onWoiChange={year === 2026 ? handleWoiChange : undefined}
+                    onWoiChange={year === 2026 ? handleWoiChange : year === 2027 ? handleWoiChange2027 : undefined}
                     prevYearTotalOpening={undefined}
                     prevYearTotalSellIn={prevData?.hq.rows.find((r) => r.key === '재고자산합계')?.sellInTotal}
                     prevYearTotalSellOut={prevData?.hq.rows.find((r) => r.key === '재고자산합계')?.sellOutTotal}
@@ -4067,6 +4345,8 @@ ORDER BY YYYYMM;
                     showYoyColumns={inventoryBrandYoyOpen[b]}
                     bottomContent={year === 2026 ? (
                       <HqHoldingWoiTable values={accHqHoldingWoi} onChange={handleHqHoldingWoiChange} horizontal />
+                    ) : year === 2027 ? (
+                      <HqHoldingWoiTable values={accHqHoldingWoi2027} onChange={handleHqHoldingWoiChange2027} horizontal />
                     ) : undefined}
                   />
                 </div>
@@ -4314,7 +4594,7 @@ ORDER BY YYYYMM;
             </SectionIcon>
             <span className="text-sm font-bold text-gray-700">월별 재고잔액</span>
             <span className="text-xs font-normal text-gray-400">
-              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : `(단위: CNY K / 실적 기준: ~${monthlyData?.closedThrough ?? '--'})`}
+              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : year === 2027 ? '(단위: CNY K / 2027 예상: 기초=26기말 롤포워드 · 전월 F)' : `(단위: CNY K / 실적 기준: ~${monthlyData?.closedThrough ?? '--'})`}
             </span>
             {monthlyPlanSummaryText && (
               <span className="text-xs font-normal text-red-600">
@@ -4354,7 +4634,7 @@ ORDER BY YYYYMM;
                 if (!brandMonthly || brandMonthly.dealer.rows.length === 0) return null;
                 const dealerData = (year === 2026 ? perBrandDealerMonthlyDisplayData[b] : null) ?? (brandMonthly.dealer as TableData);
                 const hqData = (year === 2026 ? perBrandHqMonthlyDisplayData[b] : null) ?? (brandMonthly.hq as TableData);
-                const bPlanFromMonth = year === 2026 ? derivePlanFromMonth(brandMonthly.closedThrough, year) : undefined;
+                const bPlanFromMonth = year === 2026 ? derivePlanFromMonth(brandMonthly.closedThrough, year) : year === 2027 ? 1 : undefined;
                 return (
                   <div key={b} className={b === 'MLB' ? '' : 'mt-8'}>
                     <div className="text-sm font-bold text-gray-800 mb-1 pt-1 border-t border-gray-400">{b}</div>
@@ -4404,7 +4684,7 @@ ORDER BY YYYYMM;
             </SectionIcon>
             <span className="text-sm font-bold text-gray-700">{year === 2025 ? '본사 리테일매출' : '리테일 매출'}</span>
             <span className="text-xs font-normal text-gray-400">
-              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : year === 2026 ? `(단위: CNY K / 실적 기준: ~${retailData?.closedThrough ?? '--'}, 이후 성장률 보정)` : `(단위: CNY K / 실적 기준: ~${retailData?.closedThrough ?? '--'})`}
+              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : year === 2026 ? `(단위: CNY K / 실적 기준: ~${retailData?.closedThrough ?? '--'}, 이후 성장률 보정)` : '(단위: CNY K / 2027 예상: 2026 월별 × 성장률 · 전월 F)'}
             </span>
             {year === 2026 && (
               <code className="font-mono font-semibold text-blue-600 text-xs select-all">
@@ -4494,7 +4774,7 @@ ORDER BY YYYYMM;
             </SectionIcon>
             <span className="text-sm font-bold text-gray-700">본사→대리상 출고매출</span>
             <span className="text-xs font-normal text-gray-400">
-              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : `(단위: CNY K / 실적 기준: ~${shipmentData?.closedThrough ?? '--'})`}
+              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : year === 2027 ? '(단위: CNY K / 2027 예상: 2026 연간 · 2025 패턴 배부 · 전월 F)' : `(단위: CNY K / 실적 기준: ~${shipmentData?.closedThrough ?? '--'})`}
             </span>
             {year === 2026 && (
               <code className="font-mono font-semibold text-blue-600 text-xs select-all">
@@ -4535,7 +4815,7 @@ ORDER BY YYYYMM;
                       data={displayData}
                       year={year}
                       showOpening={false}
-                      planFromMonth={year === 2026 ? shipmentPlanFromMonth : undefined}
+                      planFromMonth={year === 2026 ? shipmentPlanFromMonth : year === 2027 ? 1 : undefined}
                       validationHeader={year === 2026 ? '검증' : undefined}
                       validationByRowKey={year === 2026 ? (() => {
                         const result: Record<string, number | null> = {};
@@ -4573,7 +4853,7 @@ ORDER BY YYYYMM;
             </SectionIcon>
             <span className="text-sm font-bold text-gray-700">본사 매입상품</span>
             <span className="text-xs font-normal text-gray-400">
-              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : `(단위: CNY K / 실적 기준: ~${purchaseData?.closedThrough ?? '--'})`}
+              {year === 2025 ? '(단위: CNY K / 실적: 1~12월)' : year === 2027 ? '(단위: CNY K / 2027 예상: 2026 연간 · 2025 패턴 배부 · 전월 F)' : `(단위: CNY K / 실적 기준: ~${purchaseData?.closedThrough ?? '--'})`}
             </span>
             {year === 2026 && (
               <code className="font-mono font-semibold text-blue-600 text-xs select-all">
@@ -4614,7 +4894,7 @@ ORDER BY YYYYMM;
                       data={displayData}
                       year={year}
                       showOpening={false}
-                      planFromMonth={year === 2026 ? purchasePlanFromMonth : undefined}
+                      planFromMonth={year === 2026 ? purchasePlanFromMonth : year === 2027 ? 1 : undefined}
                       annualTotalByRowKey={year === 2026 ? (perBrandPurchaseAnnualByKey[b] ?? undefined) : undefined}
                       validationHeader={year === 2026 ? '검증' : undefined}
                       validationByRowKey={year === 2026 ? (perBrandPurchaseValidationByKey[b] ?? undefined) : undefined}
