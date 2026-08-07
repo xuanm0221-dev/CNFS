@@ -59,6 +59,8 @@ export interface CFExplanationNumbers {
   비용증감_top3: Array<{ name: string; yoy: number; curr: number; prev: number }>;
   // 계획대비 증감 (Rolling - 계획) — cashFlow 섹션 분석용
   매출수금_planVs: number;
+  /** 매출수금 계획대비 증감 브랜드별 분해 (CF(sim) 전용, 0M 브랜드 제외). 설명에 "매출수금 △23M (브랜드별)" 표시용 */
+  매출수금_planVs_brands?: Array<{ name: string; planVs: number }>;
   물품대_planVs: number;
   영업활동_planVs: number;
   자산성지출_planVs: number;
@@ -100,6 +102,7 @@ const ZERO: CFExplanationNumbers = {
   대리상AR_yoy: 0,
   비용증감_top3: [],
   매출수금_planVs: 0,
+  매출수금_planVs_brands: [],
   물품대_planVs: 0,
   영업활동_planVs: 0,
   자산성지출_planVs: 0,

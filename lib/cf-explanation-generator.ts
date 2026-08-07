@@ -41,11 +41,26 @@ function buildExpenseAnalysisLines(items: CFExplanationNumbers['비용증감_top
   if (items.length === 0) {
     return ['ㄴ 비용 항목 계획 대비 모두 절감 또는 변동 없음.'];
   }
-  const mainLine = `ㄴ 비용 증감 분석: ${items.map((t) => `${t.name} ${M(-t.yoy)}`).join(', ')}.`;
+  // Withholding/VAT 와 수입증치세가 동시에 나올 때는 두 항목을 합계 1개로 병합해 표시
+  let displayItems = items;
+  const dutyIdx = items.findIndex((t) => t.name === '수입증치세');
+  const whtIdx = items.findIndex((t) => t.name === 'Withholding/VAT');
+  if (dutyIdx >= 0 && whtIdx >= 0) {
+    const sumYoy = items[dutyIdx].yoy + items[whtIdx].yoy;
+    const rest = items.filter((t) => t.name !== '수입증치세' && t.name !== 'Withholding/VAT');
+    displayItems = isZeroM(sumYoy)
+      ? rest
+      : [...rest, { name: 'Withholding/VAT,수입증치세', yoy: sumYoy, curr: 0, prev: 0 }]
+          .sort((a, b) => Math.abs(b.yoy) - Math.abs(a.yoy));
+  }
+  if (displayItems.length === 0) {
+    return ['ㄴ 비용 항목 계획 대비 모두 절감 또는 변동 없음.'];
+  }
+  const mainLine = `ㄴ 비용 증감 분석: ${displayItems.map((t) => `${t.name} ${M(-t.yoy)}`).join(', ')}.`;
   const lines = [mainLine];
 
   let markerIdx = 0;
-  for (const item of items) {
+  for (const item of displayItems) {
     const explanations = EXPENSE_EXPLANATIONS[item.name];
     if (!explanations) continue;
     for (const exp of explanations) {
@@ -80,7 +95,13 @@ export function generateCFExplanationContent(n: CFExplanationNumbers): CFExplana
       const lines: string[] = [];
       // 영업활동: 매출수금/물품대 중 0 아닌 것만 표시
       const opParts: string[] = [];
-      if (!isZeroM(n.매출수금_planVs)) opParts.push(`매출수금 ${M(n.매출수금_planVs)}`);
+      if (!isZeroM(n.매출수금_planVs)) {
+        const 수금브랜드 = n.매출수금_planVs_brands ?? [];
+        const 브랜드문구 = 수금브랜드.length > 0
+          ? ` (${수금브랜드.map((b) => `${b.name} ${M(b.planVs)}`).join(', ')})`
+          : '';
+        opParts.push(`매출수금 ${M(n.매출수금_planVs)}${브랜드문구}`);
+      }
       if (!isZeroM(n.물품대_planVs)) opParts.push(`물품대 ${M(-n.물품대_planVs)}`); // 지출(유출) 항목 → 부호 반전
       if (opParts.length > 0) {
         lines.push(`영업활동: ${opParts.join(', ')} 계획대비.`);

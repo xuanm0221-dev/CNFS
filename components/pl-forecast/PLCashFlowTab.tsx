@@ -784,6 +784,13 @@ export default function PLCashFlowTab() {
     return value > 0 ? `+${formatted}` : `-${formatted}`;
   };
 
+  // 차입금 해석 범례용: 원→M(백만위안) 계획대비 부호 (+XM / △XM)
+  const formatSignedM = (value: number | null | undefined) => {
+    const m = Math.round((value ?? 0) / 1_000_000);
+    if (m === 0) return '±0M';
+    return m > 0 ? `+${m}M` : `△${Math.abs(m)}M`;
+  };
+
   // 계획-전년 컬럼: +/- 기호 형식 (K단위 그대로)
   const formatDiffK = (value: number | null | undefined) => {
     if (value == null || value === 0) return '-';
@@ -1291,6 +1298,16 @@ export default function PLCashFlowTab() {
       대리상AR_yoy: wcYoyK('wc_ar_dealer') * 1000,
       비용증감_top3: expenseTop4,
       매출수금_planVs: cfPlanVsRollingAmount('operating_receipts') ?? 0,
+      // 매출수금 계획대비 증감 브랜드별 분해 (0M 브랜드 제외) — 우측 설명 "매출수금 △XM (브랜드별)" 용
+      매출수금_planVs_brands: ([
+        { key: 'operating_receipts_mlb', name: 'MLB' },
+        { key: 'operating_receipts_kids', name: 'MLB KIDS' },
+        { key: 'operating_receipts_discovery', name: 'DISCOVERY' },
+        { key: 'operating_receipts_duvetica', name: 'DUVETICA' },
+        { key: 'operating_receipts_supra', name: 'SUPRA' },
+      ] as const)
+        .map((b) => ({ name: b.name, planVs: cfPlanVsRollingAmount(b.key) ?? 0 }))
+        .filter((b) => Math.round(b.planVs / 1_000_000) !== 0),
       물품대_planVs: cfPlanVsRollingAmount('operating_payments') ?? 0,
       영업활동_planVs: cfPlanVsRollingAmount('operating') ?? 0,
       자산성지출_planVs: cfPlanVsRollingAmount('capex') ?? 0,
@@ -1569,6 +1586,11 @@ export default function PLCashFlowTab() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* 현금·차입금 잔액표 설명: 차입금 해석 (원→M, 계획대비) */}
+          <div className="mt-3 px-1 text-xs leading-relaxed text-slate-600">
+            ※ 본사 수입 {formatSignedM(-cfExplanationNumbers.물품대_planVs)} 및 수입 시점 월말 이연 → 연말 차입금 잔액 계획비 {formatSignedM(cashDebtVsRollingAmount('borrowing'))} / 연간 차입금 실행 계획비 {formatSignedM(-cfExplanationNumbers.차입금_planVs)}
           </div>
 
           <div className="mt-8">
