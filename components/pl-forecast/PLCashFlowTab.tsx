@@ -1590,7 +1590,7 @@ export default function PLCashFlowTab() {
 
           {/* 현금·차입금 잔액표 설명: 차입금 해석 (원→M, 계획대비) */}
           <div className="mt-3 px-1 text-xs leading-relaxed text-slate-600">
-            ※ 본사 수입 {formatSignedM(-cfExplanationNumbers.물품대_planVs)} 및 수입 시점 월말 이연 → 연말 차입금 잔액 계획비 {formatSignedM(cashDebtVsRollingAmount('borrowing'))} / 연간 차입금 실행 계획비 {formatSignedM(-cfExplanationNumbers.차입금_planVs)}
+            ※ 본사 수입 {formatSignedM(-cfExplanationNumbers.물품대_planVs)} 및 수입 시점 연말 이연 → 연말 차입금 잔액 계획비 {formatSignedM(cashDebtVsRollingAmount('borrowing'))} / 연간 차입금 실행 계획비 {formatSignedM(-cfExplanationNumbers.차입금_planVs)}
           </div>
 
           <div className="mt-8">
