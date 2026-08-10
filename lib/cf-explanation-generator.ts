@@ -39,12 +39,13 @@ const NUMBER_MARKERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', 
 const EXPENSE_INLINE_NOTES: Record<string, string> = {
   'Withholding/VAT':
     '전월 계획상 본사 8~9월 수입 3.5억이 4Q로 이연 → VAT 시점 차이로 3Q 납부액 증가 (3Q 증가분 > 4Q 감소분)',
+  '광고비': 'DX광고비',
 };
 
-// 분석 문구에서 제외할 비용 항목 — Withholding/VAT 와 성격이 겹쳐 별도 표기하지 않음
-const EXPENSE_EXCLUDE = new Set<string>(['수입증치세']);
+// 이 항목 뒤에서 줄바꿈 (설명이 길어 한 줄을 차지하는 항목만 지정)
+const EXPENSE_LINE_BREAK_AFTER = new Set<string>(['Withholding/VAT']);
 
-// 메인 라인에 표시할 최대 항목 수
+// 메인 라인에 표시할 최대 항목 수 (절대치 상위 N개)
 const EXPENSE_DISPLAY_LIMIT = 3;
 
 // 비용 분석 라인 빌더 — 절대치 TOP 3 항목 메인 라인 + 각 항목별 하드코딩 부연 설명(연속 번호)
@@ -53,15 +54,13 @@ function buildExpenseAnalysisLines(items: CFExplanationNumbers['비용증감_top
   if (items.length === 0) {
     return ['ㄴ 비용 항목 계획 대비 모두 절감 또는 변동 없음.'];
   }
-  // Withholding/VAT 와 수입증치세는 병합하지 않고, 수입증치세는 분석에서 제외 후 상위 3개만 표시
-  const displayItems = items
-    .filter((t) => !EXPENSE_EXCLUDE.has(t.name))
-    .slice(0, EXPENSE_DISPLAY_LIMIT);
+  // Withholding/VAT 와 수입증치세는 병합하지 않고 각각 별도 항목으로, 절대치 상위 3개만 표시
+  const displayItems = items.slice(0, EXPENSE_DISPLAY_LIMIT);
   if (displayItems.length === 0) {
     return ['ㄴ 비용 항목 계획 대비 모두 절감 또는 변동 없음.'];
   }
-  // 인라인 설명이 붙은 항목은 문장이 길어지므로 그 항목에서 줄을 끊는다.
-  // → 1줄차 "ㄴ 비용 증감 분석: Withholding/VAT +41M (설명)" / 2줄차 "　광고비 +8M, 인건비 △2M."
+  // 설명이 긴 항목(EXPENSE_LINE_BREAK_AFTER)에서 줄을 끊는다.
+  // → 1줄차 "ㄴ 비용 증감 분석: Withholding/VAT +41M (설명)" / 2줄차 "　광고비 +8M (DX광고비), 인건비 △2M."
   const segments: string[] = [];
   let buf: string[] = [];
   const flush = () => {
@@ -73,7 +72,7 @@ function buildExpenseAnalysisLines(items: CFExplanationNumbers['비용증감_top
   for (const t of displayItems) {
     const note = EXPENSE_INLINE_NOTES[t.name];
     buf.push(`${t.name} ${M(-t.yoy)}${note ? ` (${note})` : ''}`);
-    if (note) flush();
+    if (EXPENSE_LINE_BREAK_AFTER.has(t.name)) flush();
   }
   flush();
   const lines = segments.map((seg, i) => {
