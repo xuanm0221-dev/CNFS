@@ -42,10 +42,18 @@ WHERE 1=1
 `.trim();
 }
 
+/**
+ * 27F / 27S = 26년 중 실제 출고될 분량만 사람이 인위적으로 결정하는 값 → Snowflake 무시하고 고정.
+ *   - 27F: 26년 기준 출고 없음 → 항상 0
+ *   - 27S: 시스템 OTB(발주 전량) 중 26년 내 출고분만 반영 (26년대리상출고계획.csv 차기시즌과 동일)
+ * 그 외 시즌(26F/26S/25F)은 기존대로 max(하드코딩 목표, Snowflake 실제).
+ */
+const FIXED_SEASONS = new Set<OtbSeason>(['27F', '27S']);
+
 /** MLB OTB 하드코딩 값 = 목표/계획 (CNY 단위). 계획 변경 시 이 값을 직접 수정. */
 const MLB_OTB_HARDCODE: Record<OtbSeason, number> = {
-  '27F': 0,
-  '27S': 271_658_000, // 목표
+  '27F': 0, // 고정
+  '27S': 271_658_000, // 고정 (CSV 차기시즌 12월 271,658K)
   '26F': 2_705_402_000, // 목표 (Snowflake 실제가 이걸 넘으면 실제 사용)
   '26S': 2_316_846_000, // 목표
   '25F': 84_000_000, // 목표 (8,400만위안)
@@ -53,8 +61,8 @@ const MLB_OTB_HARDCODE: Record<OtbSeason, number> = {
 
 /** MLB KIDS OTB 하드코딩 값 (CNY 단위, API 호출 없이 고정) */
 const MLB_KIDS_OTB_HARDCODE: Record<OtbSeason, number> = {
-  '27F': 0,
-  '27S': 0,
+  '27F': 0, // 고정
+  '27S': 20_370_000, // 고정 (CSV 차기시즌 11월 4,611K + 12월 15,759K)
   '26F': 83_957_000,
   '26S': 97_546_000,
   '25F': 0,
@@ -62,8 +70,8 @@ const MLB_KIDS_OTB_HARDCODE: Record<OtbSeason, number> = {
 
 /** DISCOVERY OTB 하드코딩 값 (CNY 단위, API 호출 없이 고정) */
 const DISCOVERY_OTB_HARDCODE: Record<OtbSeason, number> = {
-  '27F': 0,
-  '27S': 4_989_226,
+  '27F': 0, // 고정
+  '27S': 3_109_688, // 고정 (CSV 차기시즌 12월 3,109.688K)
   '26F': 135_258_137,
   '26S': 76_186_913,
   '25F': 0,
@@ -72,23 +80,18 @@ const DISCOVERY_OTB_HARDCODE: Record<OtbSeason, number> = {
 /**
  * 2026년 기준 5개 시즌 × 3개 브랜드 OTB 합계(retail_amt) 조회.
  * 정책:
- *   - MLB / MLB KIDS 의 26S, 26F: Snowflake 라이브 조회
- *   - 그 외 (DISCOVERY 전체, MLB/KIDS 의 27F/27S/25F): 하드코딩 유지
+ *   - 26S / 26F: Snowflake 라이브 조회 후 max(하드코딩 목표, 실제)
+ *   - 27F / 27S: Snowflake 조회 안 함 — 26년 내 출고분만 사람이 결정 (FIXED_SEASONS)
+ *   - 25F: 하드코딩 유지
  * 반환값 단위: CNY (원본) — 호출측에서 ÷1000으로 CNY K 변환.
  */
 const SNOWFLAKE_QUERY_PAIRS: Array<{ brand: OtbBrand; season: OtbSeason }> = [
   { brand: 'MLB', season: '26S' },
   { brand: 'MLB', season: '26F' },
-  { brand: 'MLB', season: '27S' },
-  { brand: 'MLB', season: '27F' },
   { brand: 'MLB KIDS', season: '26S' },
   { brand: 'MLB KIDS', season: '26F' },
-  { brand: 'MLB KIDS', season: '27S' },
-  { brand: 'MLB KIDS', season: '27F' },
   { brand: 'DISCOVERY', season: '26S' },
   { brand: 'DISCOVERY', season: '26F' },
-  { brand: 'DISCOVERY', season: '27S' },
-  { brand: 'DISCOVERY', season: '27F' },
 ];
 
 export async function fetchOtbData(): Promise<{ data: OtbData; source: OtbSourceMap }> {
@@ -115,6 +118,7 @@ export async function fetchOtbData(): Promise<{ data: OtbData; source: OtbSource
     ),
   );
   for (const { brand, season, value } of results) {
+    if (FIXED_SEASONS.has(season)) continue; // 27F/27S 는 하드코딩 고정 — SF 채택 안 함
     if (value == null || !Number.isFinite(Number(value))) continue;
     const sfVal = Number(value);
     const hcVal = data[season][brand]; // 위에서 하드코딩으로 초기화된 베이스 값

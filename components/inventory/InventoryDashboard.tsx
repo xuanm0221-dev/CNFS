@@ -4495,8 +4495,10 @@ ORDER BY YYYYMM;
                         </thead>
                         <tbody>
                           {OTB_SEASONS_LIST.map((sesn) => {
-                            // 26S, 26F 는 MLB·MLB KIDS 셀이 Snowflake 라이브 (조건부 채택) 라 행 배경 파랑
+                            // 26S, 26F 는 Snowflake 라이브 (조건부 채택) 라 행 배경 파랑
+                            // 27F/27S 는 26년 내 출고분만 사람이 결정하는 고정값 (Snowflake 미조회)
                             const isSnowflakeRow = sesn === '26S' || sesn === '26F';
+                            const isFixedRow = sesn === '27F' || sesn === '27S';
                             return (
                             <tr key={sesn} className={isSnowflakeRow ? 'bg-blue-50 hover:bg-blue-100' : 'bg-white hover:bg-gray-50'}>
                               <td className="px-3 py-2 border-b border-gray-200 font-medium text-gray-700">{sesn}</td>
@@ -4510,7 +4512,7 @@ ORDER BY YYYYMM;
                                       {valueK !== 0 && src && (
                                         <span
                                           className={`shrink-0 rounded px-1 text-[9px] font-bold leading-tight ${src === 'SF' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}
-                                          title={src === 'SF' ? 'Snowflake 실제 발주 (라이브)' : '하드코딩 목표값 (변경 시 클로드에 요청)'}
+                                          title={src === 'SF' ? 'Snowflake 실제 발주 (라이브)' : isFixedRow ? '26년 내 출고분 고정값 (Snowflake 미조회, 변경 시 클로드에 요청)' : '하드코딩 목표값 (변경 시 클로드에 요청)'}
                                         >
                                           {src}
                                         </span>
@@ -4531,7 +4533,9 @@ ORDER BY YYYYMM;
                   </div>
                   <p className="mt-1 text-[10px] text-gray-400 leading-relaxed">
                     ※ 배지 <span className="rounded bg-emerald-100 px-1 text-[9px] font-bold text-emerald-700">SF</span> = Snowflake 실제 발주(라이브) · <span className="rounded bg-slate-200 px-1 text-[9px] font-bold text-slate-600">HC</span> = 하드코딩 목표값
-                    <br />※ OTB = 목표 vs 실제 중 <b>큰 값</b> 자동 표시. <b>HC 셀의 목표 변경 필요 시 클로드에게 요청</b> (otb-db.ts 수정).
+                    <br />※ 26S·26F = 목표 vs 실제 중 <b>큰 값</b> 자동 표시.
+                    <br />※ <b>27F·27S = 고정값</b> — 시스템 OTB(발주 전량)가 아니라 <b>26년 내 출고될 분량만</b> 반영 (27F는 항상 0). Snowflake 미조회.
+                    <br />※ <b>값 변경 필요 시 클로드에게 요청</b> (otb-db.ts 수정).
                   </p>
                 </div>
 

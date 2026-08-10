@@ -35,29 +35,52 @@ const EXPENSE_EXPLANATIONS: Record<string, string[]> = {
 
 const NUMBER_MARKERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 
-// 비용 분석 라인 빌더 — 절대치 TOP 4 항목 메인 라인 + 각 항목별 하드코딩 부연 설명(연속 번호)
+// 항목명+금액 뒤에 괄호로 붙는 인라인 설명 (부연 설명 ①②③ 과 달리 같은 줄에 표시)
+const EXPENSE_INLINE_NOTES: Record<string, string> = {
+  'Withholding/VAT':
+    '전월 계획상 본사 8~9월 수입 3.5억이 4Q로 이연 → VAT 시점 차이로 3Q 납부액 증가 (3Q 증가분 > 4Q 감소분)',
+};
+
+// 분석 문구에서 제외할 비용 항목 — Withholding/VAT 와 성격이 겹쳐 별도 표기하지 않음
+const EXPENSE_EXCLUDE = new Set<string>(['수입증치세']);
+
+// 메인 라인에 표시할 최대 항목 수
+const EXPENSE_DISPLAY_LIMIT = 3;
+
+// 비용 분석 라인 빌더 — 절대치 TOP 3 항목 메인 라인 + 각 항목별 하드코딩 부연 설명(연속 번호)
 // 부호: yoy = Rolling − 계획 (비용은 음수). 비용 증가 = yoy<0 → +XM, 비용 감소 = yoy>0 → △XM (= M(-yoy))
 function buildExpenseAnalysisLines(items: CFExplanationNumbers['비용증감_top3']): string[] {
   if (items.length === 0) {
     return ['ㄴ 비용 항목 계획 대비 모두 절감 또는 변동 없음.'];
   }
-  // Withholding/VAT 와 수입증치세가 동시에 나올 때는 두 항목을 합계 1개로 병합해 표시
-  let displayItems = items;
-  const dutyIdx = items.findIndex((t) => t.name === '수입증치세');
-  const whtIdx = items.findIndex((t) => t.name === 'Withholding/VAT');
-  if (dutyIdx >= 0 && whtIdx >= 0) {
-    const sumYoy = items[dutyIdx].yoy + items[whtIdx].yoy;
-    const rest = items.filter((t) => t.name !== '수입증치세' && t.name !== 'Withholding/VAT');
-    displayItems = isZeroM(sumYoy)
-      ? rest
-      : [...rest, { name: 'Withholding/VAT,수입증치세', yoy: sumYoy, curr: 0, prev: 0 }]
-          .sort((a, b) => Math.abs(b.yoy) - Math.abs(a.yoy));
-  }
+  // Withholding/VAT 와 수입증치세는 병합하지 않고, 수입증치세는 분석에서 제외 후 상위 3개만 표시
+  const displayItems = items
+    .filter((t) => !EXPENSE_EXCLUDE.has(t.name))
+    .slice(0, EXPENSE_DISPLAY_LIMIT);
   if (displayItems.length === 0) {
     return ['ㄴ 비용 항목 계획 대비 모두 절감 또는 변동 없음.'];
   }
-  const mainLine = `ㄴ 비용 증감 분석: ${displayItems.map((t) => `${t.name} ${M(-t.yoy)}`).join(', ')}.`;
-  const lines = [mainLine];
+  // 인라인 설명이 붙은 항목은 문장이 길어지므로 그 항목에서 줄을 끊는다.
+  // → 1줄차 "ㄴ 비용 증감 분석: Withholding/VAT +41M (설명)" / 2줄차 "　광고비 +8M, 인건비 △2M."
+  const segments: string[] = [];
+  let buf: string[] = [];
+  const flush = () => {
+    if (buf.length > 0) {
+      segments.push(buf.join(', '));
+      buf = [];
+    }
+  };
+  for (const t of displayItems) {
+    const note = EXPENSE_INLINE_NOTES[t.name];
+    buf.push(`${t.name} ${M(-t.yoy)}${note ? ` (${note})` : ''}`);
+    if (note) flush();
+  }
+  flush();
+  const lines = segments.map((seg, i) => {
+    const head = i === 0 ? 'ㄴ 비용 증감 분석: ' : '　'; // 2줄차부터는 전각공백으로 이어 붙임
+    const tail = i === segments.length - 1 ? '.' : '';
+    return `${head}${seg}${tail}`;
+  });
 
   let markerIdx = 0;
   for (const item of displayItems) {
