@@ -53,7 +53,7 @@ const FIXED_SEASONS = new Set<OtbSeason>(['27F', '27S']);
 /** MLB OTB 하드코딩 값 = 목표/계획 (CNY 단위). 계획 변경 시 이 값을 직접 수정. */
 const MLB_OTB_HARDCODE: Record<OtbSeason, number> = {
   '27F': 0, // 고정
-  '27S': 271_658_000, // 고정 (CSV 차기시즌 12월 271,658K)
+  '27S': 307_262_000, // 고정 307,262K (2026-08-11 갱신, 이전 271,658K)
   '26F': 2_705_402_000, // 목표 (Snowflake 실제가 이걸 넘으면 실제 사용)
   '26S': 2_316_846_000, // 목표
   '25F': 84_000_000, // 목표 (8,400만위안)
@@ -62,7 +62,7 @@ const MLB_OTB_HARDCODE: Record<OtbSeason, number> = {
 /** MLB KIDS OTB 하드코딩 값 (CNY 단위, API 호출 없이 고정) */
 const MLB_KIDS_OTB_HARDCODE: Record<OtbSeason, number> = {
   '27F': 0, // 고정
-  '27S': 20_370_000, // 고정 (CSV 차기시즌 11월 4,611K + 12월 15,759K)
+  '27S': 17_069_000, // 고정 17,069K (2026-08-11 갱신, 이전 20,370K)
   '26F': 83_957_000,
   '26S': 97_546_000,
   '25F': 0,
@@ -71,7 +71,7 @@ const MLB_KIDS_OTB_HARDCODE: Record<OtbSeason, number> = {
 /** DISCOVERY OTB 하드코딩 값 (CNY 단위, API 호출 없이 고정) */
 const DISCOVERY_OTB_HARDCODE: Record<OtbSeason, number> = {
   '27F': 0, // 고정
-  '27S': 3_109_688, // 고정 (CSV 차기시즌 12월 3,109.688K)
+  '27S': 43_570_000, // 고정 43,570K (2026-08-11 갱신, 이전 3,109.688K)
   '26F': 135_258_137,
   '26S': 76_186_913,
   '25F': 0,

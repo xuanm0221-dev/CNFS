@@ -53,13 +53,6 @@ const SALES_BRANDS: SalesBrand[] = ['MLB', 'MLB KIDS', 'DISCOVERY', 'DUVETICA', 
 const DEALER_CLOTH_SEASONS: SalesSeason[] = ['당년S', '당년F', '1년차', '차기시즌'];
 // 당년F(26F): OTB 전량이 아니라 일부만 출고 → 당년F 연간 = OTB(26F) × 브랜드별 출고율
 // (DUVETICA·SUPRA는 26F OTB 없음(0)이라 값 무관)
-const DEALER_CURRF_SHIPMENT_RATE: Record<SalesBrand, number> = {
-  MLB: 0.98,
-  'MLB KIDS': 0.90,
-  DISCOVERY: 0.98,
-  DUVETICA: 1.0,
-  SUPRA: 1.0,
-};
 const FIXED_COST_ACCOUNTS = new Set(['기타(직접비)', '대리상지원금', '감가상각비']);
 
 // ScenarioKey, ScenarioDef, SCENARIO_DEFS, SCENARIO_ORDER → plForecastConfig.ts 에서 import
@@ -1075,6 +1068,9 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     DUVETICA: 0,
     SUPRA: 0,
   });
+  // 대리상 의류 시즌별 연간 Sell-in (CNY) — 재고자산(sim)에서 publish 된 값. null = 아직 못 받음
+  const [dealerClothingSellinByBrand, setDealerClothingSellinByBrand] =
+    useState<Partial<Record<SalesBrand, Record<SalesSeason, number>>>>({});
   const [accRatioLoading, setAccRatioLoading] = useState<boolean>(false);
   const [accRatioError, setAccRatioError] = useState<string | null>(null);
   const [accRatioRows, setAccRatioRows] = useState<AccShipmentRatioRow[]>([]);
@@ -1914,6 +1910,69 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     };
   }, []);
 
+  // 대리상 의류 시즌별 Sell-in 수신 (ACC 와 동일 방식) — 재고자산(sim) → localStorage/서버파일 → PL(sim)
+  useEffect(() => {
+    let mounted = true;
+    const SEASONS: SalesSeason[] = ['당년S', '당년F', '1년차', '차기시즌'];
+
+    const applyValues = (values: Record<string, Record<string, number>>) => {
+      if (!mounted) return;
+      const next: Partial<Record<SalesBrand, Record<SalesSeason, number>>> = {};
+      for (const brand of SALES_BRANDS) {
+        const src = values[brand];
+        if (!src) continue;
+        const entry = {} as Record<SalesSeason, number>;
+        let any = false;
+        for (const season of SEASONS) {
+          const v = Number(src[season]);
+          entry[season] = Number.isFinite(v) ? v * 1000 : 0; // CNY K → CNY
+          if (Number.isFinite(v) && v !== 0) any = true;
+        }
+        if (any) next[brand] = entry;
+      }
+      if (Object.keys(next).length > 0) setDealerClothingSellinByBrand(next);
+    };
+
+    const readFromPayload = (payload?: unknown) => {
+      if (typeof window === 'undefined') return false;
+      const source = payload ?? window.localStorage.getItem('inventory_dealer_clothing_sellin');
+      if (!source) return false;
+      try {
+        const parsed = (typeof source === 'string' ? JSON.parse(source) : source) as {
+          values?: Record<string, Record<string, number>>;
+        };
+        if (parsed.values && Object.keys(parsed.values).length > 0) {
+          applyValues(parsed.values);
+          return true;
+        }
+      } catch {
+        // ignore malformed payload
+      }
+      return false;
+    };
+
+    if (!readFromPayload()) {
+      // localStorage 에 없으면 서버 파일에서 fallback 조회
+      fetch('/api/pl-forecast/dealer-clothing-otb', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((json: { values?: Record<string, Record<string, number>> }) => {
+          if (!mounted || !json.values) return;
+          applyValues(json.values);
+        })
+        .catch(() => {});
+    }
+
+    const handleUpdate = (event: Event) => readFromPayload((event as CustomEvent).detail);
+    const handleStorage = () => readFromPayload();
+    window.addEventListener('inventory-dealer-clothing-sellin-updated', handleUpdate as EventListener);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      mounted = false;
+      window.removeEventListener('inventory-dealer-clothing-sellin-updated', handleUpdate as EventListener);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
   const calculatedByBrand = useMemo(() => {
     const result: Record<ForecastLeafBrand, CalculatedSeries> = {
       mlb: deriveCalculated(monthlyInputs.mlb, ANNUAL_2025_RAW_BY_BRAND.mlb, financialAdjust26.byBrand.mlb, financialAdjust25.byBrand.mlb),
@@ -2402,14 +2461,19 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     };
 
     for (const brand of SALES_BRANDS) {
-      const currF = otbData?.['26F']?.[brand] ?? 0;
-      const currS = otbData?.['26S']?.[brand] ?? 0;
-      const year1 = otbData?.['25F']?.[brand] ?? 0;
-      const next = (otbData?.['27F']?.[brand] ?? 0) + (otbData?.['27S']?.[brand] ?? 0);
+      // 재고자산(sim) 이 publish 한 대리상 의류 Sell-in 을 우선 사용 (ACC 와 동일 방식).
+      // 아직 못 받았으면 OTB 원본으로 fallback — 차감/출고율 미반영 값이라 임시값이다.
+      const fromInventory = dealerClothingSellinByBrand[brand];
+      const currF = fromInventory?.['당년F'] ?? otbData?.['26F']?.[brand] ?? 0;
+      const currS = fromInventory?.['당년S'] ?? otbData?.['26S']?.[brand] ?? 0;
+      const year1 = fromInventory?.['1년차'] ?? otbData?.['25F']?.[brand] ?? 0;
+      const next =
+        fromInventory?.['차기시즌']
+        ?? ((otbData?.['27F']?.[brand] ?? 0) + (otbData?.['27S']?.[brand] ?? 0));
       result[brand] = { currS, currF, year1, next, total: currS + currF + year1 + next };
     }
     return result;
-  }, [otbData]);
+  }, [otbData, dealerClothingSellinByBrand]);
 
   // 대리상 시즌별 월 분배:
   //   1~결산월: Snowflake 실적
@@ -2455,9 +2519,10 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     };
 
     for (const brand of SALES_BRANDS) {
-      // 당년S(봄): OTB 잔여 밀어넣기 안 함 → 출고표(실적+CSV) 그대로. annualOtb 미사용.
-      result[brand].당년S = buildSeries(brand, '당년S', 0, false);
-      result[brand].당년F = buildSeries(brand, '당년F', otbByBrand[brand].currF * DEALER_CURRF_SHIPMENT_RATE[brand]);
+      // 당년S: 재고자산(sim) 기준(26S OTB − 전년 기출고)으로 통일 → 다른 시즌과 같이 12월 잔여 흡수
+      result[brand].당년S = buildSeries(brand, '당년S', otbByBrand[brand].currS);
+      // 당년F: 재고자산(sim) 값을 그대로 사용 (출고율 미적용 — 재고자산(sim) 기준으로 통일)
+      result[brand].당년F = buildSeries(brand, '당년F', otbByBrand[brand].currF);
       result[brand]['1년차'] = buildSeries(brand, '1년차', otbByBrand[brand].year1);
       result[brand].차기시즌 = buildSeries(brand, '차기시즌', otbByBrand[brand].next);
     }

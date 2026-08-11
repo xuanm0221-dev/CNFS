@@ -239,13 +239,56 @@ function annualPlanToHqSellInPlan(plan: AnnualShipmentPlan, planBrand: AnnualPla
   return out;
 }
 
+/**
+ * 26S OTB 중 이미 25년 말에 대리상으로 출고된 분량 (CNY K).
+ * 26년 당년S 출고에서 차감해야 26년 실제 출고량이 된다. 계획 변경 시 이 값을 직접 수정.
+ */
+const PRIOR_YEAR_SHIPPED_26S_K: Record<OtbBrand, number> = {
+  'MLB': 241_487,
+  'MLB KIDS': 13_376,
+  'DISCOVERY': 0,
+};
+
+/**
+ * 25F OTB 에 반영되지 않은 반품 (CNY K).
+ * 1년차 출고에서 차감해야 실제 대리상 출고량이 된다. 계획 변경 시 이 값을 직접 수정.
+ */
+const RETURN_25F_K: Record<OtbBrand, number> = {
+  'MLB': 27_983,
+  'MLB KIDS': 0,
+  'DISCOVERY': 0,
+};
+
+/** 의류 시즌 셀 툴팁 — OTB 차감 내역 (row.key → 문구). 차감 0인 시즌은 키 없음 */
+function otbDeductionTitles(otbData: OtbData | null, planBrand: OtbBrand): Record<string, string> | undefined {
+  if (!otbData) return undefined;
+  const f = (v: number) => v.toLocaleString();
+  const out: Record<string, string> = {};
+
+  const rawCurrS = Math.round((otbData['26S']?.[planBrand] ?? 0) / 1000);
+  const shipped = PRIOR_YEAR_SHIPPED_26S_K[planBrand] ?? 0;
+  if (shipped > 0) {
+    out['당년S'] = `OTB ${f(rawCurrS)} − 전년(25년) 기출고 ${f(shipped)} = ${f(rawCurrS - shipped)} (CNY K)`;
+  }
+
+  const rawYear1 = Math.round((otbData['25F']?.[planBrand] ?? 0) / 1000);
+  const returned = RETURN_25F_K[planBrand] ?? 0;
+  if (returned > 0) {
+    out['1년차'] = `OTB ${f(rawYear1)} − 반품 ${f(returned)} = ${f(rawYear1 - returned)} (CNY K)`;
+  }
+
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 /** OTB(CNY) → 대리상 의류 Sell-in(CNY K) 매핑. 당년F=26F, 당년S=26S, 차기시즌=27F+27S. 1년차/2년차/과시즌=0 */
 function otbToDealerSellInPlan(otbData: OtbData | null, planBrand: OtbBrand): Partial<Record<RowKey, number>> {
   if (!otbData) return {};
   const out: Partial<Record<RowKey, number>> = {};
   out['당년F'] = Math.round((otbData['26F']?.[planBrand] ?? 0) / 1000);
-  out['당년S'] = Math.round((otbData['26S']?.[planBrand] ?? 0) / 1000);
-  out['1년차'] = Math.round((otbData['25F']?.[planBrand] ?? 0) / 1000);
+  // 당년S = 26S OTB − 전년(25년) 말 기출고분
+  out['당년S'] = Math.round((otbData['26S']?.[planBrand] ?? 0) / 1000) - (PRIOR_YEAR_SHIPPED_26S_K[planBrand] ?? 0);
+  // 1년차 = 25F OTB − 반품(OTB 미반영분)
+  out['1년차'] = Math.round((otbData['25F']?.[planBrand] ?? 0) / 1000) - (RETURN_25F_K[planBrand] ?? 0);
   out['2년차'] = 0;
   out['차기시즌'] = Math.round(((otbData['27F']?.[planBrand] ?? 0) + (otbData['27S']?.[planBrand] ?? 0)) / 1000);
   out['과시즌'] = 0;
@@ -553,6 +596,22 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
       body: JSON.stringify({ values: nextMap }),
     }).catch(() => {});
   }, []);
+
+  // 대리상 의류 시즌별 Sell-in 을 ACC 와 같은 방식으로 publish → PL(sim) 연간 앵커로 사용
+  const publishDealerClothingSellIn = useCallback(
+    (nextMap: Record<'MLB' | 'MLB KIDS' | 'DISCOVERY', Record<string, number>>) => {
+      if (typeof window === 'undefined') return;
+      const payload = { values: nextMap, updatedAt: Date.now() };
+      localStorage.setItem('inventory_dealer_clothing_sellin', JSON.stringify(payload));
+      window.dispatchEvent(new CustomEvent('inventory-dealer-clothing-sellin-updated', { detail: payload }));
+      fetch('/api/pl-forecast/dealer-clothing-otb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: nextMap }),
+      }).catch(() => {});
+    },
+    [],
+  );
 
   const publishHqClosingByBrand = useCallback((partialMap: Partial<HqClosingByBrand>) => {
     if (typeof window === 'undefined') return;
@@ -2330,6 +2389,31 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
 
     publishDealerAccSellIn(nextValues);
   }, [year, perBrandTopTableDisplayData, publishDealerAccSellIn]);
+
+  // 대리상 의류 시즌별 Sell-in publish (ACC 와 동일 방식) → PL(sim) 대리상 출고 연간 앵커
+  useEffect(() => {
+    if (typeof window === 'undefined' || year !== 2026) return;
+
+    const seasons: RowKey[] = ['당년S', '당년F', '1년차', '차기시즌'];
+    const nextValues: Record<'MLB' | 'MLB KIDS' | 'DISCOVERY', Record<string, number>> = {
+      MLB: {},
+      'MLB KIDS': {},
+      DISCOVERY: {},
+    };
+    let hasAny = false;
+    for (const b of ANNUAL_PLAN_BRANDS) {
+      const table = perBrandTopTableDisplayData[b];
+      if (!table) continue;
+      for (const season of seasons) {
+        const row = table.dealer.rows.find((r) => r.key === season);
+        nextValues[b][season] = row ? row.sellInTotal : 0;
+      }
+      hasAny = true;
+    }
+    if (!hasAny) return;
+
+    publishDealerClothingSellIn(nextValues);
+  }, [year, perBrandTopTableDisplayData, publishDealerClothingSellIn]);
 
   // 2026 YOY: 전년(2025) 테이블 구성 → 재고자산합계 sellIn/sellOut/hqSales 추출
   useEffect(() => {
@@ -4305,6 +4389,7 @@ ORDER BY YYYYMM;
                     showLegend={b === 'MLB'}
                     sellInLabel="Sell-in"
                     sellOutLabel="Sell-out"
+                    sellInCellTitles={year === 2026 ? otbDeductionTitles(otbData, b) : undefined}
                     tableType="dealer"
                     prevYearData={prevData?.dealer ?? null}
                     onWoiChange={year === 2026 ? handleWoiChange : year === 2027 ? handleWoiChange2027 : undefined}
@@ -4335,6 +4420,7 @@ ORDER BY YYYYMM;
                     showLegend={b === 'MLB'}
                     sellInLabel="상품매입"
                     sellOutLabel="대리상출고"
+                    sellOutCellTitles={year === 2026 ? otbDeductionTitles(otbData, b) : undefined}
                     tableType="hq"
                     prevYearData={prevData?.hq ?? null}
                     onWoiChange={year === 2026 ? handleWoiChange : year === 2027 ? handleWoiChange2027 : undefined}

@@ -17,6 +17,7 @@ const SNAPSHOT_FILE = path.join(DATA_DIR, 'snapshots.json');
 const ANNUAL_PLAN_FILE = path.join(DATA_DIR, 'annual-shipment-plan.json');
 const OTB_PLAN_FILE = path.join(DATA_DIR, 'otb-plan.json');
 const DEALER_ACC_SELLIN_FILE = path.join(DATA_DIR, 'dealer-acc-sellin.json');
+const DEALER_CLOTHING_SELLIN_FILE = path.join(DATA_DIR, 'dealer-clothing-sellin.json');
 const HQ_ACC_BUDGET_FILE = path.join(DATA_DIR, 'hq-acc-budget.json');
 
 const DEFAULT_ANNUAL_PLAN = {
@@ -104,6 +105,41 @@ export async function readDealerAccSellinStore(): Promise<Record<string, number>
 
 export async function writeDealerAccSellinStore(store: Record<string, number>): Promise<void> {
   await writeJsonFile(DEALER_ACC_SELLIN_FILE, store);
+}
+
+/**
+ * 대리상 의류 시즌별 Sell-in (CNY K) — 재고자산(sim) 대리상표 값을 그대로 저장.
+ * ACC(dealer-acc-sellin.json)와 같은 방식이며, PL(sim) 대리상 출고 연간 앵커로 쓰인다.
+ */
+const DEALER_CLOTHING_SEASONS = ['당년S', '당년F', '1년차', '차기시즌'] as const;
+export type DealerClothingSellin = Record<string, Record<string, number>>;
+
+const DEFAULT_DEALER_CLOTHING_SELLIN: DealerClothingSellin = {
+  MLB: { 당년S: 0, 당년F: 0, '1년차': 0, 차기시즌: 0 },
+  'MLB KIDS': { 당년S: 0, 당년F: 0, '1년차': 0, 차기시즌: 0 },
+  DISCOVERY: { 당년S: 0, 당년F: 0, '1년차': 0, 차기시즌: 0 },
+};
+
+export async function readDealerClothingSellinStore(): Promise<DealerClothingSellin> {
+  const raw = await readJsonFile<DealerClothingSellin>(
+    DEALER_CLOTHING_SELLIN_FILE,
+    DEFAULT_DEALER_CLOTHING_SELLIN,
+  );
+  // 브랜드/시즌 키 누락 시 0으로 채워 반환 (호출측에서 undefined 방어 불필요)
+  const out: DealerClothingSellin = {};
+  for (const brand of Object.keys(DEFAULT_DEALER_CLOTHING_SELLIN)) {
+    const src = raw?.[brand] ?? {};
+    out[brand] = {};
+    for (const season of DEALER_CLOTHING_SEASONS) {
+      const v = Number(src[season]);
+      out[brand][season] = Number.isFinite(v) ? v : 0;
+    }
+  }
+  return out;
+}
+
+export async function writeDealerClothingSellinStore(store: DealerClothingSellin): Promise<void> {
+  await writeJsonFile(DEALER_CLOTHING_SELLIN_FILE, store as unknown as Record<string, JsonValue>);
 }
 
 export function snapshotStoreKey(year: number, brand: string): string {
