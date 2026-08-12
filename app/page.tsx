@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Download } from 'lucide-react';
 import Tabs from '@/components/Tabs';
+import DevStatusTab from '@/components/DevStatusTab';
 import Header from '@/components/Header';
 import YearTabs from '@/components/YearTabs';
 import BrandTabs from '@/components/BrandTabs';
@@ -278,7 +279,10 @@ export default function Home() {
     { id: 'supra', label: 'SUPRA' },
   ];
 
-  const tabs = ['경영요약', '손익계산서', '재무상태표', '현금흐름표', '여신사용현황', '재고자산 (sim)', 'PL (sim)', 'CF (sim)'];
+  // 배포 준비 상태 탭 — 개발 모드에서만 노출 (운영 빌드에서는 배열에서 아예 빠짐)
+  const isDev = process.env.NODE_ENV === 'development';
+  const tabs = ['경영요약', '손익계산서', '재무상태표', '현금흐름표', '여신사용현황', '재고자산 (sim)', 'PL (sim)', 'CF (sim)',
+    ...(isDev ? ['상태'] : [])];
   const tabGroups = useMemo(
     () => [
       { id: 'group1', label: '재무제표', tabIndexes: [0, 1, 2, 3] },
@@ -286,7 +290,7 @@ export default function Home() {
     ],
     []
   );
-  const tabTypes: TabType[] = ['SUMMARY', 'PL', 'BS', 'CF', 'CREDIT', 'INVENTORY', 'PL', 'PL_CF'];
+  const tabTypes: TabType[] = ['SUMMARY', 'PL', 'BS', 'CF', 'CREDIT', 'INVENTORY', 'PL', 'PL_CF', 'PL_CF'];
 
   // 손익계산서 JSON 다운로드 — 선택 연도의 전 브랜드(법인 포함) × 월별 1~12월 × 계정 전체
   // values는 API가 이미 1~12월 12개만 반환 (분기/YTD/연간은 UI 파생값이라 미포함)
@@ -1124,6 +1128,7 @@ export default function Home() {
         {inventoryTabMounted && <div className={activeTab === 5 ? '' : 'hidden'}><InventoryDashboard onScenarioRecalc={setScenarioOverride} /></div>}
         <div className={activeTab === 6 ? '' : 'hidden'}><PLForecastTab scenarioOverride={scenarioOverride} /></div>
         {activeTab === 7 && <PLCashFlowTab />}
+        {isDev && activeTab === 8 && <DevStatusTab baseMonth={baseMonth} />}
       </div>
     </main>
   );
