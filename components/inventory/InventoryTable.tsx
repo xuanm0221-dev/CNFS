@@ -41,6 +41,16 @@ interface Props {
   showYoyColumns?: boolean;
   /** 기말과 증감 사이에 "vs 시뮬" 컬럼 표시 — 모달 표 기말 - 재고자산(sim) 기말 (row.key → diff) */
   vsSimByKey?: Record<string, number | null>;
+  /**
+   * 리오더 컬럼 표시 (row.key → CNY K). 지정하면 컬럼이 추가된다.
+   * 대리상: Sell-in 우측 / 본사: 대리상출고 우측(본사판매 좌측). 키가 없는 행은 공란(=0).
+   */
+  reorderByKey?: Record<string, number>;
+  /**
+   * ACC합계 행에 ST YOY 대신 재고주수를 표시.
+   * 본문은 기존대로(ST YOY) 두고 리오더 모달에서만 켠다.
+   */
+  accSubtotalShowsWoi?: boolean;
   /** Sell-in 셀 마우스오버 툴팁 (row.key → 문구). 지정 시 기본 툴팁보다 우선 */
   sellInCellTitles?: Record<string, string>;
   /** Sell-out 셀 마우스오버 툴팁 (row.key → 문구). 지정 시 기본 툴팁보다 우선 */
@@ -210,6 +220,8 @@ export default function InventoryTable({
   year,
   sellInLabel = 'Sell-in',
   sellOutLabel = 'Sell-out',
+  reorderByKey,
+  accSubtotalShowsWoi,
   sellInCellTitles,
   sellOutCellTitles,
   tableType = 'dealer',
@@ -349,10 +361,22 @@ export default function InventoryTable({
                   </>
                 )}
               </th>
+              {reorderByKey && tableType === 'dealer' && (
+                <th className={`${TH} !bg-amber-100 !text-amber-900`} style={{ width: '5%', minWidth: 55 }}>
+                  reorder<br />
+                  <span className="font-normal text-[10px] text-amber-700">(연간)</span>
+                </th>
+              )}
               <th className={TH} style={{ width: '5%', minWidth: 50 }}>
                 {sellOutLabel}<br />
                 <span className="font-normal text-[10px] text-slate-500">(연간)</span>
               </th>
+              {reorderByKey && tableType === 'hq' && (
+                <th className={`${TH} !bg-amber-100 !text-amber-900`} style={{ width: '5%', minWidth: 55 }}>
+                  reorder<br />
+                  <span className="font-normal text-[10px] text-amber-700">(연간)</span>
+                </th>
+              )}
               {tableType === 'hq' && (
                 <th className={TH} style={{ width: '5%', minWidth: 50 }}>
                   본사판매<br />
@@ -487,6 +511,12 @@ export default function InventoryTable({
                     formatKValue((row as InventoryRow).sellInTotal)
                   )}
                 </td>
+                {/* reorder (대리상: Sell-in 우측) */}
+                {reorderByKey && tableType === 'dealer' && (
+                  <td className={`${cellCls(row)} bg-amber-50/70 text-amber-900`}>
+                    {isYoyRow(row) ? '-' : reorderByKey[row.key] ? formatKValue(reorderByKey[row.key]) : ''}
+                  </td>
+                )}
                 {/* Sell-out (연간) — 2026 본사 leaf면 편집 가능 */}
                 <td
                   className={`${cellCls(row)} ${getDealerYoySellOutBoxClass(tableType, row)} ${sellOutTitleFor(row) ? 'relative' : ''}`}
@@ -522,6 +552,12 @@ export default function InventoryTable({
                     formatKValue(row.sellOutTotal)
                   )}
                 </td>
+                {/* reorder (본사: 대리상출고 우측 · 본사판매 좌측) */}
+                {reorderByKey && tableType === 'hq' && (
+                  <td className={`${cellCls(row)} bg-amber-50/70 text-amber-900`}>
+                    {isYoyRow(row) ? '-' : reorderByKey[row.key] ? formatKValue(reorderByKey[row.key]) : ''}
+                  </td>
+                )}
                 {/* 본사판매 (본사 테이블 전용) */}
                 {tableType === 'hq' && (
                   <td className={cellCls(row)}>
@@ -594,7 +630,12 @@ export default function InventoryTable({
                 })()}
                 {/* 재고주수(ACC·합계) / ST YOY(의류합계·의류leaf) */}
                 {(() => {
-                  const isClothingSubtotalRow = !isYoyRow(row) && !!(row as InventoryRow).isSubtotal && !ACC_KEYS.includes((row as InventoryRow).key as AccKey);
+                  const isClothingSubtotalRow =
+                    !isYoyRow(row)
+                    && !!(row as InventoryRow).isSubtotal
+                    && !ACC_KEYS.includes((row as InventoryRow).key as AccKey)
+                    // ACC합계는 의류 소계가 아니므로, 켜져 있으면 재고주수 쪽으로 보낸다
+                    && !(accSubtotalShowsWoi && (row as InventoryRow).key === 'ACC합계');
                   const isClothingDisplayRow = isClothingLeafRow(row) || isClothingSubtotalRow;
                   // 의류 행: ST YOY 표시
                   if (!isYoyRow(row) && isClothingDisplayRow) {

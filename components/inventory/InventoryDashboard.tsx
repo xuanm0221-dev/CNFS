@@ -32,6 +32,7 @@ import {
 import InventoryFilterBar from './InventoryFilterBar';
 import InventoryTable from './InventoryTable';
 import InventoryPLModal from './InventoryPLModal';
+import InventoryReorderModal from './InventoryReorderModal';
 import InventoryMonthlyTable, { TableData } from './InventoryMonthlyTable';
 import { DEFAULT_HQ_ACC_BUDGET, type HqAccBudgetEntry } from '@/lib/inventory-hq-acc-budget';
 
@@ -107,6 +108,9 @@ function hqAccEntryToAmountText(e: HqAccBudgetEntry): { arrival: string; order: 
     order: formatHqAccMillionDisplay(e.order),
   };
 }
+
+/** 리오더 모달 기본 대리상 성장률 — 내부값 10 = 화면 110% (10% 성장) */
+const REORDER_DEFAULT_GROWTH_RATE = 10;
 
 /** 대리상·직영 판매추정 소표 공통: 열 비율 통일로 세로 구분선 정렬 */
 const SALE_ESTIMATE_TABLE_CLASS = 'min-w-0 w-full flex-1 table-fixed border-collapse text-xs';
@@ -920,6 +924,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   });
   // 브랜드별 PL용 모달 — null이면 닫힘, 브랜드명이면 그 브랜드 모달 오픈
   const [plModalBrand, setPlModalBrand] = useState<AnnualPlanBrand | null>(null);
+  const [reorderModalOpen, setReorderModalOpen] = useState(false);
   const [otbData, setOtbData] = useState<OtbData | null>(null);
   const [otbLoading, setOtbLoading] = useState(false);
   const [otbError, setOtbError] = useState<string | null>(null);
@@ -2414,6 +2419,65 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
 
     publishDealerClothingSellIn(nextValues);
   }, [year, perBrandTopTableDisplayData, publishDealerClothingSellIn]);
+
+  // ── 리오더 모달 전용 대리상 성장률 시뮬 (본문 상태와 완전 분리) ──
+  // 모달 열 때 본문 현재값으로 초기화 → 닫으면 폐기. 본문 표에는 영향 없음.
+  const [reorderGrowthRate, setReorderGrowthRate] = useState<number | null>(null);
+  const [reorderTopTable, setReorderTopTable] = useState<TopTablePair | null>(null);
+  const [reorderCalcLoading, setReorderCalcLoading] = useState(false);
+
+  useEffect(() => {
+    if (!reorderModalOpen) {
+      setReorderGrowthRate(null);
+      setReorderTopTable(null);
+      return;
+    }
+    // 리오더 시뮬 기본값 = 대리상 10% 성장 (화면 표기 110%)
+    setReorderGrowthRate((prev) => (prev ?? REORDER_DEFAULT_GROWTH_RATE));
+  }, [reorderModalOpen, growthRateByBrand]);
+
+  // 성장률 변경 → MLB 리테일 재조회 후 재고자산표 재구성 (모달에만 반영)
+  useEffect(() => {
+    if (!reorderModalOpen || reorderGrowthRate == null || year !== 2026) return;
+    const mData = monthlyDataByBrand['MLB'];
+    const sData = shipmentDataByBrand['MLB'];
+    const pData = purchaseDataByBrand['MLB'];
+    if (!mData || !sData) return;
+
+    let cancelled = false;
+    setReorderCalcLoading(true);
+    const params = new URLSearchParams({
+      year: '2026',
+      brand: 'MLB',
+      growthRate: String(reorderGrowthRate),
+      growthRateHq: String(growthRateHqByBrand['MLB'] ?? 17),
+    });
+    fetch(`/api/inventory/retail-sales?${params}`, { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((rData: (RetailSalesResponse & { error?: string }) | null) => {
+        if (cancelled || !rData || rData.error) return;
+        const otbDealerSellIn = otbToDealerSellInPlan(otbData, 'MLB');
+        setReorderTopTable(
+          finalize2026InventoryTopTable(
+            mData,
+            rData,
+            sData,
+            pData ?? undefined,
+            accTargetWoiDealer,
+            accTargetWoiHq,
+            accHqHoldingWoi,
+            annualPlanToHqSellInPlan(annualShipmentPlan2026, 'MLB'),
+            { ...hqSellOutPlan, ...otbDealerSellIn },
+          ),
+        );
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setReorderCalcLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [reorderModalOpen, reorderGrowthRate, year, monthlyDataByBrand, shipmentDataByBrand,
+      purchaseDataByBrand, accTargetWoiDealer, accTargetWoiHq, accHqHoldingWoi,
+      annualShipmentPlan2026, hqSellOutPlan, otbData, growthRateHqByBrand]);
 
   // 2026 YOY: 전년(2025) 테이블 구성 → 재고자산합계 sellIn/sellOut/hqSales 추출
   useEffect(() => {
@@ -4356,6 +4420,17 @@ ORDER BY YYYYMM;
                   >
                     YoY 컬럼 {isYoyOpen ? '접기 ▲' : '펼치기 ▼'}
                   </button>
+                  {b === 'MLB' && year === 2026 && (
+                    <button
+                      type="button"
+                      onClick={() => setReorderModalOpen(true)}
+                      disabled={!perBrandTopTableDisplayData[b] && !perBrandTopTable[b]}
+                      className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-100 disabled:opacity-50"
+                      title="MLB 리오더 추가 시뮬레이션 모달 열기"
+                    >
+                      reorder추가시 ↗
+                    </button>
+                  )}
                   {year !== 2027 && (
                     <button
                       type="button"
@@ -5010,6 +5085,31 @@ ORDER BY YYYYMM;
           )}
         </div>
       </div>
+
+      {/* MLB 리오더 추가 시뮬 모달 */}
+      {reorderModalOpen && (() => {
+        const data = perBrandTopTableDisplayData['MLB'] ?? perBrandTopTable['MLB'];
+        return (
+          <InventoryReorderModal
+            open={reorderModalOpen}
+            onClose={() => setReorderModalOpen(false)}
+            brand="MLB"
+            year={year}
+            dealer={(reorderTopTable ?? data)?.dealer ?? null}
+            hq={(reorderTopTable ?? data)?.hq ?? null}
+            growthRate={reorderGrowthRate ?? REORDER_DEFAULT_GROWTH_RATE}
+            onGrowthRateChange={setReorderGrowthRate}
+            baseGrowthRate={growthRateByBrand['MLB'] ?? 5}
+            calcLoading={reorderCalcLoading}
+            prevDealer={perBrandPrevYearTableData['MLB']?.dealer ?? null}
+            prevHq={perBrandPrevYearTableData['MLB']?.hq ?? null}
+            accArrivalM={actualArrivalByBrand['MLB']?.amountM ?? 0}
+            accArrivalThroughMonth={actualArrivalByBrand['MLB']?.throughMonth ?? 0}
+            accOrderM={parseHqAccMillionField((hqAccAmountText['MLB'] ?? { order: '' }).order)}
+            accOrderThroughMonth={(hqAccBudgetDraft['MLB'] ?? DEFAULT_HQ_ACC_BUDGET['MLB']).orderThroughMonth}
+          />
+        );
+      })()}
 
       {/* 브랜드별 PL용 재고자산표 모달 */}
       {plModalBrand && (() => {
