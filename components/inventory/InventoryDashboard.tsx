@@ -263,6 +263,17 @@ const RETURN_25F_K: Record<OtbBrand, number> = {
   'DISCOVERY': 0,
 };
 
+/**
+ * 차기시즌(27S) 시스템 OTB 1차 발주 총액 (CNY K).
+ * 표에는 이 중 26년 내 출고분(otb-db.ts 의 27S 고정값)만 잡히므로, 툴팁으로 원 발주액을 같이 보여준다.
+ * 0 이면 툴팁 없음. 계획 변경 시 이 값을 직접 수정.
+ */
+const NEXT_SEASON_TOTAL_OTB_K: Record<OtbBrand, number> = {
+  'MLB': 2_610_356,
+  'MLB KIDS': 0,
+  'DISCOVERY': 0,
+};
+
 /** 의류 시즌 셀 툴팁 — OTB 차감 내역 (row.key → 문구). 차감 0인 시즌은 키 없음 */
 function otbDeductionTitles(otbData: OtbData | null, planBrand: OtbBrand): Record<string, string> | undefined {
   if (!otbData) return undefined;
@@ -279,6 +290,15 @@ function otbDeductionTitles(otbData: OtbData | null, planBrand: OtbBrand): Recor
   const returned = RETURN_25F_K[planBrand] ?? 0;
   if (returned > 0) {
     out['1년차'] = `OTB ${f(rawYear1)} − 반품 ${f(returned)} = ${f(rawYear1 - returned)} (CNY K)`;
+  }
+
+  // 차기시즌: 1차 발주 총액 중 26년 내 출고 예정분만 표에 반영
+  const nextTotal = NEXT_SEASON_TOTAL_OTB_K[planBrand] ?? 0;
+  if (nextTotal > 0) {
+    const nextShip = Math.round(
+      ((otbData['27F']?.[planBrand] ?? 0) + (otbData['27S']?.[planBrand] ?? 0)) / 1000,
+    );
+    out['차기시즌'] = `OTB(1차) ${f(nextTotal)}K 중 26년말까지 ${f(nextShip)}K 출고예정`;
   }
 
   return Object.keys(out).length > 0 ? out : undefined;
@@ -4466,6 +4486,7 @@ ORDER BY YYYYMM;
                     sellOutLabel="Sell-out"
                     sellInCellTitles={year === 2026 ? otbDeductionTitles(otbData, b) : undefined}
                     tableType="dealer"
+                    accSubtotalShowsWoi
                     prevYearData={prevData?.dealer ?? null}
                     onWoiChange={year === 2026 ? handleWoiChange : year === 2027 ? handleWoiChange2027 : undefined}
                     prevYearTotalOpening={undefined}
@@ -4497,6 +4518,7 @@ ORDER BY YYYYMM;
                     sellOutLabel="대리상출고"
                     sellOutCellTitles={year === 2026 ? otbDeductionTitles(otbData, b) : undefined}
                     tableType="hq"
+                    accSubtotalShowsWoi
                     prevYearData={prevData?.hq ?? null}
                     onWoiChange={year === 2026 ? handleWoiChange : year === 2027 ? handleWoiChange2027 : undefined}
                     prevYearTotalOpening={undefined}

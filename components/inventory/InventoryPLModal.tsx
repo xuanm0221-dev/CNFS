@@ -304,6 +304,7 @@ export default function InventoryPLModal({ brand, data, prevData, year, onClose 
                 sellInLabel="Sell-in"
                 sellOutLabel="Sell-out"
                 tableType="dealer"
+                accSubtotalShowsWoi
                 vsSimByKey={dealerVsSim}
                 prevYearData={prevData?.dealer ?? null}
                 prevYearTotalSellIn={prevData?.dealer.rows.find((r) => r.key === '재고자산합계')?.sellInTotal}
@@ -319,6 +320,7 @@ export default function InventoryPLModal({ brand, data, prevData, year, onClose 
                 sellInLabel="상품매입"
                 sellOutLabel="대리상출고"
                 tableType="hq"
+                accSubtotalShowsWoi
                 vsSimByKey={hqVsSim}
                 prevYearData={prevData?.hq ?? null}
                 prevYearTotalSellIn={prevData?.hq.rows.find((r) => r.key === '재고자산합계')?.sellInTotal}
