@@ -1,0 +1,2871 @@
+{
+  "상수: MLB 리오더(CNY K)": {
+    "신발": 141086,
+    "모자": 153574,
+    "가방": 2179,
+    "기타": 0
+  },
+  "리오더 행매핑": {
+    "신발": 141086,
+    "모자": 153574,
+    "가방": 2179,
+    "ACC합계": 296839,
+    "재고자산합계": 296839
+  },
+  "재고표 seed1/대리상/365일": {
+    "재고자산합계": {
+      "opening": 2281626,
+      "sellInTotal": 12049426,
+      "sellOutTotal": 10783745,
+      "closing": 2779599,
+      "delta": 497973,
+      "sellThrough": 89.495923,
+      "woi": 13.44025
+    },
+    "의류합계": {
+      "opening": 1323118,
+      "sellInTotal": 7189723,
+      "sellOutTotal": 6510697,
+      "closing": 1556006,
+      "delta": 232888,
+      "sellThrough": 76.480895,
+      "woi": 12.461738
+    },
+    "당년F": {
+      "opening": 256935,
+      "sellInTotal": 886960,
+      "sellOutTotal": 1111480,
+      "closing": 328303,
+      "delta": 71368,
+      "sellThrough": 97.166261,
+      "woi": 15.401677
+    },
+    "당년S": {
+      "opening": 289608,
+      "sellInTotal": 1498898,
+      "sellOutTotal": 832977,
+      "closing": 350610,
+      "delta": 61002,
+      "sellThrough": 46.5739,
+      "woi": 21.947553
+    },
+    "1년차": {
+      "opening": 336257,
+      "sellInTotal": 1168181,
+      "sellOutTotal": 1375571,
+      "closing": 210793,
+      "delta": -125464,
+      "sellThrough": 91.43421,
+      "woi": 7.99039
+    },
+    "2년차": {
+      "opening": 197201,
+      "sellInTotal": 1086730,
+      "sellOutTotal": 1104781,
+      "closing": 372710,
+      "delta": 175509,
+      "sellThrough": 86.046758,
+      "woi": 17.590965
+    },
+    "차기시즌": {
+      "opening": 54702,
+      "sellInTotal": 1000295,
+      "sellOutTotal": 1109024,
+      "closing": 209819,
+      "delta": 155117,
+      "sellThrough": 105.121057,
+      "woi": 9.865036
+    },
+    "과시즌": {
+      "opening": 188415,
+      "sellInTotal": 1548659,
+      "sellOutTotal": 976864,
+      "closing": 83771,
+      "delta": -104644,
+      "sellThrough": 56.236176,
+      "woi": 4.471512
+    },
+    "ACC합계": {
+      "opening": 958508,
+      "sellInTotal": 4859703,
+      "sellOutTotal": 4273048,
+      "closing": 1223593,
+      "delta": 265085,
+      "sellThrough": 87.928172,
+      "woi": 14.931177
+    },
+    "신발": {
+      "opening": 233200,
+      "sellInTotal": 1009508,
+      "sellOutTotal": 1157663,
+      "closing": 367712,
+      "delta": 134512,
+      "sellThrough": 114.675961,
+      "woi": 16.562293
+    },
+    "모자": {
+      "opening": 427746,
+      "sellInTotal": 1261329,
+      "sellOutTotal": 794056,
+      "closing": 185219,
+      "delta": -242527,
+      "sellThrough": 62.953916,
+      "woi": 12.162679
+    },
+    "가방": {
+      "opening": 174418,
+      "sellInTotal": 1208335,
+      "sellOutTotal": 1176098,
+      "closing": 386757,
+      "delta": 212339,
+      "sellThrough": 97.332114,
+      "woi": 17.147053
+    },
+    "기타": {
+      "opening": 123144,
+      "sellInTotal": 1380531,
+      "sellOutTotal": 1145231,
+      "closing": 283905,
+      "delta": 160761,
+      "sellThrough": 82.955834,
+      "woi": 12.926316
+    }
+  },
+  "재고표 seed1/대리상/366일": {
+    "재고자산합계": {
+      "opening": 2281626,
+      "sellInTotal": 12049426,
+      "sellOutTotal": 10783745,
+      "closing": 2779599,
+      "delta": 497973,
+      "sellThrough": 89.495923,
+      "woi": 13.477073
+    },
+    "의류합계": {
+      "opening": 1323118,
+      "sellInTotal": 7189723,
+      "sellOutTotal": 6510697,
+      "closing": 1556006,
+      "delta": 232888,
+      "sellThrough": 76.480895,
+      "woi": 12.495879
+    },
+    "당년F": {
+      "opening": 256935,
+      "sellInTotal": 886960,
+      "sellOutTotal": 1111480,
+      "closing": 328303,
+      "delta": 71368,
+      "sellThrough": 97.166261,
+      "woi": 15.443874
+    },
+    "당년S": {
+      "opening": 289608,
+      "sellInTotal": 1498898,
+      "sellOutTotal": 832977,
+      "closing": 350610,
+      "delta": 61002,
+      "sellThrough": 46.5739,
+      "woi": 22.007684
+    },
+    "1년차": {
+      "opening": 336257,
+      "sellInTotal": 1168181,
+      "sellOutTotal": 1375571,
+      "closing": 210793,
+      "delta": -125464,
+      "sellThrough": 91.43421,
+      "woi": 8.012282
+    },
+    "2년차": {
+      "opening": 197201,
+      "sellInTotal": 1086730,
+      "sellOutTotal": 1104781,
+      "closing": 372710,
+      "delta": 175509,
+      "sellThrough": 86.046758,
+      "woi": 17.63916
+    },
+    "차기시즌": {
+      "opening": 54702,
+      "sellInTotal": 1000295,
+      "sellOutTotal": 1109024,
+      "closing": 209819,
+      "delta": 155117,
+      "sellThrough": 105.121057,
+      "woi": 9.892064
+    },
+    "과시즌": {
+      "opening": 188415,
+      "sellInTotal": 1548659,
+      "sellOutTotal": 976864,
+      "closing": 83771,
+      "delta": -104644,
+      "sellThrough": 56.236176,
+      "woi": 4.483763
+    },
+    "ACC합계": {
+      "opening": 958508,
+      "sellInTotal": 4859703,
+      "sellOutTotal": 4273048,
+      "closing": 1223593,
+      "delta": 265085,
+      "sellThrough": 87.928172,
+      "woi": 14.972084
+    },
+    "신발": {
+      "opening": 233200,
+      "sellInTotal": 1009508,
+      "sellOutTotal": 1157663,
+      "closing": 367712,
+      "delta": 134512,
+      "sellThrough": 114.675961,
+      "woi": 16.60767
+    },
+    "모자": {
+      "opening": 427746,
+      "sellInTotal": 1261329,
+      "sellOutTotal": 794056,
+      "closing": 185219,
+      "delta": -242527,
+      "sellThrough": 62.953916,
+      "woi": 12.196001
+    },
+    "가방": {
+      "opening": 174418,
+      "sellInTotal": 1208335,
+      "sellOutTotal": 1176098,
+      "closing": 386757,
+      "delta": 212339,
+      "sellThrough": 97.332114,
+      "woi": 17.194031
+    },
+    "기타": {
+      "opening": 123144,
+      "sellInTotal": 1380531,
+      "sellOutTotal": 1145231,
+      "closing": 283905,
+      "delta": 160761,
+      "sellThrough": 82.955834,
+      "woi": 12.961731
+    }
+  },
+  "리오더-대리상 seed1/대리상/366일": {
+    "재고자산합계": {
+      "opening": 2281626,
+      "sellInTotal": 12049426,
+      "sellOutTotal": 10783745,
+      "closing": 3076438,
+      "delta": 794812,
+      "sellThrough": 87.344189,
+      "woi": 14.916317
+    },
+    "의류합계": {
+      "opening": 1323118,
+      "sellInTotal": 7189723,
+      "sellOutTotal": 6510697,
+      "closing": 1556006,
+      "delta": 232888,
+      "sellThrough": 76.480895,
+      "woi": 12.495879
+    },
+    "당년F": {
+      "opening": 256935,
+      "sellInTotal": 886960,
+      "sellOutTotal": 1111480,
+      "closing": 328303,
+      "delta": 71368,
+      "sellThrough": 97.166261,
+      "woi": 15.443874
+    },
+    "당년S": {
+      "opening": 289608,
+      "sellInTotal": 1498898,
+      "sellOutTotal": 832977,
+      "closing": 350610,
+      "delta": 61002,
+      "sellThrough": 46.5739,
+      "woi": 22.007684
+    },
+    "1년차": {
+      "opening": 336257,
+      "sellInTotal": 1168181,
+      "sellOutTotal": 1375571,
+      "closing": 210793,
+      "delta": -125464,
+      "sellThrough": 91.43421,
+      "woi": 8.012282
+    },
+    "2년차": {
+      "opening": 197201,
+      "sellInTotal": 1086730,
+      "sellOutTotal": 1104781,
+      "closing": 372710,
+      "delta": 175509,
+      "sellThrough": 86.046758,
+      "woi": 17.63916
+    },
+    "차기시즌": {
+      "opening": 54702,
+      "sellInTotal": 1000295,
+      "sellOutTotal": 1109024,
+      "closing": 209819,
+      "delta": 155117,
+      "sellThrough": 105.121057,
+      "woi": 9.892064
+    },
+    "과시즌": {
+      "opening": 188415,
+      "sellInTotal": 1548659,
+      "sellOutTotal": 976864,
+      "closing": 83771,
+      "delta": -104644,
+      "sellThrough": 56.236176,
+      "woi": 4.483763
+    },
+    "ACC합계": {
+      "opening": 958508,
+      "sellInTotal": 4859703,
+      "sellOutTotal": 4273048,
+      "closing": 1520432,
+      "delta": 561924,
+      "sellThrough": 82.866541,
+      "woi": 18.604255
+    },
+    "신발": {
+      "opening": 233200,
+      "sellInTotal": 1009508,
+      "sellOutTotal": 1157663,
+      "closing": 508798,
+      "delta": 275598,
+      "sellThrough": 100.614378,
+      "woi": 22.979802
+    },
+    "모자": {
+      "opening": 427746,
+      "sellInTotal": 1261329,
+      "sellOutTotal": 794056,
+      "closing": 338793,
+      "delta": -88953,
+      "sellThrough": 56.120879,
+      "woi": 22.308293
+    },
+    "가방": {
+      "opening": 174418,
+      "sellInTotal": 1208335,
+      "sellOutTotal": 1176098,
+      "closing": 388936,
+      "delta": 214518,
+      "sellThrough": 97.15691,
+      "woi": 17.290903
+    },
+    "기타": {
+      "opening": 123144,
+      "sellInTotal": 1380531,
+      "sellOutTotal": 1145231,
+      "closing": 283905,
+      "delta": 160761,
+      "sellThrough": 82.955834,
+      "woi": 12.961731
+    }
+  },
+  "리오더-본사 seed1/대리상/366일": {
+    "재고자산합계": {
+      "opening": 2281626,
+      "sellInTotal": 12346265,
+      "sellOutTotal": 10783745,
+      "closing": 2779599,
+      "delta": 497973,
+      "sellThrough": 89.74847,
+      "woi": 13.477073
+    },
+    "의류합계": {
+      "opening": 1323118,
+      "sellInTotal": 7189723,
+      "sellOutTotal": 6510697,
+      "closing": 1556006,
+      "delta": 232888,
+      "sellThrough": 76.480895,
+      "woi": 12.495879
+    },
+    "당년F": {
+      "opening": 256935,
+      "sellInTotal": 886960,
+      "sellOutTotal": 1111480,
+      "closing": 328303,
+      "delta": 71368,
+      "sellThrough": 97.166261,
+      "woi": 15.443874
+    },
+    "당년S": {
+      "opening": 289608,
+      "sellInTotal": 1498898,
+      "sellOutTotal": 832977,
+      "closing": 350610,
+      "delta": 61002,
+      "sellThrough": 46.5739,
+      "woi": 22.007684
+    },
+    "1년차": {
+      "opening": 336257,
+      "sellInTotal": 1168181,
+      "sellOutTotal": 1375571,
+      "closing": 210793,
+      "delta": -125464,
+      "sellThrough": 91.43421,
+      "woi": 8.012282
+    },
+    "2년차": {
+      "opening": 197201,
+      "sellInTotal": 1086730,
+      "sellOutTotal": 1104781,
+      "closing": 372710,
+      "delta": 175509,
+      "sellThrough": 86.046758,
+      "woi": 17.63916
+    },
+    "차기시즌": {
+      "opening": 54702,
+      "sellInTotal": 1000295,
+      "sellOutTotal": 1109024,
+      "closing": 209819,
+      "delta": 155117,
+      "sellThrough": 105.121057,
+      "woi": 9.892064
+    },
+    "과시즌": {
+      "opening": 188415,
+      "sellInTotal": 1548659,
+      "sellOutTotal": 976864,
+      "closing": 83771,
+      "delta": -104644,
+      "sellThrough": 56.236176,
+      "woi": 4.483763
+    },
+    "ACC합계": {
+      "opening": 958508,
+      "sellInTotal": 5156542,
+      "sellOutTotal": 4273048,
+      "closing": 1223593,
+      "delta": 265085,
+      "sellThrough": 88.623093,
+      "woi": 14.972084
+    },
+    "신발": {
+      "opening": 233200,
+      "sellInTotal": 1150594,
+      "sellOutTotal": 1157663,
+      "closing": 367712,
+      "delta": 134512,
+      "sellThrough": 112.876393,
+      "woi": 16.60767
+    },
+    "모자": {
+      "opening": 427746,
+      "sellInTotal": 1414903,
+      "sellOutTotal": 794056,
+      "closing": 185219,
+      "delta": -242527,
+      "sellThrough": 66.974909,
+      "woi": 12.196001
+    },
+    "가방": {
+      "opening": 174418,
+      "sellInTotal": 1210514,
+      "sellOutTotal": 1176098,
+      "closing": 386757,
+      "delta": 212339,
+      "sellThrough": 97.336916,
+      "woi": 17.194031
+    },
+    "기타": {
+      "opening": 123144,
+      "sellInTotal": 1380531,
+      "sellOutTotal": 1145231,
+      "closing": 283905,
+      "delta": 160761,
+      "sellThrough": 82.955834,
+      "woi": 12.961731
+    }
+  },
+  "재고표 seed1/본사/365일": {
+    "재고자산합계": {
+      "opening": 1964206,
+      "sellInTotal": 11248106,
+      "sellOutTotal": 12204879,
+      "closing": 2703850,
+      "delta": 739644,
+      "sellThrough": 160.209719,
+      "woi": 11.551648
+    },
+    "의류합계": {
+      "opening": 1114757,
+      "sellInTotal": 5940604,
+      "sellOutTotal": 6778948,
+      "closing": 1984755,
+      "delta": 869998,
+      "sellThrough": 145.774738,
+      "woi": 15.266498
+    },
+    "당년F": {
+      "opening": 256935,
+      "sellInTotal": 886960,
+      "sellOutTotal": 1111480,
+      "closing": 328303,
+      "delta": 71368,
+      "sellThrough": 158.043439,
+      "woi": 15.401677
+    },
+    "당년S": {
+      "opening": 168120,
+      "sellInTotal": 925530,
+      "sellOutTotal": 1105222,
+      "closing": 348253,
+      "delta": 180133,
+      "sellThrough": 164.693641,
+      "woi": 16.430099
+    },
+    "1년차": {
+      "opening": 144245,
+      "sellInTotal": 932596,
+      "sellOutTotal": 1224269,
+      "closing": 332669,
+      "delta": 188424,
+      "sellThrough": 146.819075,
+      "woi": 14.16871
+    },
+    "2년차": {
+      "opening": 410092,
+      "sellInTotal": 1358803,
+      "sellOutTotal": 1225213,
+      "closing": 342009,
+      "delta": -68083,
+      "sellThrough": 98.063763,
+      "woi": 14.555287
+    },
+    "차기시즌": {
+      "opening": 55253,
+      "sellInTotal": 1048402,
+      "sellOutTotal": 1121633,
+      "closing": 386753,
+      "delta": 331500,
+      "sellThrough": 161.513154,
+      "woi": 17.979505
+    },
+    "과시즌": {
+      "opening": 80112,
+      "sellInTotal": 788313,
+      "sellOutTotal": 991131,
+      "closing": 246768,
+      "delta": 166656,
+      "sellThrough": 181.674871,
+      "woi": 12.982329
+    },
+    "ACC합계": {
+      "opening": 849449,
+      "sellInTotal": 5307502,
+      "sellOutTotal": 5425931,
+      "closing": 719095,
+      "delta": -130354,
+      "sellThrough": 145.748885,
+      "woi": 6.910458
+    },
+    "신발": {
+      "opening": 183705,
+      "sellInTotal": 1416600,
+      "sellOutTotal": 1227996,
+      "closing": 238481,
+      "delta": 54776,
+      "sellThrough": 127.419596,
+      "woi": 10.12632
+    },
+    "모자": {
+      "opening": 316631,
+      "sellInTotal": 1368795,
+      "sellOutTotal": 1552184,
+      "closing": 87984,
+      "delta": -228647,
+      "sellThrough": 154.468127,
+      "woi": 2.955666
+    },
+    "가방": {
+      "opening": 328616,
+      "sellInTotal": 1292907,
+      "sellOutTotal": 1131556,
+      "closing": 146693,
+      "delta": -181923,
+      "sellThrough": 130.38579,
+      "woi": 6.759712
+    },
+    "기타": {
+      "opening": 20497,
+      "sellInTotal": 1229200,
+      "sellOutTotal": 1514195,
+      "closing": 245937,
+      "delta": 225440,
+      "sellThrough": 173.322486,
+      "woi": 8.469093
+    }
+  },
+  "재고표 seed1/본사/366일": {
+    "재고자산합계": {
+      "opening": 1964206,
+      "sellInTotal": 11248106,
+      "sellOutTotal": 12204879,
+      "closing": 2703850,
+      "delta": 739644,
+      "sellThrough": 160.209719,
+      "woi": 11.583296
+    },
+    "의류합계": {
+      "opening": 1114757,
+      "sellInTotal": 5940604,
+      "sellOutTotal": 6778948,
+      "closing": 1984755,
+      "delta": 869998,
+      "sellThrough": 145.774738,
+      "woi": 15.308324
+    },
+    "당년F": {
+      "opening": 256935,
+      "sellInTotal": 886960,
+      "sellOutTotal": 1111480,
+      "closing": 328303,
+      "delta": 71368,
+      "sellThrough": 158.043439,
+      "woi": 15.443874
+    },
+    "당년S": {
+      "opening": 168120,
+      "sellInTotal": 925530,
+      "sellOutTotal": 1105222,
+      "closing": 348253,
+      "delta": 180133,
+      "sellThrough": 164.693641,
+      "woi": 16.475113
+    },
+    "1년차": {
+      "opening": 144245,
+      "sellInTotal": 932596,
+      "sellOutTotal": 1224269,
+      "closing": 332669,
+      "delta": 188424,
+      "sellThrough": 146.819075,
+      "woi": 14.207528
+    },
+    "2년차": {
+      "opening": 410092,
+      "sellInTotal": 1358803,
+      "sellOutTotal": 1225213,
+      "closing": 342009,
+      "delta": -68083,
+      "sellThrough": 98.063763,
+      "woi": 14.595164
+    },
+    "차기시즌": {
+      "opening": 55253,
+      "sellInTotal": 1048402,
+      "sellOutTotal": 1121633,
+      "closing": 386753,
+      "delta": 331500,
+      "sellThrough": 161.513154,
+      "woi": 18.028764
+    },
+    "과시즌": {
+      "opening": 80112,
+      "sellInTotal": 788313,
+      "sellOutTotal": 991131,
+      "closing": 246768,
+      "delta": 166656,
+      "sellThrough": 181.674871,
+      "woi": 13.017897
+    },
+    "ACC합계": {
+      "opening": 849449,
+      "sellInTotal": 5307502,
+      "sellOutTotal": 5425931,
+      "closing": 719095,
+      "delta": -130354,
+      "sellThrough": 145.748885,
+      "woi": 6.929391
+    },
+    "신발": {
+      "opening": 183705,
+      "sellInTotal": 1416600,
+      "sellOutTotal": 1227996,
+      "closing": 238481,
+      "delta": 54776,
+      "sellThrough": 127.419596,
+      "woi": 10.154064
+    },
+    "모자": {
+      "opening": 316631,
+      "sellInTotal": 1368795,
+      "sellOutTotal": 1552184,
+      "closing": 87984,
+      "delta": -228647,
+      "sellThrough": 154.468127,
+      "woi": 2.963764
+    },
+    "가방": {
+      "opening": 328616,
+      "sellInTotal": 1292907,
+      "sellOutTotal": 1131556,
+      "closing": 146693,
+      "delta": -181923,
+      "sellThrough": 130.38579,
+      "woi": 6.778231
+    },
+    "기타": {
+      "opening": 20497,
+      "sellInTotal": 1229200,
+      "sellOutTotal": 1514195,
+      "closing": 245937,
+      "delta": 225440,
+      "sellThrough": 173.322486,
+      "woi": 8.492296
+    }
+  },
+  "리오더-대리상 seed1/본사/366일": {
+    "재고자산합계": {
+      "opening": 1964206,
+      "sellInTotal": 11248106,
+      "sellOutTotal": 12204879,
+      "closing": 3000689,
+      "delta": 1036483,
+      "sellThrough": 156.090471,
+      "woi": 12.854955
+    },
+    "의류합계": {
+      "opening": 1114757,
+      "sellInTotal": 5940604,
+      "sellOutTotal": 6778948,
+      "closing": 1984755,
+      "delta": 869998,
+      "sellThrough": 145.774738,
+      "woi": 15.308324
+    },
+    "당년F": {
+      "opening": 256935,
+      "sellInTotal": 886960,
+      "sellOutTotal": 1111480,
+      "closing": 328303,
+      "delta": 71368,
+      "sellThrough": 158.043439,
+      "woi": 15.443874
+    },
+    "당년S": {
+      "opening": 168120,
+      "sellInTotal": 925530,
+      "sellOutTotal": 1105222,
+      "closing": 348253,
+      "delta": 180133,
+      "sellThrough": 164.693641,
+      "woi": 16.475113
+    },
+    "1년차": {
+      "opening": 144245,
+      "sellInTotal": 932596,
+      "sellOutTotal": 1224269,
+      "closing": 332669,
+      "delta": 188424,
+      "sellThrough": 146.819075,
+      "woi": 14.207528
+    },
+    "2년차": {
+      "opening": 410092,
+      "sellInTotal": 1358803,
+      "sellOutTotal": 1225213,
+      "closing": 342009,
+      "delta": -68083,
+      "sellThrough": 98.063763,
+      "woi": 14.595164
+    },
+    "차기시즌": {
+      "opening": 55253,
+      "sellInTotal": 1048402,
+      "sellOutTotal": 1121633,
+      "closing": 386753,
+      "delta": 331500,
+      "sellThrough": 161.513154,
+      "woi": 18.028764
+    },
+    "과시즌": {
+      "opening": 80112,
+      "sellInTotal": 788313,
+      "sellOutTotal": 991131,
+      "closing": 246768,
+      "delta": 166656,
+      "sellThrough": 181.674871,
+      "woi": 13.017897
+    },
+    "ACC합계": {
+      "opening": 849449,
+      "sellInTotal": 5307502,
+      "sellOutTotal": 5425931,
+      "closing": 1015934,
+      "delta": 166485,
+      "sellThrough": 138.029163,
+      "woi": 9.78981
+    },
+    "신발": {
+      "opening": 183705,
+      "sellInTotal": 1416600,
+      "sellOutTotal": 1227996,
+      "closing": 379567,
+      "delta": 195862,
+      "sellThrough": 115.878682,
+      "woi": 16.161235
+    },
+    "모자": {
+      "opening": 316631,
+      "sellInTotal": 1368795,
+      "sellOutTotal": 1552184,
+      "closing": 241558,
+      "delta": -75073,
+      "sellThrough": 138.885645,
+      "woi": 8.136943
+    },
+    "가방": {
+      "opening": 328616,
+      "sellInTotal": 1292907,
+      "sellOutTotal": 1131556,
+      "closing": 148872,
+      "delta": -179744,
+      "sellThrough": 130.166414,
+      "woi": 6.878916
+    },
+    "기타": {
+      "opening": 20497,
+      "sellInTotal": 1229200,
+      "sellOutTotal": 1514195,
+      "closing": 245937,
+      "delta": 225440,
+      "sellThrough": 173.322486,
+      "woi": 8.492296
+    }
+  },
+  "리오더-본사 seed1/본사/366일": {
+    "재고자산합계": {
+      "opening": 1964206,
+      "sellInTotal": 11544945,
+      "sellOutTotal": 12204879,
+      "closing": 2703850,
+      "delta": 739644,
+      "sellThrough": 158.661631,
+      "woi": 11.583296
+    },
+    "의류합계": {
+      "opening": 1114757,
+      "sellInTotal": 5940604,
+      "sellOutTotal": 6778948,
+      "closing": 1984755,
+      "delta": 869998,
+      "sellThrough": 145.774738,
+      "woi": 15.308324
+    },
+    "당년F": {
+      "opening": 256935,
+      "sellInTotal": 886960,
+      "sellOutTotal": 1111480,
+      "closing": 328303,
+      "delta": 71368,
+      "sellThrough": 158.043439,
+      "woi": 15.443874
+    },
+    "당년S": {
+      "opening": 168120,
+      "sellInTotal": 925530,
+      "sellOutTotal": 1105222,
+      "closing": 348253,
+      "delta": 180133,
+      "sellThrough": 164.693641,
+      "woi": 16.475113
+    },
+    "1년차": {
+      "opening": 144245,
+      "sellInTotal": 932596,
+      "sellOutTotal": 1224269,
+      "closing": 332669,
+      "delta": 188424,
+      "sellThrough": 146.819075,
+      "woi": 14.207528
+    },
+    "2년차": {
+      "opening": 410092,
+      "sellInTotal": 1358803,
+      "sellOutTotal": 1225213,
+      "closing": 342009,
+      "delta": -68083,
+      "sellThrough": 98.063763,
+      "woi": 14.595164
+    },
+    "차기시즌": {
+      "opening": 55253,
+      "sellInTotal": 1048402,
+      "sellOutTotal": 1121633,
+      "closing": 386753,
+      "delta": 331500,
+      "sellThrough": 161.513154,
+      "woi": 18.028764
+    },
+    "과시즌": {
+      "opening": 80112,
+      "sellInTotal": 788313,
+      "sellOutTotal": 991131,
+      "closing": 246768,
+      "delta": 166656,
+      "sellThrough": 181.674871,
+      "woi": 13.017897
+    },
+    "ACC합계": {
+      "opening": 849449,
+      "sellInTotal": 5604341,
+      "sellOutTotal": 5425931,
+      "closing": 719095,
+      "delta": -130354,
+      "sellThrough": 143.325754,
+      "woi": 6.929391
+    },
+    "신발": {
+      "opening": 183705,
+      "sellInTotal": 1557686,
+      "sellOutTotal": 1227996,
+      "closing": 238481,
+      "delta": 54776,
+      "sellThrough": 124.936091,
+      "woi": 10.154064
+    },
+    "모자": {
+      "opening": 316631,
+      "sellInTotal": 1522369,
+      "sellOutTotal": 1552184,
+      "closing": 87984,
+      "delta": -228647,
+      "sellThrough": 148.973475,
+      "woi": 2.963764
+    },
+    "가방": {
+      "opening": 328616,
+      "sellInTotal": 1295086,
+      "sellOutTotal": 1131556,
+      "closing": 146693,
+      "delta": -181923,
+      "sellThrough": 130.334665,
+      "woi": 6.778231
+    },
+    "기타": {
+      "opening": 20497,
+      "sellInTotal": 1229200,
+      "sellOutTotal": 1514195,
+      "closing": 245937,
+      "delta": 225440,
+      "sellThrough": 173.322486,
+      "woi": 8.492296
+    }
+  },
+  "재고표 seed7/대리상/365일": {
+    "재고자산합계": {
+      "opening": 1549343,
+      "sellInTotal": 11706722,
+      "sellOutTotal": 11275268,
+      "closing": 1988957,
+      "delta": 439614,
+      "sellThrough": 96.314476,
+      "woi": 9.197999
+    },
+    "의류합계": {
+      "opening": 1199029,
+      "sellInTotal": 7041707,
+      "sellOutTotal": 6553274,
+      "closing": 1746251,
+      "delta": 547222,
+      "sellThrough": 79.522921,
+      "woi": 13.894508
+    },
+    "당년F": {
+      "opening": 298528,
+      "sellInTotal": 1456588,
+      "sellOutTotal": 913596,
+      "closing": 356928,
+      "delta": 58400,
+      "sellThrough": 52.053312,
+      "woi": 20.371418
+    },
+    "당년S": {
+      "opening": 34457,
+      "sellInTotal": 1243248,
+      "sellOutTotal": 1048867,
+      "closing": 336106,
+      "delta": 301649,
+      "sellThrough": 82.089919,
+      "woi": 16.709008
+    },
+    "1년차": {
+      "opening": 300396,
+      "sellInTotal": 1054470,
+      "sellOutTotal": 1067741,
+      "closing": 272087,
+      "delta": -28309,
+      "sellThrough": 78.807867,
+      "woi": 13.287299
+    },
+    "2년차": {
+      "opening": 115815,
+      "sellInTotal": 1066896,
+      "sellOutTotal": 1023972,
+      "closing": 145615,
+      "delta": 29800,
+      "sellThrough": 86.578378,
+      "woi": 7.415029
+    },
+    "차기시즌": {
+      "opening": 524,
+      "sellInTotal": 1307959,
+      "sellOutTotal": 1348466,
+      "closing": 297634,
+      "delta": 297110,
+      "sellThrough": 103.055676,
+      "woi": 11.508994
+    },
+    "과시즌": {
+      "opening": 449309,
+      "sellInTotal": 912546,
+      "sellOutTotal": 1150632,
+      "closing": 337881,
+      "delta": -111428,
+      "sellThrough": 84.490052,
+      "woi": 15.311655
+    },
+    "ACC합계": {
+      "opening": 350314,
+      "sellInTotal": 4665015,
+      "sellOutTotal": 4721994,
+      "closing": 242706,
+      "delta": -107608,
+      "sellThrough": 101.221411,
+      "woi": 2.680093
+    },
+    "신발": {
+      "opening": 177593,
+      "sellInTotal": 1272104,
+      "sellOutTotal": 1128402,
+      "closing": 87583,
+      "delta": -90010,
+      "sellThrough": 88.703597,
+      "woi": 4.047164
+    },
+    "모자": {
+      "opening": 31940,
+      "sellInTotal": 1105858,
+      "sellOutTotal": 961423,
+      "closing": 12659,
+      "delta": -19281,
+      "sellThrough": 86.939101,
+      "woi": 0.686562
+    },
+    "가방": {
+      "opening": 30566,
+      "sellInTotal": 924911,
+      "sellOutTotal": 993391,
+      "closing": 127494,
+      "delta": 96928,
+      "sellThrough": 107.403956,
+      "woi": 6.69213
+    },
+    "기타": {
+      "opening": 110215,
+      "sellInTotal": 1362142,
+      "sellOutTotal": 1638778,
+      "closing": 14970,
+      "delta": -95245,
+      "sellThrough": 120.308896,
+      "woi": 0.476317
+    }
+  },
+  "재고표 seed7/대리상/366일": {
+    "재고자산합계": {
+      "opening": 1549343,
+      "sellInTotal": 11706722,
+      "sellOutTotal": 11275268,
+      "closing": 1988957,
+      "delta": 439614,
+      "sellThrough": 96.314476,
+      "woi": 9.223199
+    },
+    "의류합계": {
+      "opening": 1199029,
+      "sellInTotal": 7041707,
+      "sellOutTotal": 6553274,
+      "closing": 1746251,
+      "delta": 547222,
+      "sellThrough": 79.522921,
+      "woi": 13.932575
+    },
+    "당년F": {
+      "opening": 298528,
+      "sellInTotal": 1456588,
+      "sellOutTotal": 913596,
+      "closing": 356928,
+      "delta": 58400,
+      "sellThrough": 52.053312,
+      "woi": 20.42723
+    },
+    "당년S": {
+      "opening": 34457,
+      "sellInTotal": 1243248,
+      "sellOutTotal": 1048867,
+      "closing": 336106,
+      "delta": 301649,
+      "sellThrough": 82.089919,
+      "woi": 16.754786
+    },
+    "1년차": {
+      "opening": 300396,
+      "sellInTotal": 1054470,
+      "sellOutTotal": 1067741,
+      "closing": 272087,
+      "delta": -28309,
+      "sellThrough": 78.807867,
+      "woi": 13.323702
+    },
+    "2년차": {
+      "opening": 115815,
+      "sellInTotal": 1066896,
+      "sellOutTotal": 1023972,
+      "closing": 145615,
+      "delta": 29800,
+      "sellThrough": 86.578378,
+      "woi": 7.435344
+    },
+    "차기시즌": {
+      "opening": 524,
+      "sellInTotal": 1307959,
+      "sellOutTotal": 1348466,
+      "closing": 297634,
+      "delta": 297110,
+      "sellThrough": 103.055676,
+      "woi": 11.540526
+    },
+    "과시즌": {
+      "opening": 449309,
+      "sellInTotal": 912546,
+      "sellOutTotal": 1150632,
+      "closing": 337881,
+      "delta": -111428,
+      "sellThrough": 84.490052,
+      "woi": 15.353605
+    },
+    "ACC합계": {
+      "opening": 350314,
+      "sellInTotal": 4665015,
+      "sellOutTotal": 4721994,
+      "closing": 242706,
+      "delta": -107608,
+      "sellThrough": 101.221411,
+      "woi": 2.687436
+    },
+    "신발": {
+      "opening": 177593,
+      "sellInTotal": 1272104,
+      "sellOutTotal": 1128402,
+      "closing": 87583,
+      "delta": -90010,
+      "sellThrough": 88.703597,
+      "woi": 4.058252
+    },
+    "모자": {
+      "opening": 31940,
+      "sellInTotal": 1105858,
+      "sellOutTotal": 961423,
+      "closing": 12659,
+      "delta": -19281,
+      "sellThrough": 86.939101,
+      "woi": 0.688443
+    },
+    "가방": {
+      "opening": 30566,
+      "sellInTotal": 924911,
+      "sellOutTotal": 993391,
+      "closing": 127494,
+      "delta": 96928,
+      "sellThrough": 107.403956,
+      "woi": 6.710464
+    },
+    "기타": {
+      "opening": 110215,
+      "sellInTotal": 1362142,
+      "sellOutTotal": 1638778,
+      "closing": 14970,
+      "delta": -95245,
+      "sellThrough": 120.308896,
+      "woi": 0.477622
+    }
+  },
+  "리오더-대리상 seed7/대리상/366일": {
+    "재고자산합계": {
+      "opening": 1549343,
+      "sellInTotal": 11706722,
+      "sellOutTotal": 11275268,
+      "closing": 2285796,
+      "delta": 736453,
+      "sellThrough": 93.932692,
+      "woi": 10.599702
+    },
+    "의류합계": {
+      "opening": 1199029,
+      "sellInTotal": 7041707,
+      "sellOutTotal": 6553274,
+      "closing": 1746251,
+      "delta": 547222,
+      "sellThrough": 79.522921,
+      "woi": 13.932575
+    },
+    "당년F": {
+      "opening": 298528,
+      "sellInTotal": 1456588,
+      "sellOutTotal": 913596,
+      "closing": 356928,
+      "delta": 58400,
+      "sellThrough": 52.053312,
+      "woi": 20.42723
+    },
+    "당년S": {
+      "opening": 34457,
+      "sellInTotal": 1243248,
+      "sellOutTotal": 1048867,
+      "closing": 336106,
+      "delta": 301649,
+      "sellThrough": 82.089919,
+      "woi": 16.754786
+    },
+    "1년차": {
+      "opening": 300396,
+      "sellInTotal": 1054470,
+      "sellOutTotal": 1067741,
+      "closing": 272087,
+      "delta": -28309,
+      "sellThrough": 78.807867,
+      "woi": 13.323702
+    },
+    "2년차": {
+      "opening": 115815,
+      "sellInTotal": 1066896,
+      "sellOutTotal": 1023972,
+      "closing": 145615,
+      "delta": 29800,
+      "sellThrough": 86.578378,
+      "woi": 7.435344
+    },
+    "차기시즌": {
+      "opening": 524,
+      "sellInTotal": 1307959,
+      "sellOutTotal": 1348466,
+      "closing": 297634,
+      "delta": 297110,
+      "sellThrough": 103.055676,
+      "woi": 11.540526
+    },
+    "과시즌": {
+      "opening": 449309,
+      "sellInTotal": 912546,
+      "sellOutTotal": 1150632,
+      "closing": 337881,
+      "delta": -111428,
+      "sellThrough": 84.490052,
+      "woi": 15.353605
+    },
+    "ACC합계": {
+      "opening": 350314,
+      "sellInTotal": 4665015,
+      "sellOutTotal": 4721994,
+      "closing": 539545,
+      "delta": 189231,
+      "sellThrough": 95.16592,
+      "woi": 5.974276
+    },
+    "신발": {
+      "opening": 177593,
+      "sellInTotal": 1272104,
+      "sellOutTotal": 1128402,
+      "closing": 228669,
+      "delta": 51076,
+      "sellThrough": 79.847862,
+      "woi": 10.595623
+    },
+    "모자": {
+      "opening": 31940,
+      "sellInTotal": 1105858,
+      "sellOutTotal": 961423,
+      "closing": 166233,
+      "delta": 134293,
+      "sellThrough": 76.337825,
+      "woi": 9.040361
+    },
+    "가방": {
+      "opening": 30566,
+      "sellInTotal": 924911,
+      "sellOutTotal": 993391,
+      "closing": 129673,
+      "delta": 99107,
+      "sellThrough": 107.151517,
+      "woi": 6.825153
+    },
+    "기타": {
+      "opening": 110215,
+      "sellInTotal": 1362142,
+      "sellOutTotal": 1638778,
+      "closing": 14970,
+      "delta": -95245,
+      "sellThrough": 120.308896,
+      "woi": 0.477622
+    }
+  },
+  "리오더-본사 seed7/대리상/366일": {
+    "재고자산합계": {
+      "opening": 1549343,
+      "sellInTotal": 12003561,
+      "sellOutTotal": 11275268,
+      "closing": 1988957,
+      "delta": 439614,
+      "sellThrough": 96.405617,
+      "woi": 9.223199
+    },
+    "의류합계": {
+      "opening": 1199029,
+      "sellInTotal": 7041707,
+      "sellOutTotal": 6553274,
+      "closing": 1746251,
+      "delta": 547222,
+      "sellThrough": 79.522921,
+      "woi": 13.932575
+    },
+    "당년F": {
+      "opening": 298528,
+      "sellInTotal": 1456588,
+      "sellOutTotal": 913596,
+      "closing": 356928,
+      "delta": 58400,
+      "sellThrough": 52.053312,
+      "woi": 20.42723
+    },
+    "당년S": {
+      "opening": 34457,
+      "sellInTotal": 1243248,
+      "sellOutTotal": 1048867,
+      "closing": 336106,
+      "delta": 301649,
+      "sellThrough": 82.089919,
+      "woi": 16.754786
+    },
+    "1년차": {
+      "opening": 300396,
+      "sellInTotal": 1054470,
+      "sellOutTotal": 1067741,
+      "closing": 272087,
+      "delta": -28309,
+      "sellThrough": 78.807867,
+      "woi": 13.323702
+    },
+    "2년차": {
+      "opening": 115815,
+      "sellInTotal": 1066896,
+      "sellOutTotal": 1023972,
+      "closing": 145615,
+      "delta": 29800,
+      "sellThrough": 86.578378,
+      "woi": 7.435344
+    },
+    "차기시즌": {
+      "opening": 524,
+      "sellInTotal": 1307959,
+      "sellOutTotal": 1348466,
+      "closing": 297634,
+      "delta": 297110,
+      "sellThrough": 103.055676,
+      "woi": 11.540526
+    },
+    "과시즌": {
+      "opening": 449309,
+      "sellInTotal": 912546,
+      "sellOutTotal": 1150632,
+      "closing": 337881,
+      "delta": -111428,
+      "sellThrough": 84.490052,
+      "woi": 15.353605
+    },
+    "ACC합계": {
+      "opening": 350314,
+      "sellInTotal": 4961854,
+      "sellOutTotal": 4721994,
+      "closing": 242706,
+      "delta": -107608,
+      "sellThrough": 101.148341,
+      "woi": 2.687436
+    },
+    "신발": {
+      "opening": 177593,
+      "sellInTotal": 1413190,
+      "sellOutTotal": 1128402,
+      "closing": 87583,
+      "delta": -90010,
+      "sellThrough": 89.831374,
+      "woi": 4.058252
+    },
+    "모자": {
+      "opening": 31940,
+      "sellInTotal": 1259432,
+      "sellOutTotal": 961423,
+      "closing": 12659,
+      "delta": -19281,
+      "sellThrough": 88.531735,
+      "woi": 0.688443
+    },
+    "가방": {
+      "opening": 30566,
+      "sellInTotal": 927090,
+      "sellOutTotal": 993391,
+      "closing": 127494,
+      "delta": 96928,
+      "sellThrough": 107.386554,
+      "woi": 6.710464
+    },
+    "기타": {
+      "opening": 110215,
+      "sellInTotal": 1362142,
+      "sellOutTotal": 1638778,
+      "closing": 14970,
+      "delta": -95245,
+      "sellThrough": 120.308896,
+      "woi": 0.477622
+    }
+  },
+  "재고표 seed7/본사/365일": {
+    "재고자산합계": {
+      "opening": 2290236,
+      "sellInTotal": 12334134,
+      "sellOutTotal": 10167307,
+      "closing": 1517811,
+      "delta": -772425,
+      "sellThrough": 128.082085,
+      "woi": 7.784067
+    },
+    "의류합계": {
+      "opening": 1065356,
+      "sellInTotal": 7399826,
+      "sellOutTotal": 5965674,
+      "closing": 875268,
+      "delta": -190088,
+      "sellThrough": 109.346899,
+      "woi": 7.650263
+    },
+    "당년F": {
+      "opening": 298528,
+      "sellInTotal": 1456588,
+      "sellOutTotal": 913596,
+      "closing": 356928,
+      "delta": 58400,
+      "sellThrough": 83.512144,
+      "woi": 20.371418
+    },
+    "당년S": {
+      "opening": 75137,
+      "sellInTotal": 1165408,
+      "sellOutTotal": 1073970,
+      "closing": 118001,
+      "delta": 42864,
+      "sellThrough": 128.303931,
+      "woi": 5.729126
+    },
+    "1년차": {
+      "opening": 315795,
+      "sellInTotal": 1022093,
+      "sellOutTotal": 1007047,
+      "closing": 182052,
+      "delta": -133743,
+      "sellThrough": 120.347443,
+      "woi": 9.426284
+    },
+    "2년차": {
+      "opening": 128358,
+      "sellInTotal": 1482744,
+      "sellOutTotal": 1034342,
+      "closing": 94206,
+      "delta": -34152,
+      "sellThrough": 99.393272,
+      "woi": 4.749077
+    },
+    "차기시즌": {
+      "opening": 155950,
+      "sellInTotal": 1271831,
+      "sellOutTotal": 1223182,
+      "closing": 62975,
+      "delta": -92975,
+      "sellThrough": 119.643349,
+      "woi": 2.684553
+    },
+    "과시즌": {
+      "opening": 91588,
+      "sellInTotal": 1001162,
+      "sellOutTotal": 713537,
+      "closing": 61106,
+      "delta": -30482,
+      "sellThrough": 117.073896,
+      "woi": 4.465419
+    },
+    "ACC합계": {
+      "opening": 1224880,
+      "sellInTotal": 4934308,
+      "sellOutTotal": 4201633,
+      "closing": 642543,
+      "delta": -582337,
+      "sellThrough": 132.569795,
+      "woi": 7.974049
+    },
+    "신발": {
+      "opening": 43506,
+      "sellInTotal": 1178405,
+      "sellOutTotal": 1353641,
+      "closing": 199663,
+      "delta": 156157,
+      "sellThrough": 165.402302,
+      "woi": 7.691108
+    },
+    "모자": {
+      "opening": 424666,
+      "sellInTotal": 1091902,
+      "sellOutTotal": 778725,
+      "closing": 122053,
+      "delta": -302613,
+      "sellThrough": 132.431024,
+      "woi": 8.17258
+    },
+    "가방": {
+      "opening": 465692,
+      "sellInTotal": 1188297,
+      "sellOutTotal": 1061094,
+      "closing": 45556,
+      "delta": -420136,
+      "sellThrough": 142.428955,
+      "woi": 2.238652
+    },
+    "기타": {
+      "opening": 291016,
+      "sellInTotal": 1475704,
+      "sellOutTotal": 1008173,
+      "closing": 275271,
+      "delta": -15745,
+      "sellThrough": 98.515488,
+      "woi": 14.237057
+    }
+  },
+  "재고표 seed7/본사/366일": {
+    "재고자산합계": {
+      "opening": 2290236,
+      "sellInTotal": 12334134,
+      "sellOutTotal": 10167307,
+      "closing": 1517811,
+      "delta": -772425,
+      "sellThrough": 128.082085,
+      "woi": 7.805394
+    },
+    "의류합계": {
+      "opening": 1065356,
+      "sellInTotal": 7399826,
+      "sellOutTotal": 5965674,
+      "closing": 875268,
+      "delta": -190088,
+      "sellThrough": 109.346899,
+      "woi": 7.671222
+    },
+    "당년F": {
+      "opening": 298528,
+      "sellInTotal": 1456588,
+      "sellOutTotal": 913596,
+      "closing": 356928,
+      "delta": 58400,
+      "sellThrough": 83.512144,
+      "woi": 20.42723
+    },
+    "당년S": {
+      "opening": 75137,
+      "sellInTotal": 1165408,
+      "sellOutTotal": 1073970,
+      "closing": 118001,
+      "delta": 42864,
+      "sellThrough": 128.303931,
+      "woi": 5.744822
+    },
+    "1년차": {
+      "opening": 315795,
+      "sellInTotal": 1022093,
+      "sellOutTotal": 1007047,
+      "closing": 182052,
+      "delta": -133743,
+      "sellThrough": 120.347443,
+      "woi": 9.45211
+    },
+    "2년차": {
+      "opening": 128358,
+      "sellInTotal": 1482744,
+      "sellOutTotal": 1034342,
+      "closing": 94206,
+      "delta": -34152,
+      "sellThrough": 99.393272,
+      "woi": 4.762088
+    },
+    "차기시즌": {
+      "opening": 155950,
+      "sellInTotal": 1271831,
+      "sellOutTotal": 1223182,
+      "closing": 62975,
+      "delta": -92975,
+      "sellThrough": 119.643349,
+      "woi": 2.691908
+    },
+    "과시즌": {
+      "opening": 91588,
+      "sellInTotal": 1001162,
+      "sellOutTotal": 713537,
+      "closing": 61106,
+      "delta": -30482,
+      "sellThrough": 117.073896,
+      "woi": 4.477653
+    },
+    "ACC합계": {
+      "opening": 1224880,
+      "sellInTotal": 4934308,
+      "sellOutTotal": 4201633,
+      "closing": 642543,
+      "delta": -582337,
+      "sellThrough": 132.569795,
+      "woi": 7.995896
+    },
+    "신발": {
+      "opening": 43506,
+      "sellInTotal": 1178405,
+      "sellOutTotal": 1353641,
+      "closing": 199663,
+      "delta": 156157,
+      "sellThrough": 165.402302,
+      "woi": 7.71218
+    },
+    "모자": {
+      "opening": 424666,
+      "sellInTotal": 1091902,
+      "sellOutTotal": 778725,
+      "closing": 122053,
+      "delta": -302613,
+      "sellThrough": 132.431024,
+      "woi": 8.19497
+    },
+    "가방": {
+      "opening": 465692,
+      "sellInTotal": 1188297,
+      "sellOutTotal": 1061094,
+      "closing": 45556,
+      "delta": -420136,
+      "sellThrough": 142.428955,
+      "woi": 2.244785
+    },
+    "기타": {
+      "opening": 291016,
+      "sellInTotal": 1475704,
+      "sellOutTotal": 1008173,
+      "closing": 275271,
+      "delta": -15745,
+      "sellThrough": 98.515488,
+      "woi": 14.276063
+    }
+  },
+  "리오더-대리상 seed7/본사/366일": {
+    "재고자산합계": {
+      "opening": 2290236,
+      "sellInTotal": 12334134,
+      "sellOutTotal": 10167307,
+      "closing": 1814650,
+      "delta": -475586,
+      "sellThrough": 125.072043,
+      "woi": 9.331898
+    },
+    "의류합계": {
+      "opening": 1065356,
+      "sellInTotal": 7399826,
+      "sellOutTotal": 5965674,
+      "closing": 875268,
+      "delta": -190088,
+      "sellThrough": 109.346899,
+      "woi": 7.671222
+    },
+    "당년F": {
+      "opening": 298528,
+      "sellInTotal": 1456588,
+      "sellOutTotal": 913596,
+      "closing": 356928,
+      "delta": 58400,
+      "sellThrough": 83.512144,
+      "woi": 20.42723
+    },
+    "당년S": {
+      "opening": 75137,
+      "sellInTotal": 1165408,
+      "sellOutTotal": 1073970,
+      "closing": 118001,
+      "delta": 42864,
+      "sellThrough": 128.303931,
+      "woi": 5.744822
+    },
+    "1년차": {
+      "opening": 315795,
+      "sellInTotal": 1022093,
+      "sellOutTotal": 1007047,
+      "closing": 182052,
+      "delta": -133743,
+      "sellThrough": 120.347443,
+      "woi": 9.45211
+    },
+    "2년차": {
+      "opening": 128358,
+      "sellInTotal": 1482744,
+      "sellOutTotal": 1034342,
+      "closing": 94206,
+      "delta": -34152,
+      "sellThrough": 99.393272,
+      "woi": 4.762088
+    },
+    "차기시즌": {
+      "opening": 155950,
+      "sellInTotal": 1271831,
+      "sellOutTotal": 1223182,
+      "closing": 62975,
+      "delta": -92975,
+      "sellThrough": 119.643349,
+      "woi": 2.691908
+    },
+    "과시즌": {
+      "opening": 91588,
+      "sellInTotal": 1001162,
+      "sellOutTotal": 713537,
+      "closing": 61106,
+      "delta": -30482,
+      "sellThrough": 117.073896,
+      "woi": 4.477653
+    },
+    "ACC합계": {
+      "opening": 1224880,
+      "sellInTotal": 4934308,
+      "sellOutTotal": 4201633,
+      "closing": 939382,
+      "delta": -285498,
+      "sellThrough": 125.047184,
+      "woi": 11.689802
+    },
+    "신발": {
+      "opening": 43506,
+      "sellInTotal": 1178405,
+      "sellOutTotal": 1353641,
+      "closing": 340749,
+      "delta": 297243,
+      "sellThrough": 147.716733,
+      "woi": 13.161765
+    },
+    "모자": {
+      "opening": 424666,
+      "sellInTotal": 1091902,
+      "sellOutTotal": 778725,
+      "closing": 275627,
+      "delta": -149039,
+      "sellThrough": 116.101555,
+      "woi": 18.506346
+    },
+    "가방": {
+      "opening": 465692,
+      "sellInTotal": 1188297,
+      "sellOutTotal": 1061094,
+      "closing": 47735,
+      "delta": -417957,
+      "sellThrough": 142.168259,
+      "woi": 2.352156
+    },
+    "기타": {
+      "opening": 291016,
+      "sellInTotal": 1475704,
+      "sellOutTotal": 1008173,
+      "closing": 275271,
+      "delta": -15745,
+      "sellThrough": 98.515488,
+      "woi": 14.276063
+    }
+  },
+  "리오더-본사 seed7/본사/366일": {
+    "재고자산합계": {
+      "opening": 2290236,
+      "sellInTotal": 12630973,
+      "sellOutTotal": 10167307,
+      "closing": 1517811,
+      "delta": -772425,
+      "sellThrough": 127.422131,
+      "woi": 7.805394
+    },
+    "의류합계": {
+      "opening": 1065356,
+      "sellInTotal": 7399826,
+      "sellOutTotal": 5965674,
+      "closing": 875268,
+      "delta": -190088,
+      "sellThrough": 109.346899,
+      "woi": 7.671222
+    },
+    "당년F": {
+      "opening": 298528,
+      "sellInTotal": 1456588,
+      "sellOutTotal": 913596,
+      "closing": 356928,
+      "delta": 58400,
+      "sellThrough": 83.512144,
+      "woi": 20.42723
+    },
+    "당년S": {
+      "opening": 75137,
+      "sellInTotal": 1165408,
+      "sellOutTotal": 1073970,
+      "closing": 118001,
+      "delta": 42864,
+      "sellThrough": 128.303931,
+      "woi": 5.744822
+    },
+    "1년차": {
+      "opening": 315795,
+      "sellInTotal": 1022093,
+      "sellOutTotal": 1007047,
+      "closing": 182052,
+      "delta": -133743,
+      "sellThrough": 120.347443,
+      "woi": 9.45211
+    },
+    "2년차": {
+      "opening": 128358,
+      "sellInTotal": 1482744,
+      "sellOutTotal": 1034342,
+      "closing": 94206,
+      "delta": -34152,
+      "sellThrough": 99.393272,
+      "woi": 4.762088
+    },
+    "차기시즌": {
+      "opening": 155950,
+      "sellInTotal": 1271831,
+      "sellOutTotal": 1223182,
+      "closing": 62975,
+      "delta": -92975,
+      "sellThrough": 119.643349,
+      "woi": 2.691908
+    },
+    "과시즌": {
+      "opening": 91588,
+      "sellInTotal": 1001162,
+      "sellOutTotal": 713537,
+      "closing": 61106,
+      "delta": -30482,
+      "sellThrough": 117.073896,
+      "woi": 4.477653
+    },
+    "ACC합계": {
+      "opening": 1224880,
+      "sellInTotal": 5231147,
+      "sellOutTotal": 4201633,
+      "closing": 642543,
+      "delta": -582337,
+      "sellThrough": 130.721637,
+      "woi": 7.995896
+    },
+    "신발": {
+      "opening": 43506,
+      "sellInTotal": 1319491,
+      "sellOutTotal": 1353641,
+      "closing": 199663,
+      "delta": 156157,
+      "sellThrough": 158.40919,
+      "woi": 7.71218
+    },
+    "모자": {
+      "opening": 424666,
+      "sellInTotal": 1245476,
+      "sellOutTotal": 778725,
+      "closing": 122053,
+      "delta": -302613,
+      "sellThrough": 128.432101,
+      "woi": 8.19497
+    },
+    "가방": {
+      "opening": 465692,
+      "sellInTotal": 1190476,
+      "sellOutTotal": 1061094,
+      "closing": 45556,
+      "delta": -420136,
+      "sellThrough": 142.351295,
+      "woi": 2.244785
+    },
+    "기타": {
+      "opening": 291016,
+      "sellInTotal": 1475704,
+      "sellOutTotal": 1008173,
+      "closing": 275271,
+      "delta": -15745,
+      "sellThrough": 98.515488,
+      "woi": 14.276063
+    }
+  },
+  "재고표 seed12345/대리상/365일": {
+    "재고자산합계": {
+      "opening": 2752434,
+      "sellInTotal": 11573157,
+      "sellOutTotal": 11838392,
+      "closing": 2680264,
+      "delta": -72170,
+      "sellThrough": 102.291812,
+      "woi": 11.805372
+    },
+    "의류합계": {
+      "opening": 1840193,
+      "sellInTotal": 7177784,
+      "sellOutTotal": 6859738,
+      "closing": 1435287,
+      "delta": -404906,
+      "sellThrough": 76.067371,
+      "woi": 10.910033
+    },
+    "당년F": {
+      "opening": 327577,
+      "sellInTotal": 1549500,
+      "sellOutTotal": 1021689,
+      "closing": 147302,
+      "delta": -180275,
+      "sellThrough": 54.429786,
+      "woi": 7.517696
+    },
+    "당년S": {
+      "opening": 459362,
+      "sellInTotal": 1252559,
+      "sellOutTotal": 1120957,
+      "closing": 159836,
+      "delta": -299526,
+      "sellThrough": 65.479482,
+      "woi": 7.434991
+    },
+    "1년차": {
+      "opening": 349830,
+      "sellInTotal": 839160,
+      "sellOutTotal": 1065888,
+      "closing": 204346,
+      "delta": -145484,
+      "sellThrough": 89.646507,
+      "woi": 9.996533
+    },
+    "2년차": {
+      "opening": 331831,
+      "sellInTotal": 1295453,
+      "sellOutTotal": 1241167,
+      "closing": 373679,
+      "delta": 41848,
+      "sellThrough": 76.272304,
+      "woi": 15.698686
+    },
+    "차기시즌": {
+      "opening": 43728,
+      "sellInTotal": 1117964,
+      "sellOutTotal": 1290510,
+      "closing": 195245,
+      "delta": 151517,
+      "sellThrough": 111.088826,
+      "woi": 7.888844
+    },
+    "과시즌": {
+      "opening": 327865,
+      "sellInTotal": 1123148,
+      "sellOutTotal": 1119527,
+      "closing": 354879,
+      "delta": 27014,
+      "sellThrough": 77.154857,
+      "woi": 16.528771
+    },
+    "ACC합계": {
+      "opening": 912241,
+      "sellInTotal": 4395373,
+      "sellOutTotal": 4978654,
+      "closing": 1244977,
+      "delta": 332736,
+      "sellThrough": 113.270341,
+      "woi": 13.038998
+    },
+    "신발": {
+      "opening": 172418,
+      "sellInTotal": 847150,
+      "sellOutTotal": 1136545,
+      "closing": 292860,
+      "delta": 120442,
+      "sellThrough": 134.16101,
+      "woi": 13.435946
+    },
+    "모자": {
+      "opening": 152522,
+      "sellInTotal": 1120019,
+      "sellOutTotal": 1129346,
+      "closing": 372443,
+      "delta": 219921,
+      "sellThrough": 100.832754,
+      "woi": 17.196007
+    },
+    "가방": {
+      "opening": 307426,
+      "sellInTotal": 1062561,
+      "sellOutTotal": 1504808,
+      "closing": 250395,
+      "delta": -57031,
+      "sellThrough": 141.620858,
+      "woi": 8.676396
+    },
+    "기타": {
+      "opening": 279875,
+      "sellInTotal": 1365643,
+      "sellOutTotal": 1207955,
+      "closing": 329279,
+      "delta": 49404,
+      "sellThrough": 88.453205,
+      "woi": 14.213731
+    }
+  },
+  "재고표 seed12345/대리상/366일": {
+    "재고자산합계": {
+      "opening": 2752434,
+      "sellInTotal": 11573157,
+      "sellOutTotal": 11838392,
+      "closing": 2680264,
+      "delta": -72170,
+      "sellThrough": 102.291812,
+      "woi": 11.837716
+    },
+    "의류합계": {
+      "opening": 1840193,
+      "sellInTotal": 7177784,
+      "sellOutTotal": 6859738,
+      "closing": 1435287,
+      "delta": -404906,
+      "sellThrough": 76.067371,
+      "woi": 10.939923
+    },
+    "당년F": {
+      "opening": 327577,
+      "sellInTotal": 1549500,
+      "sellOutTotal": 1021689,
+      "closing": 147302,
+      "delta": -180275,
+      "sellThrough": 54.429786,
+      "woi": 7.538292
+    },
+    "당년S": {
+      "opening": 459362,
+      "sellInTotal": 1252559,
+      "sellOutTotal": 1120957,
+      "closing": 159836,
+      "delta": -299526,
+      "sellThrough": 65.479482,
+      "woi": 7.455361
+    },
+    "1년차": {
+      "opening": 349830,
+      "sellInTotal": 839160,
+      "sellOutTotal": 1065888,
+      "closing": 204346,
+      "delta": -145484,
+      "sellThrough": 89.646507,
+      "woi": 10.02392
+    },
+    "2년차": {
+      "opening": 331831,
+      "sellInTotal": 1295453,
+      "sellOutTotal": 1241167,
+      "closing": 373679,
+      "delta": 41848,
+      "sellThrough": 76.272304,
+      "woi": 15.741696
+    },
+    "차기시즌": {
+      "opening": 43728,
+      "sellInTotal": 1117964,
+      "sellOutTotal": 1290510,
+      "closing": 195245,
+      "delta": 151517,
+      "sellThrough": 111.088826,
+      "woi": 7.910457
+    },
+    "과시즌": {
+      "opening": 327865,
+      "sellInTotal": 1123148,
+      "sellOutTotal": 1119527,
+      "closing": 354879,
+      "delta": 27014,
+      "sellThrough": 77.154857,
+      "woi": 16.574055
+    },
+    "ACC합계": {
+      "opening": 912241,
+      "sellInTotal": 4395373,
+      "sellOutTotal": 4978654,
+      "closing": 1244977,
+      "delta": 332736,
+      "sellThrough": 113.270341,
+      "woi": 13.074721
+    },
+    "신발": {
+      "opening": 172418,
+      "sellInTotal": 847150,
+      "sellOutTotal": 1136545,
+      "closing": 292860,
+      "delta": 120442,
+      "sellThrough": 134.16101,
+      "woi": 13.472757
+    },
+    "모자": {
+      "opening": 152522,
+      "sellInTotal": 1120019,
+      "sellOutTotal": 1129346,
+      "closing": 372443,
+      "delta": 219921,
+      "sellThrough": 100.832754,
+      "woi": 17.24312
+    },
+    "가방": {
+      "opening": 307426,
+      "sellInTotal": 1062561,
+      "sellOutTotal": 1504808,
+      "closing": 250395,
+      "delta": -57031,
+      "sellThrough": 141.620858,
+      "woi": 8.700167
+    },
+    "기타": {
+      "opening": 279875,
+      "sellInTotal": 1365643,
+      "sellOutTotal": 1207955,
+      "closing": 329279,
+      "delta": 49404,
+      "sellThrough": 88.453205,
+      "woi": 14.252673
+    }
+  },
+  "리오더-대리상 seed12345/대리상/366일": {
+    "재고자산합계": {
+      "opening": 2752434,
+      "sellInTotal": 11573157,
+      "sellOutTotal": 11838392,
+      "closing": 2977103,
+      "delta": 224669,
+      "sellThrough": 99.733749,
+      "woi": 13.148742
+    },
+    "의류합계": {
+      "opening": 1840193,
+      "sellInTotal": 7177784,
+      "sellOutTotal": 6859738,
+      "closing": 1435287,
+      "delta": -404906,
+      "sellThrough": 76.067371,
+      "woi": 10.939923
+    },
+    "당년F": {
+      "opening": 327577,
+      "sellInTotal": 1549500,
+      "sellOutTotal": 1021689,
+      "closing": 147302,
+      "delta": -180275,
+      "sellThrough": 54.429786,
+      "woi": 7.538292
+    },
+    "당년S": {
+      "opening": 459362,
+      "sellInTotal": 1252559,
+      "sellOutTotal": 1120957,
+      "closing": 159836,
+      "delta": -299526,
+      "sellThrough": 65.479482,
+      "woi": 7.455361
+    },
+    "1년차": {
+      "opening": 349830,
+      "sellInTotal": 839160,
+      "sellOutTotal": 1065888,
+      "closing": 204346,
+      "delta": -145484,
+      "sellThrough": 89.646507,
+      "woi": 10.02392
+    },
+    "2년차": {
+      "opening": 331831,
+      "sellInTotal": 1295453,
+      "sellOutTotal": 1241167,
+      "closing": 373679,
+      "delta": 41848,
+      "sellThrough": 76.272304,
+      "woi": 15.741696
+    },
+    "차기시즌": {
+      "opening": 43728,
+      "sellInTotal": 1117964,
+      "sellOutTotal": 1290510,
+      "closing": 195245,
+      "delta": 151517,
+      "sellThrough": 111.088826,
+      "woi": 7.910457
+    },
+    "과시즌": {
+      "opening": 327865,
+      "sellInTotal": 1123148,
+      "sellOutTotal": 1119527,
+      "closing": 354879,
+      "delta": 27014,
+      "sellThrough": 77.154857,
+      "woi": 16.574055
+    },
+    "ACC합계": {
+      "opening": 912241,
+      "sellInTotal": 4395373,
+      "sellOutTotal": 4978654,
+      "closing": 1541816,
+      "delta": 629575,
+      "sellThrough": 106.104626,
+      "woi": 16.192118
+    },
+    "신발": {
+      "opening": 172418,
+      "sellInTotal": 847150,
+      "sellOutTotal": 1136545,
+      "closing": 433946,
+      "delta": 261528,
+      "sellThrough": 115.007448,
+      "woi": 19.963289
+    },
+    "모자": {
+      "opening": 152522,
+      "sellInTotal": 1120019,
+      "sellOutTotal": 1129346,
+      "closing": 526017,
+      "delta": 373495,
+      "sellThrough": 88.674011,
+      "woi": 24.353187
+    },
+    "가방": {
+      "opening": 307426,
+      "sellInTotal": 1062561,
+      "sellOutTotal": 1504808,
+      "closing": 252574,
+      "delta": -54852,
+      "sellThrough": 141.331029,
+      "woi": 8.775878
+    },
+    "기타": {
+      "opening": 279875,
+      "sellInTotal": 1365643,
+      "sellOutTotal": 1207955,
+      "closing": 329279,
+      "delta": 49404,
+      "sellThrough": 88.453205,
+      "woi": 14.252673
+    }
+  },
+  "리오더-본사 seed12345/대리상/366일": {
+    "재고자산합계": {
+      "opening": 2752434,
+      "sellInTotal": 11869996,
+      "sellOutTotal": 11838392,
+      "closing": 2680264,
+      "delta": -72170,
+      "sellThrough": 102.234499,
+      "woi": 11.837716
+    },
+    "의류합계": {
+      "opening": 1840193,
+      "sellInTotal": 7177784,
+      "sellOutTotal": 6859738,
+      "closing": 1435287,
+      "delta": -404906,
+      "sellThrough": 76.067371,
+      "woi": 10.939923
+    },
+    "당년F": {
+      "opening": 327577,
+      "sellInTotal": 1549500,
+      "sellOutTotal": 1021689,
+      "closing": 147302,
+      "delta": -180275,
+      "sellThrough": 54.429786,
+      "woi": 7.538292
+    },
+    "당년S": {
+      "opening": 459362,
+      "sellInTotal": 1252559,
+      "sellOutTotal": 1120957,
+      "closing": 159836,
+      "delta": -299526,
+      "sellThrough": 65.479482,
+      "woi": 7.455361
+    },
+    "1년차": {
+      "opening": 349830,
+      "sellInTotal": 839160,
+      "sellOutTotal": 1065888,
+      "closing": 204346,
+      "delta": -145484,
+      "sellThrough": 89.646507,
+      "woi": 10.02392
+    },
+    "2년차": {
+      "opening": 331831,
+      "sellInTotal": 1295453,
+      "sellOutTotal": 1241167,
+      "closing": 373679,
+      "delta": 41848,
+      "sellThrough": 76.272304,
+      "woi": 15.741696
+    },
+    "차기시즌": {
+      "opening": 43728,
+      "sellInTotal": 1117964,
+      "sellOutTotal": 1290510,
+      "closing": 195245,
+      "delta": 151517,
+      "sellThrough": 111.088826,
+      "woi": 7.910457
+    },
+    "과시즌": {
+      "opening": 327865,
+      "sellInTotal": 1123148,
+      "sellOutTotal": 1119527,
+      "closing": 354879,
+      "delta": 27014,
+      "sellThrough": 77.154857,
+      "woi": 16.574055
+    },
+    "ACC합계": {
+      "opening": 912241,
+      "sellInTotal": 4692212,
+      "sellOutTotal": 4978654,
+      "closing": 1244977,
+      "delta": 332736,
+      "sellThrough": 112.430832,
+      "woi": 13.074721
+    },
+    "신발": {
+      "opening": 172418,
+      "sellInTotal": 988236,
+      "sellOutTotal": 1136545,
+      "closing": 292860,
+      "delta": 120442,
+      "sellThrough": 129.283997,
+      "woi": 13.472757
+    },
+    "모자": {
+      "opening": 152522,
+      "sellInTotal": 1273593,
+      "sellOutTotal": 1129346,
+      "closing": 372443,
+      "delta": 219921,
+      "sellThrough": 100.732338,
+      "woi": 17.24312
+    },
+    "가방": {
+      "opening": 307426,
+      "sellInTotal": 1064740,
+      "sellOutTotal": 1504808,
+      "closing": 250395,
+      "delta": -57031,
+      "sellThrough": 141.53568,
+      "woi": 8.700167
+    },
+    "기타": {
+      "opening": 279875,
+      "sellInTotal": 1365643,
+      "sellOutTotal": 1207955,
+      "closing": 329279,
+      "delta": 49404,
+      "sellThrough": 88.453205,
+      "woi": 14.252673
+    }
+  },
+  "재고표 seed12345/본사/365일": {
+    "재고자산합계": {
+      "opening": 2608391,
+      "sellInTotal": 11807177,
+      "sellOutTotal": 11265660,
+      "closing": 2130255,
+      "delta": -478136,
+      "sellThrough": 142.247804,
+      "woi": 9.859838
+    },
+    "의류합계": {
+      "opening": 1307828,
+      "sellInTotal": 7286468,
+      "sellOutTotal": 6644378,
+      "closing": 1175510,
+      "delta": -132318,
+      "sellThrough": 117.250523,
+      "woi": 9.225009
+    },
+    "당년F": {
+      "opening": 327577,
+      "sellInTotal": 1549500,
+      "sellOutTotal": 1021689,
+      "closing": 147302,
+      "delta": -180275,
+      "sellThrough": 85.250099,
+      "woi": 7.517696
+    },
+    "당년S": {
+      "opening": 376754,
+      "sellInTotal": 1245504,
+      "sellOutTotal": 900594,
+      "closing": 2197,
+      "delta": -374557,
+      "sellThrough": 87.465927,
+      "woi": 0.127203
+    },
+    "1년차": {
+      "opening": 224341,
+      "sellInTotal": 1289621,
+      "sellOutTotal": 1317563,
+      "closing": 277216,
+      "delta": 52875,
+      "sellThrough": 120.661615,
+      "woi": 10.970887
+    },
+    "2년차": {
+      "opening": 4475,
+      "sellInTotal": 1368547,
+      "sellOutTotal": 1161832,
+      "closing": 274028,
+      "delta": 269553,
+      "sellThrough": 124.635731,
+      "woi": 12.298338
+    },
+    "차기시즌": {
+      "opening": 238837,
+      "sellInTotal": 819246,
+      "sellOutTotal": 1123417,
+      "closing": 99815,
+      "delta": -139022,
+      "sellThrough": 166.643827,
+      "woi": 4.632865
+    },
+    "과시즌": {
+      "opening": 135844,
+      "sellInTotal": 1014050,
+      "sellOutTotal": 1119283,
+      "closing": 374952,
+      "delta": 239108,
+      "sellThrough": 152.748601,
+      "woi": 17.467494
+    },
+    "ACC합계": {
+      "opening": 1300563,
+      "sellInTotal": 4520709,
+      "sellOutTotal": 4621282,
+      "closing": 954745,
+      "delta": -345818,
+      "sellThrough": 148.618126,
+      "woi": 10.77258
+    },
+    "신발": {
+      "opening": 334653,
+      "sellInTotal": 1296088,
+      "sellOutTotal": 1217804,
+      "closing": 343300,
+      "delta": 8647,
+      "sellThrough": 134.564705,
+      "woi": 14.699116
+    },
+    "모자": {
+      "opening": 239108,
+      "sellInTotal": 1076228,
+      "sellOutTotal": 979766,
+      "closing": 396532,
+      "delta": 157424,
+      "sellThrough": 152.197397,
+      "woi": 21.103316
+    },
+    "가방": {
+      "opening": 264387,
+      "sellInTotal": 892330,
+      "sellOutTotal": 1606157,
+      "closing": 142300,
+      "delta": -122087,
+      "sellThrough": 234.521085,
+      "woi": 4.619678
+    },
+    "기타": {
+      "opening": 462415,
+      "sellInTotal": 1256063,
+      "sellOutTotal": 817555,
+      "closing": 72613,
+      "delta": -389802,
+      "sellThrough": 99.025527,
+      "woi": 4.631186
+    }
+  },
+  "재고표 seed12345/본사/366일": {
+    "재고자산합계": {
+      "opening": 2608391,
+      "sellInTotal": 11807177,
+      "sellOutTotal": 11265660,
+      "closing": 2130255,
+      "delta": -478136,
+      "sellThrough": 142.247804,
+      "woi": 9.886851
+    },
+    "의류합계": {
+      "opening": 1307828,
+      "sellInTotal": 7286468,
+      "sellOutTotal": 6644378,
+      "closing": 1175510,
+      "delta": -132318,
+      "sellThrough": 117.250523,
+      "woi": 9.250283
+    },
+    "당년F": {
+      "opening": 327577,
+      "sellInTotal": 1549500,
+      "sellOutTotal": 1021689,
+      "closing": 147302,
+      "delta": -180275,
+      "sellThrough": 85.250099,
+      "woi": 7.538292
+    },
+    "당년S": {
+      "opening": 376754,
+      "sellInTotal": 1245504,
+      "sellOutTotal": 900594,
+      "closing": 2197,
+      "delta": -374557,
+      "sellThrough": 87.465927,
+      "woi": 0.127551
+    },
+    "1년차": {
+      "opening": 224341,
+      "sellInTotal": 1289621,
+      "sellOutTotal": 1317563,
+      "closing": 277216,
+      "delta": 52875,
+      "sellThrough": 120.661615,
+      "woi": 11.000944
+    },
+    "2년차": {
+      "opening": 4475,
+      "sellInTotal": 1368547,
+      "sellOutTotal": 1161832,
+      "closing": 274028,
+      "delta": 269553,
+      "sellThrough": 124.635731,
+      "woi": 12.332032
+    },
+    "차기시즌": {
+      "opening": 238837,
+      "sellInTotal": 819246,
+      "sellOutTotal": 1123417,
+      "closing": 99815,
+      "delta": -139022,
+      "sellThrough": 166.643827,
+      "woi": 4.645558
+    },
+    "과시즌": {
+      "opening": 135844,
+      "sellInTotal": 1014050,
+      "sellOutTotal": 1119283,
+      "closing": 374952,
+      "delta": 239108,
+      "sellThrough": 152.748601,
+      "woi": 17.51535
+    },
+    "ACC합계": {
+      "opening": 1300563,
+      "sellInTotal": 4520709,
+      "sellOutTotal": 4621282,
+      "closing": 954745,
+      "delta": -345818,
+      "sellThrough": 148.618126,
+      "woi": 10.802094
+    },
+    "신발": {
+      "opening": 334653,
+      "sellInTotal": 1296088,
+      "sellOutTotal": 1217804,
+      "closing": 343300,
+      "delta": 8647,
+      "sellThrough": 134.564705,
+      "woi": 14.739388
+    },
+    "모자": {
+      "opening": 239108,
+      "sellInTotal": 1076228,
+      "sellOutTotal": 979766,
+      "closing": 396532,
+      "delta": 157424,
+      "sellThrough": 152.197397,
+      "woi": 21.161133
+    },
+    "가방": {
+      "opening": 264387,
+      "sellInTotal": 892330,
+      "sellOutTotal": 1606157,
+      "closing": 142300,
+      "delta": -122087,
+      "sellThrough": 234.521085,
+      "woi": 4.632335
+    },
+    "기타": {
+      "opening": 462415,
+      "sellInTotal": 1256063,
+      "sellOutTotal": 817555,
+      "closing": 72613,
+      "delta": -389802,
+      "sellThrough": 99.025527,
+      "woi": 4.643874
+    }
+  },
+  "리오더-대리상 seed12345/본사/366일": {
+    "재고자산합계": {
+      "opening": 2608391,
+      "sellInTotal": 11807177,
+      "sellOutTotal": 11265660,
+      "closing": 2427094,
+      "delta": -181297,
+      "sellThrough": 138.759318,
+      "woi": 11.264528
+    },
+    "의류합계": {
+      "opening": 1307828,
+      "sellInTotal": 7286468,
+      "sellOutTotal": 6644378,
+      "closing": 1175510,
+      "delta": -132318,
+      "sellThrough": 117.250523,
+      "woi": 9.250283
+    },
+    "당년F": {
+      "opening": 327577,
+      "sellInTotal": 1549500,
+      "sellOutTotal": 1021689,
+      "closing": 147302,
+      "delta": -180275,
+      "sellThrough": 85.250099,
+      "woi": 7.538292
+    },
+    "당년S": {
+      "opening": 376754,
+      "sellInTotal": 1245504,
+      "sellOutTotal": 900594,
+      "closing": 2197,
+      "delta": -374557,
+      "sellThrough": 87.465927,
+      "woi": 0.127551
+    },
+    "1년차": {
+      "opening": 224341,
+      "sellInTotal": 1289621,
+      "sellOutTotal": 1317563,
+      "closing": 277216,
+      "delta": 52875,
+      "sellThrough": 120.661615,
+      "woi": 11.000944
+    },
+    "2년차": {
+      "opening": 4475,
+      "sellInTotal": 1368547,
+      "sellOutTotal": 1161832,
+      "closing": 274028,
+      "delta": 269553,
+      "sellThrough": 124.635731,
+      "woi": 12.332032
+    },
+    "차기시즌": {
+      "opening": 238837,
+      "sellInTotal": 819246,
+      "sellOutTotal": 1123417,
+      "closing": 99815,
+      "delta": -139022,
+      "sellThrough": 166.643827,
+      "woi": 4.645558
+    },
+    "과시즌": {
+      "opening": 135844,
+      "sellInTotal": 1014050,
+      "sellOutTotal": 1119283,
+      "closing": 374952,
+      "delta": 239108,
+      "sellThrough": 152.748601,
+      "woi": 17.51535
+    },
+    "ACC합계": {
+      "opening": 1300563,
+      "sellInTotal": 4520709,
+      "sellOutTotal": 4621282,
+      "closing": 1251584,
+      "delta": -48979,
+      "sellThrough": 139.460842,
+      "woi": 14.160565
+    },
+    "신발": {
+      "opening": 334653,
+      "sellInTotal": 1296088,
+      "sellOutTotal": 1217804,
+      "closing": 484386,
+      "delta": 149733,
+      "sellThrough": 121.354617,
+      "woi": 20.796834
+    },
+    "모자": {
+      "opening": 239108,
+      "sellInTotal": 1076228,
+      "sellOutTotal": 979766,
+      "closing": 550106,
+      "delta": 310998,
+      "sellThrough": 133.191441,
+      "woi": 29.356688
+    },
+    "가방": {
+      "opening": 264387,
+      "sellInTotal": 892330,
+      "sellOutTotal": 1606157,
+      "closing": 144479,
+      "delta": -119908,
+      "sellThrough": 233.949798,
+      "woi": 4.703269
+    },
+    "기타": {
+      "opening": 462415,
+      "sellInTotal": 1256063,
+      "sellOutTotal": 817555,
+      "closing": 72613,
+      "delta": -389802,
+      "sellThrough": 99.025527,
+      "woi": 4.643874
+    }
+  },
+  "리오더-본사 seed12345/본사/366일": {
+    "재고자산합계": {
+      "opening": 2608391,
+      "sellInTotal": 12104016,
+      "sellOutTotal": 11265660,
+      "closing": 2130255,
+      "delta": -478136,
+      "sellThrough": 141.211718,
+      "woi": 9.886851
+    },
+    "의류합계": {
+      "opening": 1307828,
+      "sellInTotal": 7286468,
+      "sellOutTotal": 6644378,
+      "closing": 1175510,
+      "delta": -132318,
+      "sellThrough": 117.250523,
+      "woi": 9.250283
+    },
+    "당년F": {
+      "opening": 327577,
+      "sellInTotal": 1549500,
+      "sellOutTotal": 1021689,
+      "closing": 147302,
+      "delta": -180275,
+      "sellThrough": 85.250099,
+      "woi": 7.538292
+    },
+    "당년S": {
+      "opening": 376754,
+      "sellInTotal": 1245504,
+      "sellOutTotal": 900594,
+      "closing": 2197,
+      "delta": -374557,
+      "sellThrough": 87.465927,
+      "woi": 0.127551
+    },
+    "1년차": {
+      "opening": 224341,
+      "sellInTotal": 1289621,
+      "sellOutTotal": 1317563,
+      "closing": 277216,
+      "delta": 52875,
+      "sellThrough": 120.661615,
+      "woi": 11.000944
+    },
+    "2년차": {
+      "opening": 4475,
+      "sellInTotal": 1368547,
+      "sellOutTotal": 1161832,
+      "closing": 274028,
+      "delta": 269553,
+      "sellThrough": 124.635731,
+      "woi": 12.332032
+    },
+    "차기시즌": {
+      "opening": 238837,
+      "sellInTotal": 819246,
+      "sellOutTotal": 1123417,
+      "closing": 99815,
+      "delta": -139022,
+      "sellThrough": 166.643827,
+      "woi": 4.645558
+    },
+    "과시즌": {
+      "opening": 135844,
+      "sellInTotal": 1014050,
+      "sellOutTotal": 1119283,
+      "closing": 374952,
+      "delta": 239108,
+      "sellThrough": 152.748601,
+      "woi": 17.51535
+    },
+    "ACC합계": {
+      "opening": 1300563,
+      "sellInTotal": 4817548,
+      "sellOutTotal": 4621282,
+      "closing": 954745,
+      "delta": -345818,
+      "sellThrough": 145.622462,
+      "woi": 10.802094
+    },
+    "신발": {
+      "opening": 334653,
+      "sellInTotal": 1437174,
+      "sellOutTotal": 1217804,
+      "closing": 343300,
+      "delta": 8647,
+      "sellThrough": 131.171521,
+      "woi": 14.739388
+    },
+    "모자": {
+      "opening": 239108,
+      "sellInTotal": 1229802,
+      "sellOutTotal": 979766,
+      "closing": 396532,
+      "delta": 157424,
+      "sellThrough": 145.679142,
+      "woi": 21.161133
+    },
+    "가방": {
+      "opening": 264387,
+      "sellInTotal": 894509,
+      "sellOutTotal": 1606157,
+      "closing": 142300,
+      "delta": -122087,
+      "sellThrough": 234.193395,
+      "woi": 4.632335
+    },
+    "기타": {
+      "opening": 462415,
+      "sellInTotal": 1256063,
+      "sellOutTotal": 817555,
+      "closing": 72613,
+      "delta": -389802,
+      "sellThrough": 99.025527,
+      "woi": 4.643874
+    }
+  }
+}
