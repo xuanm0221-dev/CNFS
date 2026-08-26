@@ -880,12 +880,12 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, growthRateByBrand, growthRateHqByBrand]);
 
-  // 湲곗〈 Sell-in/Sell-out ???곗씠??
+  // 기존 Sell-in/Sell-out 원 데이터
   const [data, setData] = useState<InventoryApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ?붾퀎 ?ш퀬?붿븸 ???곗씠??
+  // 월별 재고금액 원 데이터
   const [monthlyData, setMonthlyData] = useState<MonthlyStockResponse | null>(null);
   const [monthlyLoading, setMonthlyLoading] = useState<boolean>(false);
   const [monthlyError, setMonthlyError] = useState<string | null>(null);
@@ -902,17 +902,17 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   const [prevYearLoading, setPrevYearLoading] = useState<boolean>(false);
   const [prevYearError, setPrevYearError] = useState<boolean>(false);
 
-  // 由ы뀒??留ㅼ텧 ???곗씠??
+  // 리테일 매출 원 데이터
   const [retailData, setRetailData] = useState<RetailSalesResponse | null>(null);
   const [retailLoading, setRetailLoading] = useState<boolean>(false);
   const [retailError, setRetailError] = useState<string | null>(null);
 
-  // 蹂몄궗?믩?由ъ긽 異쒓퀬留ㅼ텧 ???곗씠??
+  // 본사→대리상 출고매출 원 데이터
   const [shipmentData, setShipmentData] = useState<ShipmentSalesResponse | null>(null);
   const [shipmentLoading, setShipmentLoading] = useState<boolean>(false);
   const [shipmentError, setShipmentError] = useState<string | null>(null);
 
-  // 蹂몄궗 留ㅼ엯?곹뭹 ???곗씠??
+  // 본사 매입상품 원 데이터
   const [purchaseData, setPurchaseData] = useState<PurchaseResponse | null>(null);
   const [purchaseLoading, setPurchaseLoading] = useState<boolean>(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
@@ -967,11 +967,11 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   const [annualShipmentPlanDraft2026, setAnnualShipmentPlanDraft2026] = useState<AnnualShipmentPlan>(createEmptyAnnualShipmentPlan);
   const [annualPlanEditMode, setAnnualPlanEditMode] = useState(false);
 
-  // ?ㅻ깄???곹깭
+  // 스냅샷 상태
   const [snapshotSaved, setSnapshotSaved] = useState(false);
   const [snapshotSavedAt, setSnapshotSavedAt] = useState<string | null>(null);
   const [recalcLoading, setRecalcLoading] = useState(false);
-  // 2026 ACC 湲곕쭚 紐⑺몴 ?ш퀬二쇱닔 (?由ъ긽/蹂몄궗蹂??좊컻쨌紐⑥옄쨌媛諛㈑룰린?)
+  // 2026 ACC 기말 목표 재고주수 (대리상/본사별 · 신발·모자·가방·기타)
   const [accTargetWoiDealer, setAccTargetWoiDealer] = useState<Record<AccKey, number>>({
     '신발': 29,
     '모자': 20,
@@ -1069,7 +1069,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     }
   }, [year, brand, growthRate]);
 
-  // ?? ?붾퀎 ?ш퀬?붿븸 fetch ??
+  // 월별 재고금액 fetch
   const fetchMonthlyData = useCallback(async () => {
     setMonthlyLoading(true);
     setMonthlyError(null);
@@ -1102,7 +1102,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     }
   }, [year, brand]);
 
-  // ?? 由ы뀒??留ㅼ텧 fetch ??
+  // 리테일 매출 fetch
   const fetchRetailData = useCallback(async () => {
     setRetailLoading(true);
     setRetailError(null);
@@ -1139,7 +1139,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     }
   }, [year, brand, growthRate, growthRateHq, growthRateByBrand, growthRateHqByBrand]);
 
-  // ?? 異쒓퀬留ㅼ텧 fetch ??
+  // 출고매출 fetch
   const fetchShipmentData = useCallback(async () => {
     setShipmentLoading(true);
     setShipmentError(null);
@@ -1171,7 +1171,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     }
   }, [year, brand]);
 
-  // ?? 蹂몄궗 留ㅼ엯?곹뭹 fetch ??
+  // 본사 매입상품 fetch
   const fetchPurchaseData = useCallback(async () => {
     setPurchaseLoading(true);
     setPurchaseError(null);
@@ -1205,7 +1205,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ?ㅻ깄?룹씠 ?덉쑝硫?API ?앸왂, ?놁쑝硫?4媛?API ?몄텧 (전체 ??? ?ㅻ깄??誘몄궗?? ??긽 API 吏묎퀎)
+  // 스냅샷이 있으면 API 생략, 없으면 4개 API 호출 (전체 탭은 스냅샷 미사용 — 항상 API 집계)
   useEffect(() => {
     let cancelled = false;
 
@@ -1788,8 +1788,8 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     };
   }, [year]);
 
-  // 2025쨌2026?????곷떒 ?쒕뒗 ?붾퀎 ?ш퀬?붿븸 + 由ы뀒??留ㅼ텧 + 異쒓퀬留ㅼ텧 + 留ㅼ엯?곹뭹?쇰줈 援ъ꽦
-  // 2026???뚮쭔 ACC 紐⑺몴 ?ш퀬二쇱닔 ?ㅻ쾭?덉씠 ?곸슜
+  // 2025·2026 탭: 상단 표는 월별 재고금액 + 리테일 매출 + 출고매출 + 매입상품으로 구성
+  // 2026 탭에만 ACC 목표 재고주수 오버레이 적용
 
 
   const effectiveRetailData = useMemo<RetailSalesResponse | null>(() => {
@@ -3570,7 +3570,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   const statusError = !!error || !!monthlyError || !!retailError || !!shipmentError || !!purchaseError || prevYearError;
   const statusErrorMessage = error || monthlyError || retailError || shipmentError || purchaseError || prevYearError || null;
 
-  // 2026 ACC ???ш퀬二쇱닔 ?몄쭛 ???곹깭 諛섏쁺 (??? ?먮뒗 湲곕낯媛?釉붾줉怨??곕룞)
+  // 2026 ACC 목표 재고주수 인라인 편집 → 상태 반영 (표에서 직접, 기본값 블록과 연동)
   const handleWoiChange = useCallback((tableType: 'dealer' | 'hq', rowKey: string, newWoi: number) => {
     if (!ACC_KEYS.includes(rowKey as AccKey)) return;
     if (tableType === 'dealer') {
@@ -3588,7 +3588,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     }
   }, []);
 
-  // 2026 蹂몄궗 ?由ъ긽異쒓퀬(?곌컙) ?몄쭛 ???由ъ긽 ??Sell-in???먮룞 諛섏쁺
+  // 2026 ACC 본사 직영 보유 재고주수 편집 → 상태 반영 (본사 기말재고 step1 산정에 사용)
   const handleHqHoldingWoiChange = useCallback((rowKey: AccKey, newWoi: number) => {
     setAccHqHoldingWoi((prev) => {
       const next = { ...prev, [rowKey]: newWoi };
@@ -3641,7 +3641,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
     setSnapshotSavedAt(snap.savedAt);
   }, [year, brand, monthlyData, retailData, shipmentData, purchaseData]);
 
-  // ?? ?ш퀎????
+  // 재계산
   const handleRecalc = useCallback(async (mode: 'current' | 'annual') => {
     setRecalcLoading(true);
     try {
@@ -3805,7 +3805,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
       />
 
       <div className="px-6 py-5">
-        {/* ?? 湲곗〈 Sell-in / Sell-out ???? */}
+        {/* 기존 Sell-in / Sell-out 표 */}
         {statusLoading && !dealerTableData && (
             <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
               로딩 중...
@@ -4859,7 +4859,7 @@ ORDER BY YYYYMM;
           )}
         </div>
 
-        {/* ?? 由ы뀒??留ㅼ텧 ???? */}
+        {/* 리테일 매출 섹션 */}
         <div className="mt-10 border-t border-gray-300 pt-8">
           <button
             type="button"
@@ -4949,7 +4949,7 @@ ORDER BY YYYYMM;
           )}
         </div>
 
-        {/* ?? 蹂몄궗?믩?由ъ긽 異쒓퀬留ㅼ텧 ???? */}
+        {/* 본사→대리상 출고매출 섹션 */}
         <div className="mt-10 border-t border-gray-300 pt-8">
           <button
             type="button"
@@ -5028,7 +5028,7 @@ ORDER BY YYYYMM;
           )}
         </div>
 
-        {/* ?? 蹂몄궗 留ㅼ엯?곹뭹 ???? */}
+        {/* 본사 매입상품 섹션 */}
         <div className="mt-10 border-t border-gray-300 pt-8">
           <button
             type="button"

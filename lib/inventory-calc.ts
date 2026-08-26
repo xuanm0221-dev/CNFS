@@ -25,7 +25,7 @@ function sumArr(a: number[], b: number[]): number[] {
 }
 
 /** Sell-through 분모: 의류는 기초+매입, 재고합계·ACC는 매입만 */
-function sellThroughDenominator(
+export function sellThroughDenominator(
   key: string,
   opening: number,
   sellInTotal: number
@@ -37,7 +37,7 @@ function sellThroughDenominator(
 }
 
 /** Sell-through 분자: 본사는 대리상출고+본사판매, 대리상은 sellOutTotal */
-function sellThroughNumerator(
+export function sellThroughNumerator(
   key: string,
   sellOutTotal: number,
   hqSalesTotal?: number
@@ -47,6 +47,12 @@ function sellThroughNumerator(
     return sellOutTotal + hqSalesTotal; // 본사: 대리상출고 + 본사판매
   }
   return sellOutTotal;
+}
+
+/** 재고주수(WOI) = 기말재고 ÷ 주간판매. 주간판매 = 연간판매 ÷ (연일수/7) */
+export function calcWoi(closing: number, sellOutTotal: number, yearDays: number): number {
+  const weeklyRate = sellOutTotal / (yearDays / 7);
+  return weeklyRate > 0 ? closing / weeklyRate : 0;
 }
 
 function calcRow(raw: InventoryRowRaw, yearDays: number): InventoryRow {
@@ -63,8 +69,7 @@ function calcRow(raw: InventoryRowRaw, yearDays: number): InventoryRow {
   // WOI: 기말재고 / 주매출 (주매출 = woiSellOut / (연도일수 / 7))
   const woiSellOut = raw.woiSellOut ?? raw.sellOut;
   const woiSellOutTotal = woiSellOut.reduce((s, v) => s + v, 0);
-  const weeklyRate = woiSellOutTotal / (yearDays / 7);
-  const woi = weeklyRate > 0 ? raw.closing / weeklyRate : 0;
+  const woi = calcWoi(raw.closing, woiSellOutTotal, yearDays);
 
   const hqSales = raw.hqSales;
   const hqSalesTotalForRow = hqSales ? hqSales.reduce((s, v) => s + v, 0) : undefined;
@@ -112,8 +117,7 @@ function calcSubtotal(
   const stDenominator = sellThroughDenominator(key, opening, sellInTotal);
   const stNumerator = sellThroughNumerator(key, sellOutTotal, hqSalesTotal);
   const sellThrough = stDenominator > 0 ? (stNumerator / stDenominator) * 100 : 0;
-  const weeklyRate = woiSellOutTotal / (yearDays / 7);
-  const woi = weeklyRate > 0 ? closing / weeklyRate : 0;
+  const woi = calcWoi(closing, woiSellOutTotal, yearDays);
 
   return {
     key,
@@ -400,8 +404,7 @@ export function applyHqSellInSellOutPlanOverlay(
     const stNum = sellThroughNumerator(row.key, newSellOutTotal, hqSalesTotal);
     const sellThrough = stDenom > 0 ? (stNum / stDenom) * 100 : 0;
     const woiSellOutTotal = row.woiSellOut.reduce((s, v) => s + v, 0);
-    const weeklyRate = woiSellOutTotal / (yearDays / 7);
-    const woi = weeklyRate > 0 ? closing / weeklyRate : 0;
+    const woi = calcWoi(closing, woiSellOutTotal, yearDays);
 
     hqByKey[key] = {
       ...row,
@@ -428,8 +431,7 @@ export function applyHqSellInSellOutPlanOverlay(
     const delta = closing - row.opening;
     const stDenom = sellThroughDenominator(row.key, row.opening, planSellOut);
     const sellThrough = stDenom > 0 ? (row.sellOutTotal / stDenom) * 100 : 0;
-    const weeklyRate = row.sellOutTotal / (yearDays / 7);
-    const woi = weeklyRate > 0 ? closing / weeklyRate : 0;
+    const woi = calcWoi(closing, row.sellOutTotal, yearDays);
 
     dealerByKey[key] = {
       ...row,
@@ -587,88 +589,4 @@ export function rebuildTableFromLeafs(leafRows: InventoryRow[], yearDays: number
   const accSubtotal = calcSubtotal('ACC합계', accLeafs, yearDays);
   const grandTotal = calcSubtotal('재고자산합계', [clothingSubtotal, accSubtotal], yearDays);
   return [grandTotal, clothingSubtotal, ...clothingLeafs, accSubtotal, ...accLeafs];
-}
-
-export function recalcOnDealerWoiChange(
-  data: { dealer: InventoryTableData; hq: InventoryTableData },
-  rowKey: string,
-  newWoi: number
-): { dealer: InventoryTableData; hq: InventoryTableData } {
-  const leafRows = [...SEASON_KEYS, ...ACC_KEYS];
-  const dealerByKey = Object.fromEntries(
-    data.dealer.rows.filter((r) => r.isLeaf).map((r) => [r.key, r])
-  );
-  const hqByKey = Object.fromEntries(
-    data.hq.rows.filter((r) => r.isLeaf).map((r) => [r.key, r])
-  );
-
-  const updatedDealerLeaf = recalcLeafFromWoi(dealerByKey[rowKey]!, newWoi, 366);
-  dealerByKey[rowKey] = updatedDealerLeaf;
-  const newDealerLeafs = leafRows.map((k) => dealerByKey[k]!);
-  const dealerRows = rebuildTableFromLeafs(newDealerLeafs, 366);
-
-  // HQ sellOut = dealer sellIn; HQ 해당 행 갱신
-  const hqRow = hqByKey[rowKey];
-  if (hqRow) {
-    const sellOut = updatedDealerLeaf.sellIn;
-    const sellOutTotal = sellOut.reduce((s, v) => s + v, 0);
-    const weeklyRate = sellOutTotal / (366 / 7);
-    const newClosing = weeklyRate > 0 ? Math.round(weeklyRate * hqRow.woi) : 0;
-    const newSellInTotal = newClosing + sellOutTotal - hqRow.opening;
-
-    let sellIn: number[];
-    const prevTotal = hqRow.sellInTotal;
-    if (newSellInTotal <= 0) {
-      sellIn = new Array(12).fill(0);
-    } else if (prevTotal > 0) {
-      const scale = newSellInTotal / prevTotal;
-      sellIn = hqRow.sellIn.map((v) => Math.round(v * scale));
-      const sum = sellIn.reduce((s, v) => s + v, 0);
-      if (sum !== newSellInTotal) sellIn[11] += newSellInTotal - sum;
-    } else {
-      sellIn = new Array(12).fill(0);
-      const perMonth = Math.floor(newSellInTotal / 12);
-      for (let i = 0; i < 12; i++) sellIn[i] = perMonth;
-      sellIn[11] += newSellInTotal - perMonth * 12;
-    }
-
-    const stDenom = sellThroughDenominator(rowKey, hqRow.opening, newSellInTotal);
-    const stNum = sellThroughNumerator(rowKey, sellOutTotal, hqRow.hqSalesTotal);
-    hqByKey[rowKey] = {
-      ...hqRow,
-      sellOut,
-      sellOutTotal,
-      sellIn,
-      sellInTotal: newSellInTotal,
-      closing: newClosing,
-      delta: newClosing - hqRow.opening,
-      sellThrough: stDenom > 0 ? (stNum / stDenom) * 100 : 0,
-    };
-  }
-  const newHqLeafs = leafRows.map((k) => hqByKey[k]!);
-  const hqRows = rebuildTableFromLeafs(newHqLeafs, 366);
-
-  return {
-    dealer: { rows: dealerRows },
-    hq: { rows: hqRows },
-  };
-}
-
-export function recalcOnHqWoiChange(
-  data: { dealer: InventoryTableData; hq: InventoryTableData },
-  rowKey: string,
-  newWoi: number
-): { dealer: InventoryTableData; hq: InventoryTableData } {
-  const leafRows = [...SEASON_KEYS, ...ACC_KEYS];
-  const hqByKey = Object.fromEntries(
-    data.hq.rows.filter((r) => r.isLeaf).map((r) => [r.key, r])
-  );
-
-  const updatedHqLeaf = recalcLeafFromWoi(hqByKey[rowKey]!, newWoi, 366);
-  hqByKey[rowKey] = updatedHqLeaf;
-  const newHqLeafs = leafRows.map((k) => hqByKey[k]!);
-  return {
-    ...data,
-    hq: { rows: rebuildTableFromLeafs(newHqLeafs, 366) },
-  };
 }

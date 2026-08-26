@@ -4,13 +4,9 @@
 //   - 본사  : reorder = 대리상출고 증가액 → 그만큼 상품매입도 증가 → 기말 불변
 //             (표시상 기말 = 기초 + 상품매입 − 대리상출고 − reorder − 본사판매)
 // 본문은 ACC 목표 재고주수로 Sell-in 을 역산하지만, 여기서는 리오더 효과를 그대로 노출한다.
-import {
-  InventoryRow,
-  InventoryTableData,
-  ACC_KEYS,
-  SEASON_KEYS,
-  AccKey,
-} from './inventory-types';
+import { InventoryRow, InventoryTableData, ACC_KEYS, AccKey } from './inventory-types';
+// 재고주수·판매율 공식은 본문(inventory-calc)과 반드시 같아야 하므로 복제하지 않고 그대로 가져다 쓴다.
+import { calcWoi, sellThroughDenominator, sellThroughNumerator } from './inventory-calc';
 
 /** MLB 대리상 리오더 물량 (CNY K). 값 변경 시 이 상수만 수정. */
 export const MLB_REORDER_ACC_K: Record<AccKey, number> = {
@@ -19,6 +15,11 @@ export const MLB_REORDER_ACC_K: Record<AccKey, number> = {
   가방: 2_179,
   기타: 0,
 };
+
+/** 월별 배열 합계 */
+function sumArr(arr: number[]): number {
+  return arr.reduce((s, v) => s + v, 0);
+}
 
 /** 2026 = 윤년 */
 const DEFAULT_YEAR_DAYS = 366;
@@ -42,32 +43,6 @@ export function buildReorderByRowKey(reorder: Record<AccKey, number>): Record<st
   return out;
 }
 
-/** WOI = 기말 / 주간판매 (주간판매 = woiSellOut 연간합 ÷ (연일수/7)) — 본문과 동일 공식 */
-function calcWoi(closing: number, woiSellOut: number[], yearDays: number): number {
-  const total = woiSellOut.reduce((s, v) => s + v, 0);
-  const weekly = total / (yearDays / 7);
-  return weekly > 0 ? closing / weekly : 0;
-}
-
-/** Sell-through 분모 — 본문 inventory-calc 와 동일 (의류만 기초+매입, 나머지는 매입) */
-function stDenominator(key: string, opening: number, sellInTotal: number): number {
-  if (key === '재고자산합계') return sellInTotal;
-  if (key === '의류합계' || (SEASON_KEYS as string[]).includes(key)) return opening + sellInTotal;
-  return sellInTotal;
-}
-
-/** Sell-through 분자 — 본사는 대리상출고+본사판매, 대리상은 sellOut */
-function stNumerator(key: string, sellOutTotal: number, hqSalesTotal?: number): number {
-  const isHqRowWithSales =
-    (key === '의류합계'
-      || (SEASON_KEYS as string[]).includes(key)
-      || key === 'ACC합계'
-      || key === '재고자산합계'
-      || (ACC_KEYS as string[]).includes(key))
-    && hqSalesTotal != null;
-  return isHqRowWithSales ? sellOutTotal + (hqSalesTotal ?? 0) : sellOutTotal;
-}
-
 /**
  * 대리상 표에 리오더 반영.
  * Sell-in 컬럼은 본문값 그대로 두고 reorder 를 별도 컬럼으로 보여주되,
@@ -83,14 +58,14 @@ export function applyReorderDealer(
     if (r === 0) return row;
     const closing = row.closing + r;
     const sellInEff = row.sellInTotal + r;
-    const den = stDenominator(row.key, row.opening, sellInEff);
-    const num = stNumerator(row.key, row.sellOutTotal, row.hqSalesTotal);
+    const den = sellThroughDenominator(row.key, row.opening, sellInEff);
+    const num = sellThroughNumerator(row.key, row.sellOutTotal, row.hqSalesTotal);
     return {
       ...row,
       closing,
       delta: closing - row.opening,
       sellThrough: den > 0 ? (num / den) * 100 : 0,
-      woi: calcWoi(closing, row.woiSellOut, yearDays),
+      woi: calcWoi(closing, sumArr(row.woiSellOut), yearDays),
     };
   });
   return { rows };
@@ -111,14 +86,14 @@ export function applyReorderHq(
     if (r === 0) return row;
     const sellInTotal = row.sellInTotal + r; // 상품매입 증가
     const sellOutEff = row.sellOutTotal + r; // 대리상출고 실질 증가 (컬럼은 원값 + reorder 별도)
-    const den = stDenominator(row.key, row.opening, sellInTotal);
-    const num = stNumerator(row.key, sellOutEff, row.hqSalesTotal);
+    const den = sellThroughDenominator(row.key, row.opening, sellInTotal);
+    const num = sellThroughNumerator(row.key, sellOutEff, row.hqSalesTotal);
     return {
       ...row,
       sellInTotal,
       // 기말·증감 불변 (매입 증가분이 출고 증가분과 상쇄)
       sellThrough: den > 0 ? (num / den) * 100 : 0,
-      woi: calcWoi(row.closing, row.woiSellOut, yearDays),
+      woi: calcWoi(row.closing, sumArr(row.woiSellOut), yearDays),
     };
   });
   return { rows };

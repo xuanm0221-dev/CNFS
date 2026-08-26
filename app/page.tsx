@@ -269,7 +269,7 @@ export default function Home() {
     }
   };
 
-  // 釉뚮옖??紐⑸줉
+  // 브랜드 목록
   const brands = [
     { id: null, label: '전체' },
     { id: 'mlb', label: 'MLB' },
@@ -364,7 +364,7 @@ export default function Home() {
     try {
       let url = '';
       if (type === 'PL') {
-        // 釉뚮옖?쒕퀎 ?먮뒗 踰뺤씤 PL
+        // 브랜드별 또는 법인 PL
         if (brand) {
           url = `/api/fs/pl/brand?brand=${brand}&year=${year}`;
           if ((year === 2025 || year === 2026) && month !== undefined) {
@@ -699,7 +699,7 @@ export default function Home() {
     }
   };
 
-  // ??而щ읆 (1??12??
+  // 월 컬럼 (1월~12월)
   const monthColumns = ['계정과목', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
   return (
@@ -925,7 +925,7 @@ export default function Home() {
                   />
                 </div>
                 
-                {/* ?댁쟾?먮낯 ??*/}
+                {/* 운전자본 표 */}
                 {workingCapitalData && (
                   <div className="px-6 pb-6">
                     <div className="mb-4 border-t border-slate-200 pt-6">
