@@ -256,6 +256,9 @@ export default function FinancialTable({
     '영업이익률(관리식)': { numerator: '영업이익(관리식)', denominator: '실판매출' },
     '영업이익률(IFRS)': { numerator: '영업이익(IFRS)', denominator: '매출(IFRS)' },
     'CN 재무식 영업이익률': { numerator: '내부거래 제거전 영업이익(현지기준)', denominator: '실판매출' },
+    // IFRS 조정 상세 기반 (2025~) — 두 이익률 모두 분모는 (IFRS)매출
+    '(IFRS)영업이익률': { numerator: '(IFRS)영업이익_현지법인기준', denominator: '(IFRS)매출' },
+    '내부거래제거 후 영업이익률': { numerator: '내부거래제거 후 영업이익', denominator: '(IFRS)매출' },
   };
 
   // 분기값 산출: 일반 행은 단순 합, 비율 행은 분자/분모 합산 후 비율 재계산
@@ -633,10 +636,11 @@ export default function FinancialTable({
               // Balance Check 행 스타일링 (절대값 10 미만이면 정합)
               const isBalanceCheck = row.account === 'Balance Check';
               const isBalanceOk = isBalanceCheck && row.values.every(v => v === null || Math.abs(v) < 10);
-              // 매출총이익 / 영업이익(관리식) 아래 굵은 회색 구분선
-              const hasThickDivider = row.account === '매출총이익' || row.account === '영업이익(관리식)';
-              // 재무&관리차이(-) 행: 오렌지 텍스트
-              const isOrangeText = row.isHighlight === 'orange';
+              // 매출총이익 / 영업이익률(관리식) 아래 굵은 회색 구분선
+              // (영업이익률(관리식) 아래부터 (IFRS) 블록이 시작되므로 그 경계에 선을 둔다)
+              const hasThickDivider = row.account === '매출총이익' || row.account === '영업이익률(관리식)';
+              // 재무&관리차이(-) 행만 오렌지 텍스트 (내부거래제거 후 영업이익은 배경색만 오렌지)
+              const isOrangeText = row.account === '재무&관리차이(-)';
 
               return (
               <tr
@@ -735,7 +739,7 @@ export default function FinancialTable({
                     const isProfitTurnaroundMonth = row.account === '영업이익(관리식)'
                       && value !== null && prevValue !== null
                       && value > 0 && prevValue < 0;
-                    const isRatioRow = row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)' || row.account === '영업이익률(IFRS)' || row.account === '(Tag 대비 원가율)';
+                    const isRatioRow = row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)' || row.account === '영업이익률(IFRS)' || row.account === '(Tag 대비 원가율)' || row.account === '(IFRS)영업이익률' || row.account === '내부거래제거 후 영업이익률';
                     return (
                       <td
                         key={`month-${colIndex}`}
@@ -937,7 +941,7 @@ export default function FinancialTable({
                         const isProfitTurnaround = row.account === '영업이익(관리식)'
                           && currQ !== null && prevQ !== null
                           && currQ > 0 && prevQ < 0;
-                        const isRatioRow = row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)' || row.account === '영업이익률(IFRS)' || row.account === '(Tag 대비 원가율)';
+                        const isRatioRow = row.account === '영업이익률(관리식)' || row.account === '영업이익률(재무식)' || row.account === '영업이익률(IFRS)' || row.account === '(Tag 대비 원가율)' || row.account === '(IFRS)영업이익률' || row.account === '내부거래제거 후 영업이익률';
                         cells.push(
                           <td key={`q-${i}`} className={`border border-gray-200 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''}`}>
                             <div className="flex flex-col items-end">

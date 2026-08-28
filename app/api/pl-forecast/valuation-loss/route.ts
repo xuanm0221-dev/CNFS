@@ -1,4 +1,5 @@
 // PL(sim)용 평가감 — 파일/PL_brand/{brand}/{year}.csv 단일 소스
+// 평가감 = 평가감(설정) + 평가감(환입). set/rev 를 그대로 내려주고 합계도 함께 제공한다.
 // (이전: 보조파일(simu)/3개브랜드평가감.csv, 천위안 단위)
 // PL_brand는 1위안 단위 → PL(sim) UI/로직이 천위안 기반이므로 /1000 변환 후 반환
 import { NextRequest, NextResponse } from 'next/server';
@@ -49,6 +50,12 @@ export async function GET(req: NextRequest) {
       'MLB KIDS': empty12(),
       DISCOVERY: empty12(),
     };
+    const brandsSet: Record<SalesBrand, (number | null)[]> = {
+      MLB: empty12(), 'MLB KIDS': empty12(), DISCOVERY: empty12(),
+    };
+    const brandsRev: Record<SalesBrand, (number | null)[]> = {
+      MLB: empty12(), 'MLB KIDS': empty12(), DISCOVERY: empty12(),
+    };
 
     for (const brand of BRANDS) {
       const csvPath = path.join(process.cwd(), '파일', 'PL_brand', BRAND_TO_DIR[brand], `${year}.csv`);
@@ -56,19 +63,27 @@ export async function GET(req: NextRequest) {
       const content = fs.readFileSync(csvPath, 'utf-8').replace(/^﻿/, '');
       const parsed = Papa.parse<CsvRow>(content, { header: true, skipEmptyLines: true });
 
-      const evalRow = parsed.data.find((row) => (row['계정과목'] ?? '').trim() === '평가감');
-      if (!evalRow) continue;
+      const findRow = (name: string) =>
+        parsed.data.find((row) => (row['계정과목'] ?? '').trim() === name);
+      const setRow = findRow('평가감(설정)');
+      const revRow = findRow('평가감(환입)');
+      if (!setRow && !revRow) continue;
 
       for (let i = 0; i < 12; i += 1) {
         if (i < planStart) continue;
-        const v = toNullableNumber(evalRow[MONTH_KEYS[i]]);
-        if (v === null) continue;
         // PL_brand는 위안 → 천위안으로 변환 (PL(sim) UI/머지 로직이 천위안 기반)
-        brands[brand][i] = v / 1000;
+        const sv = setRow ? toNullableNumber(setRow[MONTH_KEYS[i]]) : null;
+        const rv = revRow ? toNullableNumber(revRow[MONTH_KEYS[i]]) : null;
+        if (sv !== null) brandsSet[brand][i] = sv / 1000;
+        if (rv !== null) brandsRev[brand][i] = rv / 1000;
+        if (sv !== null || rv !== null) brands[brand][i] = ((sv ?? 0) + (rv ?? 0)) / 1000;
       }
     }
 
-    return NextResponse.json({ brands }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(
+      { brands, brandsSet, brandsRev },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `평가감 조회 오류: ${message}` }, { status: 500 });

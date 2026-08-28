@@ -31,7 +31,20 @@
       "Bash(curl -s \"http://localhost:3001/api/inventory/retail-sales\" -o /dev/null -w \"%{http_code}\\\\n\")",
       "Bash(curl -s \"http://localhost:3001/api/inventory/retail-sales?year=2026&brand=MLB&growthRate=0&growthRateHq=0\" -o resp.json -w \"HTTP %{http_code}\\\\n\")",
       "Bash(grep -aoE '.{0,15}\\(총자산|총부채|총자본\\).{0,15}' ref.html)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git ls-remote *)",
+      "Bash(git -C d:/dashboard/FS260312 ls-files)",
+      "Bash(iconv -f CP949 -t UTF-8)",
+      "Bash(python -c ' *)",
+      "Bash(npx tsc *)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git fetch *)",
+      "Bash(git diff *)",
+      "Bash(curl -s -m 20 http://localhost:3001/api/inventory/otb?year=2026 -o __TRACKED_VAR__/otb.json -w 'HTTP %{http_code}\\\\n')",
+      "Bash(awk '/const computeScenarioPayloadCore/,/^  \\\\}, \\\\[/' components/inventory/InventoryDashboard.tsx)",
+      "Bash(curl -s -m 60 \"http://localhost:3000/api/pl-forecast/dealer-clothing-otb\" -w \"\\\\nHTTP %{http_code}\\\\n\")"
     ]
   }
 }

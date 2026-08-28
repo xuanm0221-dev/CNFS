@@ -174,6 +174,106 @@ export async function readAdjustCSV(
   return { byBrand, total: toFD(totalMap) };
 }
 
+// ─── IFRS 조정 상세 (재무조정/{year}_상세.csv) ────────────────────────────────
+// 파일 구조: 조정사항 | 브랜드 | 항목 | 1월~12월
+//   "조정전" 행으로 블록이 시작하고 "조정후" 행으로 끝난다.
+//   블록 사이의 행들이 조정 항목이며, 조정사항 컬럼이 섹션(매출/매출원가/판관비)이다.
+//   조정전/조정후 행은 검증용이라 읽지 않는다 (관리식 값 + 항목합계로 재계산).
+export type DetailAdjustSection = '매출' | '매출원가' | '평가감' | '판관비';
+
+export interface DetailAdjustItem {
+  section: DetailAdjustSection;
+  brand: string | null; // 정규화 브랜드키 (mlb/kids/...). 매칭 실패 시 null
+  brandRaw: string;
+  item: string;
+  values: number[]; // 12개월
+}
+
+export interface DetailAdjustData {
+  year: number;
+  items: DetailAdjustItem[];
+}
+
+// 조정사항 컬럼 → 섹션. 평가감은 파일에서 "평가감(환입)"/"평가감(설정)" 처럼 세분되어 올 수 있어
+// 접두어로 매칭하고 (IFRS)평가감 한 줄로 합산한다.
+function normalizeDetailSection(tag: string): DetailAdjustSection | null {
+  const t = tag.trim();
+  if (t === '매출') return '매출';
+  if (t === '매출원가') return '매출원가';
+  if (t === '판관비') return '판관비';
+  if (t.startsWith('평가감')) return '평가감';
+  return null;
+}
+
+// 상세 CSV 전용 숫자 파서 — 회계식 괄호 음수 "(1,234)" 와 마이너스 부호 둘 다 지원
+function parseDetailNumber(raw: string | undefined): number {
+  if (raw === undefined || raw === null) return 0;
+  let t = String(raw).replace(/,/g, '').replace(/\s/g, '').trim();
+  if (!t || t === '-') return 0;
+  if (/^\(.*\)$/.test(t)) t = '-' + t.slice(1, -1);
+  const v = parseFloat(t);
+  return Number.isFinite(v) ? v : 0;
+}
+
+export async function readDetailAdjustCSV(filePath: string, year: number): Promise<DetailAdjustData> {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    try {
+      content = iconv.decode(fs.readFileSync(filePath), 'cp949');
+    } catch {
+      throw new Error(`CSV 파일을 읽을 수 없습니다: ${filePath}`);
+    }
+  }
+
+  const parsed = Papa.parse<string[]>(content, { header: false, skipEmptyLines: false });
+  const rows = parsed.data;
+  if (!rows || rows.length < 2) return { year, items: [] };
+
+  // 월 컬럼 인덱스 (0=조정사항, 1=브랜드, 2=항목 이후부터 "N월" 탐지).
+  // 파일 우측의 PKG 검증블록은 월 헤더가 없어 자동으로 제외된다.
+  const headers = rows[0] ?? [];
+  const monthColumns: { index: number; month: number }[] = [];
+  headers.forEach((header, index) => {
+    if (index <= 2) return;
+    const month = parseMonthColumn(header ?? '');
+    if (month !== null && !monthColumns.some(c => c.month === month)) {
+      monthColumns.push({ index, month });
+    }
+  });
+  if (monthColumns.length === 0) return { year, items: [] };
+
+  // (섹션, 브랜드, 항목) 단위로 합산 — 같은 키가 여러 행에 나뉘어 있어도 안전
+  const acc = new Map<string, DetailAdjustItem>();
+  let inBlock = false;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i] ?? [];
+    const tag = (row[0] ?? '').trim();
+    if (tag === '조정전') { inBlock = true; continue; }
+    if (tag === '조정후') { inBlock = false; continue; }
+    if (!inBlock) continue;
+    const section = normalizeDetailSection(tag);
+    if (!section) continue;
+    const brandRaw = (row[1] ?? '').trim();
+    const item = (row[2] ?? '').trim();
+    if (!item) continue;
+
+    const key = `${section}|${brandRaw}|${item}`;
+    let entry = acc.get(key);
+    if (!entry) {
+      entry = { section, brand: normalizeAdjustBrand(brandRaw), brandRaw, item, values: new Array(12).fill(0) };
+      acc.set(key, entry);
+    }
+    for (const { index, month } of monthColumns) {
+      entry.values[month - 1] += parseDetailNumber(row[index]);
+    }
+  }
+
+  return { year, items: Array.from(acc.values()) };
+}
+
 // 월별 데이터 맵 생성 (account -> [month1, ..., month12])
 export function createMonthDataMap(data: FinancialData[]): Map<string, number[]> {
   const map = new Map<string, number[]>();

@@ -1,4 +1,9 @@
 import { FinancialData, TableRow, ComparisonData, BrandComparisonData } from './types';
+import {
+  IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA, IFRS_OP, IFRS_OP_RATE,
+  IFRS_OP_EXCL_INTER, IFRS_OP_EXCL_INTER_RATE, IFRS_INTERCOMPANY_ITEM,
+  type IFRSAdjustSet,
+} from './ifrs-adjust';
 
 // 월별 데이터를 Map으로 변환
 export function createMonthDataMap(data: FinancialData[]): Map<string, number[]> {
@@ -28,7 +33,7 @@ const CORPORATE_SUM_ACCOUNTS: string[] = [
   // Tag매출 4-leaf (대리상/직영 × 의류/ACC)
   'Tag매출_대리상_APP', 'Tag매출_대리상_ACC', 'Tag매출_직영_APP', 'Tag매출_직영_ACC',
   // 실판매출 / 매출원가 / 평가감
-  '실판매출', '매출원가', '평가감',
+  '실판매출', '매출원가', '평가감(설정)', '평가감(환입)',
   // 직접비 10항목
   '급여(매장)', '복리후생비(매장)', '플랫폼수수료', 'TP수수료', '직접광고비',
   '대리상지원금', '물류비', '매장임차료', '감가상각비', '기타(직접비)',
@@ -129,6 +134,7 @@ export function calculatePL(
   isBrand: boolean = false,
   adjustData?: FinancialData[],
   retailData?: RetailPLData,
+  ifrsAdjust?: IFRSAdjustSet,
 ): TableRow[] {
   const map = createMonthDataMap(data);
 
@@ -149,7 +155,10 @@ export function calculatePL(
   
   // 매출원가
   const 매출원가 = getAccountValues(map, '매출원가');
-  const 평가감 = getAccountValues(map, '평가감');
+  // 평가감 = 평가감(설정) + 평가감(환입). CSV 의 '평가감' 행은 더 이상 읽지 않는다.
+  const 평가감설정 = getAccountValues(map, '평가감(설정)');
+  const 평가감환입 = getAccountValues(map, '평가감(환입)');
+  const 평가감 = 평가감설정.map((v, i) => v + 평가감환입[i]);
   const 매출원가합계 = 매출원가.map((v, i) => v + 평가감[i]);
   const Tag대비원가율 = Tag매출.map((v, i) => (v !== 0 ? (매출원가[i] * 1.13) / v : null));
   
@@ -267,7 +276,9 @@ export function calculatePL(
       format: 'number',
     },
     { account: '매출원가', level: 1, isGroup: false, isCalculated: false, values: 매출원가, format: 'number' },
-    { account: '평가감', level: 1, isGroup: false, isCalculated: false, values: 평가감, format: 'number' },
+    { account: '평가감', level: 1, isGroup: true, isCalculated: true, values: 평가감, format: 'number' },
+    { account: '평가감(설정)', level: 2, isGroup: false, isCalculated: false, values: 평가감설정, format: 'number' },
+    { account: '평가감(환입)', level: 2, isGroup: false, isCalculated: false, values: 평가감환입, format: 'number' },
     { account: '(Tag 대비 원가율)', level: 1, isGroup: false, isCalculated: true, values: Tag대비원가율, format: 'percent' },
     {
       account: '매출총이익',
@@ -337,8 +348,51 @@ export function calculatePL(
     },
   ];
 
-  // 재무조정 데이터가 있으면 재무&관리차이(-) + 영업이익(IFRS) 행 추가
-  if (adjustData) {
+  // IFRS 조정 상세(재무조정/{year}_상세.csv)가 있으면 신규 (IFRS) 행 블록으로 대체.
+  // 상세가 없는 연도(2024)는 기존 재무&관리차이(-) 방식을 그대로 쓴다.
+  if (ifrsAdjust) {
+    const 매출조정 = ifrsAdjust.total['매출'];
+    const 매출원가조정 = ifrsAdjust.total['매출원가'];
+    const 평가감조정 = ifrsAdjust.total['평가감'];
+    const 판관비조정 = ifrsAdjust.total['판관비'];
+
+    const IFRS매출 = 실판매출.map((v, i) => v + 매출조정[i]);
+    const IFRS매출원가 = 매출원가.map((v, i) => v + 매출원가조정[i]);
+    const IFRS평가감 = 평가감.map((v, i) => v + 평가감조정[i]);
+    const IFRS판관비 = 직접비합계.map((v, i) => v + 영업비합계[i] + 판관비조정[i]);
+    const IFRS영업이익 = IFRS매출.map((v, i) => v - IFRS매출원가[i] - IFRS평가감[i] - IFRS판관비[i]);
+    const IFRS영업이익률 = IFRS매출.map((v, i) => (v !== 0 ? IFRS영업이익[i] / v : null));
+    // Discovery 반품 행 = 본사반품매출 − 관련원가 (음수). 제거는 그 순효과를 차감(부호 반대)한다.
+    const 내부거래제거후영업이익 = IFRS영업이익.map((v, i) => v - ifrsAdjust.intercompany[i]);
+    const 내부거래제거후영업이익률 = IFRS매출.map((v, i) => (v !== 0 ? 내부거래제거후영업이익[i] / v : null));
+
+    const itemRows = (section: '매출' | '매출원가' | '평가감' | '판관비') =>
+      ifrsAdjust.items[section].map(s => ({
+        account: s.key,
+        displayLabel: s.item,
+        level: 1,
+        isGroup: false,
+        isCalculated: false,
+        values: s.values,
+        format: 'number' as const,
+      }));
+
+    rows.push(
+      { account: IFRS_SALES, level: 0, isGroup: true, isCalculated: true, isBold: true, isHighlight: 'none', values: IFRS매출, format: 'number' },
+      ...itemRows('매출'),
+      { account: IFRS_COGS, level: 0, isGroup: true, isCalculated: true, isBold: true, isHighlight: 'none', values: IFRS매출원가, format: 'number' },
+      ...itemRows('매출원가'),
+      { account: IFRS_VALUATION, level: 0, isGroup: true, isCalculated: true, isBold: true, isHighlight: 'none', values: IFRS평가감, format: 'number' },
+      ...itemRows('평가감'),
+      { account: IFRS_SGA, level: 0, isGroup: true, isCalculated: true, isBold: true, isHighlight: 'none', values: IFRS판관비, format: 'number' },
+      ...itemRows('판관비'),
+      { account: IFRS_OP, level: 0, isGroup: false, isCalculated: true, isBold: true, isHighlight: 'yellow', values: IFRS영업이익, format: 'number' },
+      { account: IFRS_OP_RATE, level: 0, isGroup: false, isCalculated: true, isBold: true, isHighlight: 'yellow', values: IFRS영업이익률, format: 'percent' },
+      { account: IFRS_OP_EXCL_INTER, level: 0, isGroup: true, isCalculated: true, isBold: true, isHighlight: 'orange', values: 내부거래제거후영업이익, format: 'number' },
+      { account: IFRS_INTERCOMPANY_ITEM, displayLabel: 'Discovery 반품', level: 1, isGroup: false, isCalculated: true, values: ifrsAdjust.intercompany, format: 'number' },
+      { account: IFRS_OP_EXCL_INTER_RATE, level: 0, isGroup: false, isCalculated: true, isBold: true, isHighlight: 'orange', values: 내부거래제거후영업이익률, format: 'percent' },
+    );
+  } else if (adjustData) {
     const adjMap = createMonthDataMap(adjustData);
     const 재무조정항목 = [
       '사용권자산', '재무비용', '이연수익', '반품충당부채',
@@ -495,25 +549,9 @@ export function calculateComparisonData(
 
   const result = currentYearData.map(row => {
     const prevRow = prevAccountMap.get(row.account);
-
-    if (!prevRow) {
-      return {
-        ...row,
-        comparisons: {
-          prevYearMonth: null,
-          currYearMonth: null,
-          monthYoY: null,
-          prevYearYTD: null,
-          currYearYTD: null,
-          ytdYoY: null,
-          prevYearAnnual: null,
-          currYearAnnual: null,
-          annualYoY: null,
-        },
-      };
-    }
-    
-    const prev2024 = prevRow.values;
+    // 전년에 없는 행((IFRS) 상세 항목 등)도 당년 값은 계산한다 — 전년/YoY만 공란 처리.
+    const hasPrev = prevRow !== undefined;
+    const prev2024: (number | null)[] = prevRow ? prevRow.values : new Array(12).fill(null);
     const curr2025 = row.values;
     
     // 월별 비교
@@ -522,7 +560,7 @@ export function calculateComparisonData(
     const monthYoY = calculateYoY(currYearMonth, prevYearMonth);
     
     // 비율 항목인지 확인
-    const isRatioAccount = row.account === '(Tag 대비 원가율)' || row.account === '영업이익률(관리식)' || row.account === '영업이익률(IFRS)' || row.account === 'CN 재무식 영업이익률';
+    const isRatioAccount = row.account === '(Tag 대비 원가율)' || row.account === '영업이익률(관리식)' || row.account === '영업이익률(IFRS)' || row.account === 'CN 재무식 영업이익률' || row.account === IFRS_OP_RATE || row.account === IFRS_OP_EXCL_INTER_RATE;
 
     let prevYearYTD: number | null = null;
     let currYearYTD: number | null = null;
@@ -631,6 +669,31 @@ export function calculateComparisonData(
           currYearAnnual = currAnnual실판매출 !== 0 ? currAnnual제거전 / currAnnual실판매출 : null;
           prevYearAnnual = prevAnnual실판매출 !== 0 ? prevAnnual제거전 / prevAnnual실판매출 : null;
         }
+      } else {
+        // (IFRS)영업이익률 / 내부거래제거 후 영업이익률 — 둘 다 분모는 (IFRS)매출
+        const numeratorAccount = row.account === IFRS_OP_RATE ? IFRS_OP : IFRS_OP_EXCL_INTER;
+        const currNum = currAccountMap.get(numeratorAccount);
+        const prevNum = prevAccountMap.get(numeratorAccount);
+        const currDen = currAccountMap.get(IFRS_SALES);
+        const prevDen = prevAccountMap.get(IFRS_SALES);
+
+        if (currNum && currDen) {
+          const currYTDNum = calculateYTD(currNum.values);
+          const currYTDDen = calculateYTD(currDen.values);
+          currYearYTD = currYTDDen !== 0 ? currYTDNum / currYTDDen : null;
+          const currAnnualNum = calculateAnnual(currNum.values);
+          const currAnnualDen = calculateAnnual(currDen.values);
+          currYearAnnual = currAnnualDen !== 0 ? currAnnualNum / currAnnualDen : null;
+        }
+        // 전년(2024)은 상세파일이 없어 (IFRS) 행 자체가 없다 → 전년비 공란
+        if (prevNum && prevDen) {
+          const prevYTDNum = calculateYTD(prevNum.values);
+          const prevYTDDen = calculateYTD(prevDen.values);
+          prevYearYTD = prevYTDDen !== 0 ? prevYTDNum / prevYTDDen : null;
+          const prevAnnualNum = calculateAnnual(prevNum.values);
+          const prevAnnualDen = calculateAnnual(prevDen.values);
+          prevYearAnnual = prevAnnualDen !== 0 ? prevAnnualNum / prevAnnualDen : null;
+        }
       }
     } else {
       // 일반 항목은 단순 합산
@@ -643,18 +706,31 @@ export function calculateComparisonData(
     const ytdYoY = calculateYoY(currYearYTD, prevYearYTD);
     const annualYoY = calculateYoY(currYearAnnual, prevYearAnnual);
     
-    const comparisons: ComparisonData = {
-      prevYearMonth,
-      currYearMonth,
-      monthYoY,
-      prevYearYTD,
-      currYearYTD,
-      ytdYoY,
-      prevYearAnnual,
-      currYearAnnual,
-      annualYoY,
-      prevYearMonthly: prev2024.slice(0, 12),
-    };
+    const comparisons: ComparisonData = hasPrev
+      ? {
+          prevYearMonth,
+          currYearMonth,
+          monthYoY,
+          prevYearYTD,
+          currYearYTD,
+          ytdYoY,
+          prevYearAnnual,
+          currYearAnnual,
+          annualYoY,
+          prevYearMonthly: prev2024.slice(0, 12),
+        }
+      : {
+          prevYearMonth: null,
+          currYearMonth,
+          monthYoY: null,
+          prevYearYTD: null,
+          currYearYTD,
+          ytdYoY: null,
+          prevYearAnnual: null,
+          currYearAnnual,
+          annualYoY: null,
+          prevYearMonthly: new Array(12).fill(null),
+        };
 
     return { ...row, comparisons };
   });

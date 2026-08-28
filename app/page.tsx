@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Download } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Download, Table2 } from 'lucide-react';
 import Tabs from '@/components/Tabs';
 import DevStatusTab from '@/components/DevStatusTab';
+import BusinessPlan from '@/components/business-plan/BusinessPlan';
 import Header from '@/components/Header';
 import YearTabs from '@/components/YearTabs';
 import BrandTabs from '@/components/BrandTabs';
@@ -27,6 +28,7 @@ import PLCashFlowTab from '@/components/pl-forecast/PLCashFlowTab';
 import DealerShipmentByBrand from '@/components/DealerShipmentByBrand';
 import TagRecoveryRateTable from '@/components/TagRecoveryRateTable';
 import CumulativeCostRateTable from '@/components/CumulativeCostRateTable';
+import FIBasisPLModal from '@/components/FIBasisPLModal';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(5);
@@ -36,6 +38,8 @@ export default function Home() {
   const [bsYear, setBsYear] = useState<number>(2026);
   const [cfYear, setCfYear] = useState<number>(2026);
   const [baseMonth, setBaseMonth] = useState<number>(BASE_MONTH); // 기준월 (lib/base-month.ts 하드코딩)
+  // 사업계획(PL) 전체화면 전환 — 켜지면 재무제표 대시보드 대신 이 화면만 렌더
+  const [businessPlanOpen, setBusinessPlanOpen] = useState(false);
   const [bsMonthsCollapsed, setBsMonthsCollapsed] = useState<boolean>(true); // 재무상태표 & 운전자본분석 월별 접기
   const [cfMonthsCollapsed, setCfMonthsCollapsed] = useState<boolean>(true); // 현금흐름표 월별 접기 (2025년 기준달 미정)
   // 브랜드별 손익 비교컬럼 표시 여부 (법인 상단용)
@@ -44,6 +48,7 @@ export default function Home() {
   const [plQuarterlyMode, setPlQuarterlyMode] = useState<boolean>(true); // PL 분기보기 (월별 12개 컬럼을 1Q~4Q 4개 컬럼으로 교체) — 기본값 true
   const [plAllRowsCollapsed, setPlAllRowsCollapsed] = useState<boolean>(true); // PL 모든 행 접기
   const [plJsonDownloading, setPlJsonDownloading] = useState<boolean>(false); // 손익계산서 JSON 다운로드 진행중
+  const [fiPlModalOpen, setFiPlModalOpen] = useState<boolean>(false); // FI기준 손익표 모달 (2025·2026)
   const [summaryData, setSummaryData] = useState<ExecutiveSummaryData | null>(null);
   const [plData, setPlData] = useState<TableRow[] | null>(null);
   const [bsData, setBsData] = useState<TableRow[] | null>(null);
@@ -705,7 +710,18 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* 상단 헤더 + 탭 (모두 고정) */}
-      <Header />
+      <Header
+        businessPlanOpen={businessPlanOpen}
+        onToggleBusinessPlan={() => setBusinessPlanOpen((v) => !v)}
+      />
+      {businessPlanOpen && (
+        /* 고정 헤더(h-14) 높이만큼 오프셋 — 상단 내비가 헤더에 가리지 않게 */
+        <div className="pt-14">
+          <BusinessPlan baseMonth={baseMonth} />
+        </div>
+      )}
+      {!businessPlanOpen && (
+      <>
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} groups={tabGroups} />
 
       {/* 탭 콘텐츠 - 헤더(56) + 탭바(~56) 높이만큼 오프셋 */}
@@ -748,6 +764,18 @@ export default function Home() {
                   <Download className="h-3.5 w-3.5 text-slate-400" />
                   {plJsonDownloading ? '생성 중…' : `${plYear} JSON`}
                 </button>
+
+                {/* FI기준 손익표 — 재무조정/FI기준손익.csv 분기별 표 (2024년은 파일에 없어 미표시) */}
+                {(plYear === 2025 || plYear === 2026) && (
+                  <button
+                    onClick={() => setFiPlModalOpen(true)}
+                    title={`${plYear}년 FI기준 손익표 (분기별)`}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <Table2 className="h-3.5 w-3.5 text-slate-400" />
+                    FI기준 손익표
+                  </button>
+                )}
 
                 {/* 컨트롤 버튼 (펼치기/월별/YTD) */}
                 <div className="ml-auto flex items-center gap-1.5">
@@ -1129,7 +1157,14 @@ export default function Home() {
         <div className={activeTab === 6 ? '' : 'hidden'}><PLForecastTab scenarioOverride={scenarioOverride} /></div>
         {activeTab === 7 && <PLCashFlowTab />}
         {isDev && activeTab === 8 && <DevStatusTab baseMonth={baseMonth} />}
+
+        {/* FI기준 손익표 모달 */}
+        {fiPlModalOpen && activeTab === 1 && (
+          <FIBasisPLModal year={plYear} onClose={() => setFiPlModalOpen(false)} />
+        )}
       </div>
+      </>
+      )}
     </main>
   );
 }

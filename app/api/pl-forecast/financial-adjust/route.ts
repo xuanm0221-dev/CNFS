@@ -3,6 +3,8 @@ import path from 'path';
 import { readAdjustCSV } from '@/lib/csv';
 import { createMonthDataMap, getAccountValues } from '@/lib/fs-mapping';
 import { FinancialData } from '@/lib/types';
+import { loadIFRSAdjust } from '@/lib/ifrs-adjust-loader';
+import type { IFRSAdjustSet } from '@/lib/ifrs-adjust';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,12 +42,27 @@ export async function GET(req: NextRequest) {
       byBrandAccounts[brand] = buildAccounts(data);
     }
 
+    // IFRS 조정 상세 (2025~) — 있으면 신규 (IFRS) 블록용 시리즈도 함께 반환
+    const ifrsTotal = (await loadIFRSAdjust(year)) ?? null;
+    const ifrsByBrand: Record<string, IFRSAdjustSet> = {};
+    if (ifrsTotal) {
+      for (const brand of ['mlb', 'kids', 'discovery', 'duvetica', 'supra']) {
+        const set = await loadIFRSAdjust(year, brand);
+        if (set?.hasData) ifrsByBrand[brand] = set;
+      }
+    }
+
     return NextResponse.json(
-      { year, byBrand: byBrandAccounts, total: buildAccounts(total) },
+      {
+        year,
+        byBrand: byBrandAccounts,
+        total: buildAccounts(total),
+        ifrs: ifrsTotal ? { total: ifrsTotal, byBrand: ifrsByBrand } : null,
+      },
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch {
     // 파일 없으면 빈 데이터 반환
-    return NextResponse.json({ year: 2026, byBrand: {}, total: {} }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ year: 2026, byBrand: {}, total: {}, ifrs: null }, { headers: { 'Cache-Control': 'no-store' } });
   }
 }

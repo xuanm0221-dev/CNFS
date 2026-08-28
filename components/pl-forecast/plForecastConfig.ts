@@ -1,3 +1,8 @@
+import {
+  IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA, IFRS_OP, IFRS_OP_RATE,
+  IFRS_OP_EXCL_INTER, IFRS_OP_EXCL_INTER_RATE,
+} from '@/lib/ifrs-adjust';
+
 export type ForecastLeafBrand = 'mlb' | 'kids' | 'discovery' | 'duvetica' | 'supra';
 
 export interface ForecastRowDef {
@@ -7,6 +12,8 @@ export interface ForecastRowDef {
   isCalculated: boolean;
   isBold?: boolean;
   format?: 'number' | 'percent';
+  /** 표시용 라벨 — 있으면 account 대신 표시. account는 내부 매칭 키로만 사용 */
+  displayLabel?: string;
 }
 
 export const FORECAST_BRANDS: { id: string | null; label: string }[] = [
@@ -25,7 +32,8 @@ export const RAW_ACCOUNTS: string[] = [
   'Tag매출',
   '실판매출',
   '매출원가',
-  '평가감',
+  '평가감(설정)',
+  '평가감(환입)',
   '급여(매장)',
   '복리후생비(매장)',
   '플랫폼수수료',
@@ -91,7 +99,9 @@ export const ROWS_CORPORATE: ForecastRowDef[] = [
   { account: '실판매출_직영', level: 1, isGroup: false, isCalculated: true, format: 'number' },
   { account: '매출원가 합계', level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
   { account: '매출원가', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '평가감', level: 1, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '평가감', level: 1, isGroup: true, isCalculated: true, format: 'number' },
+  { account: '평가감(설정)', level: 2, isGroup: false, isCalculated: false, format: 'number' },
+  { account: '평가감(환입)', level: 2, isGroup: false, isCalculated: false, format: 'number' },
   { account: '(Tag 대비 원가율)', level: 1, isGroup: false, isCalculated: true, format: 'percent' },
   { account: '매출총이익', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
   { account: '직접비', level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
@@ -117,35 +127,26 @@ export const ROWS_CORPORATE: ForecastRowDef[] = [
   { account: '기타(영업비)', level: 1, isGroup: false, isCalculated: false, format: 'number' },
   { account: '영업이익(관리식)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
   { account: '영업이익률(관리식)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
-  { account: '재무&관리차이(-)', level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
-  { account: '사용권자산', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '재무비용', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '이연수익', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '반품충당부채', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '매출원가조정(credit)', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '기타', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '리베이트', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '정부보조금', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '매출(IFRS)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
-  { account: '영업이익(IFRS)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
-  { account: '영업이익률(IFRS)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
-  { account: '내부거래 차이(-)', level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
-  { account: 'Discovery 반품', level: 1, isGroup: false, isCalculated: false, format: 'number' },
-  { account: '내부거래 제거전 영업이익(현지기준)', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
-  { account: 'CN 재무식 영업이익률', level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
+  // IFRS 조정 상세 기반 블록 — 하위 항목 행은 상세 CSV에서 동적으로 삽입된다 (PLForecastTab)
+  { account: IFRS_SALES, level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
+  { account: IFRS_COGS, level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
+  { account: IFRS_VALUATION, level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
+  { account: IFRS_SGA, level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
+  { account: IFRS_OP, level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'number' },
+  { account: IFRS_OP_RATE, level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
+  { account: IFRS_OP_EXCL_INTER, level: 0, isGroup: true, isCalculated: true, isBold: true, format: 'number' },
+  { account: IFRS_OP_EXCL_INTER_RATE, level: 0, isGroup: false, isCalculated: true, isBold: true, format: 'percent' },
 ];
 
 export const ROWS_BRAND: ForecastRowDef[] = ROWS_CORPORATE.filter(
   (row) => !['MLB', 'KIDS', 'DISCOVERY'].includes(row.account),
 ).map((row) => ({ ...row }));
 
-export const FINANCIAL_ADJUST_ACCOUNTS: string[] = [
-  '사용권자산', '재무비용', '이연수익', '반품충당부채',
-  '매출원가조정(credit)', '기타', '리베이트', '정부보조금',
+// IFRS 조정 블록의 고정(비항목) 행 — 브랜드에 조정 데이터가 없을 때 통째로 숨기는 데 쓴다
+export const IFRS_ADJUST_FIXED_ACCOUNTS: string[] = [
+  IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA,
+  IFRS_OP, IFRS_OP_RATE, IFRS_OP_EXCL_INTER, IFRS_OP_EXCL_INTER_RATE,
 ];
-
-// 내부거래 차이(-) 하위 계정 — 재무&관리차이(-)와 별개 (영업이익(IFRS)에 영향 없음)
-export const INTERCOMPANY_ADJUST_ACCOUNTS: string[] = ['Discovery 반품'];
 
 // ─── 시나리오 공용 타입 & 상수 ───────────────────────────────────────────────
 export type SalesBrand = 'MLB' | 'MLB KIDS' | 'DISCOVERY' | 'DUVETICA' | 'SUPRA';
@@ -249,7 +250,8 @@ export const ANNUAL_2025_RAW_BY_BRAND: Record<ForecastLeafBrand, Record<string, 
     'Tag매출': 10620280950,
     '실판매출': 4580841611,
     '매출원가': 3346386042,
-    '평가감': 14047879,
+    '평가감(설정)': 68043355,
+    '평가감(환입)': -53995476,
     '급여(매장)': 36120022,
     '복리후생비(매장)': 20569094,
     '플랫폼수수료': 51795485,
@@ -274,7 +276,8 @@ export const ANNUAL_2025_RAW_BY_BRAND: Record<ForecastLeafBrand, Record<string, 
     'Tag매출': 430979785,
     '실판매출': 201167939,
     '매출원가': 139167347,
-    '평가감': 1983122,
+    '평가감(설정)': 11941701,
+    '평가감(환입)': -9958577,
     '급여(매장)': 8220798,
     '복리후생비(매장)': 5128698,
     '플랫폼수수료': 4621624,
@@ -299,7 +302,8 @@ export const ANNUAL_2025_RAW_BY_BRAND: Record<ForecastLeafBrand, Record<string, 
     'Tag매출': 98436607,
     '실판매출': 49643126,
     '매출원가': 37168666,
-    '평가감': 3814138,
+    '평가감(설정)': 4040245,
+    '평가감(환입)': -226107,
     '급여(매장)': 1748125,
     '복리후생비(매장)': 913790,
     '플랫폼수수료': 915590,
@@ -324,7 +328,8 @@ export const ANNUAL_2025_RAW_BY_BRAND: Record<ForecastLeafBrand, Record<string, 
     'Tag매출': 35019950,
     '실판매출': 9143495,
     '매출원가': 11821925,
-    '평가감': -11481280.439,
+    '평가감(설정)': 2652602.791,
+    '평가감(환입)': -14133881.23,
     '급여(매장)': 1116002,
     '복리후생비(매장)': 370744,
     '플랫폼수수료': 438067,
@@ -349,7 +354,8 @@ export const ANNUAL_2025_RAW_BY_BRAND: Record<ForecastLeafBrand, Record<string, 
     'Tag매출': 10272697,
     '실판매출': 2357789,
     '매출원가': 3274499,
-    '평가감': 40604724.3895,
+    '평가감(설정)': 44565854.0995,
+    '평가감(환입)': -3961129.71,
     '급여(매장)': 899661,
     '복리후생비(매장)': 340603,
     '플랫폼수수료': 121220.16,

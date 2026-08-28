@@ -43,8 +43,6 @@ plans/
 snowflake.log
 .env.local
 
-# 독립 HTML 산출물 (로컬 보관)
-public/CN/
 
 # 회귀 테스트 컴파일 산출물
 .test-build/

@@ -3,7 +3,10 @@
 import { JapaneseYen } from 'lucide-react';
 import { BASE_MONTH } from '@/lib/base-month';
 
-export default function Header() {
+export default function Header({
+  businessPlanOpen,
+  onToggleBusinessPlan,
+}: { businessPlanOpen?: boolean; onToggleBusinessPlan?: () => void } = {}) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-[#1e3a5f] shadow-md">
       <div className="flex h-full items-center gap-4 px-4 sm:px-6">
@@ -36,6 +39,18 @@ export default function Header() {
             <span className="text-blue-200/70">CNFS =</span>
             <span className="rounded bg-white/15 px-1 font-mono">cnfs 에 푸시해줘</span>
           </div>
+        )}
+
+        {/* 사업계획 ↔ 재무제표 전환 — 같은 버튼이 상태에 따라 바뀐다 */}
+        {onToggleBusinessPlan && (
+          <button
+            type="button"
+            onClick={onToggleBusinessPlan}
+            className="ml-auto shrink-0 rounded border border-amber-300/50 bg-amber-400/15 px-3 py-1.5 text-xs font-semibold text-amber-100 shadow-sm transition-colors hover:bg-amber-400/25"
+            title={businessPlanOpen ? '재무제표 대시보드로 돌아가기' : '사업계획 화면으로 전환'}
+          >
+            {businessPlanOpen ? '재무제표 ↩' : '사업계획 ↗'}
+          </button>
         )}
       </div>
     </header>
