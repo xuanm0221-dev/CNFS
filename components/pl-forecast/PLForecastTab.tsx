@@ -119,6 +119,7 @@ const SCENARIO_CF_CORP_TAX_RATE = 0.25;
 import {
   IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA, IFRS_OP, IFRS_OP_RATE,
   IFRS_OP_EXCL_INTER, IFRS_OP_EXCL_INTER_RATE, IFRS_INTERCOMPANY_ITEM, IFRS_SECTIONS,
+  IFRS_OTHER_GROUP_KEYS,
   type IFRSAdjustSet, type IFRSItemSeries,
 } from '@/lib/ifrs-adjust';
 
@@ -150,9 +151,9 @@ function itemRowDef(item: IFRSItemSeries): ForecastRowDef {
   return {
     account: item.key,
     displayLabel: item.item,
-    level: 1,
-    isGroup: false,
-    isCalculated: false,
+    level: item.level,
+    isGroup: item.isGroup ?? false,
+    isCalculated: item.isGroup ?? false,
     format: 'number',
   };
 }
@@ -998,7 +999,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
   const [showLocalVsSim, setShowLocalVsSim] = useState<boolean>(false);
   // 손익계산서 26년 연간 (현지) — account 별 (활성 브랜드/법인에 따라 다른 출처)
   const [localPLAnnualByAccount, setLocalPLAnnualByAccount] = useState<Record<string, number | null>>({});
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set(['리테일매출', 'Tag매출', '실판매출', '매출원가 합계', '직접비', '영업비', IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA, IFRS_OP_EXCL_INTER]));
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set(['리테일매출', 'Tag매출', '실판매출', '매출원가 합계', '직접비', '영업비', IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA, IFRS_OP_EXCL_INTER, ...IFRS_OTHER_GROUP_KEYS]));
   const [logicGuideCollapsed, setLogicGuideCollapsed] = useState<boolean>(true);
   const [monthlyInputs, setMonthlyInputs] = useState<MonthlyInputs>(emptyMonthlyInputs);
   const [salesSectionOpen, setSalesSectionOpen] = useState<boolean>(false);
@@ -1253,7 +1254,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     setScenarioData(null);
   }, [scenarioOverride]);
   const [scenarioCollapsedAccounts, setScenarioCollapsedAccounts] = useState<Set<string>>(
-    new Set(['Tag매출', '실판매출', '매출원가 합계', '직접비', '영업비', IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA, IFRS_OP_EXCL_INTER]),
+    new Set(['Tag매출', '실판매출', '매출원가 합계', '직접비', '영업비', IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA, IFRS_OP_EXCL_INTER, ...IFRS_OTHER_GROUP_KEYS]),
   );
   const [scenarioExpandedScenarios, setScenarioExpandedScenarios] = useState<Set<ScenarioKey>>(new Set());
   const [scenarioViewMode, setScenarioViewMode] = useState<'summary' | 'full'>('summary');
@@ -3353,7 +3354,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
     setScenarioLoading(true);
     setScenarioError(null);
     setScenarioExpandedScenarios(new Set());
-    setScenarioCollapsedAccounts(new Set(['Tag매출', '실판매출', '매출원가 합계', '직접비', '영업비', IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA, IFRS_OP_EXCL_INTER]));
+    setScenarioCollapsedAccounts(new Set(['Tag매출', '실판매출', '매출원가 합계', '직접비', '영업비', IFRS_SALES, IFRS_COGS, IFRS_VALUATION, IFRS_SGA, IFRS_OP_EXCL_INTER, ...IFRS_OTHER_GROUP_KEYS]));
     setScenarioModalBrand(null);
 
     try {

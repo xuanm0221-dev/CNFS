@@ -370,9 +370,9 @@ export function calculatePL(
       ifrsAdjust.items[section].map(s => ({
         account: s.key,
         displayLabel: s.item,
-        level: 1,
-        isGroup: false,
-        isCalculated: false,
+        level: s.level,
+        isGroup: s.isGroup ?? false,
+        isCalculated: s.isGroup ?? false,
         values: s.values,
         format: 'number' as const,
       }));

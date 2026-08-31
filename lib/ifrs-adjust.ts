@@ -29,6 +29,38 @@ export const IFRS_OP_EXCL_INTER = '내부거래제거 후 영업이익';
 export const IFRS_OP_EXCL_INTER_RATE = '내부거래제거 후 영업이익률';
 export const IFRS_INTERCOMPANY_ITEM = 'IFRS내부거래|Discovery 반품';
 
+// 섹션별 항목 표시 순서. 접두어로 매칭하며(예: '대리상지원금' → '대리상지원금(출고)'),
+// 앞에 온 키가 우선하므로 더 구체적인 이름을 먼저 둔다.
+// 여기에 없는 항목은 맨 아래 '기타합계' 그룹으로 묶인다 (개별 '기타' 항목은 그 하위로 들어간다).
+// 순서 정의가 없는 섹션은 파일 순서 그대로.
+const SECTION_ITEM_ORDER: Partial<Record<DetailAdjustSection, string[]>> = {
+  매출: [
+    '온,오프라인 수수료조정',
+    '대리상지원금',
+    '반품충당금',
+    '(IFRS)수수료조정',
+    'Discovery 반품(관리차이)',
+    'Discovery 반품',
+  ],
+  매출원가: [
+    '대리상지원금',
+    '반품충당금',
+    '크레딧노트',
+    'Discovery 반품',
+  ],
+};
+
+const OTHER_GROUP_LABEL = '기타합계';
+
+/** '기타합계' 묶음 행의 account 키 — 개별 '기타' 항목과 충돌하지 않도록 분리 */
+export function ifrsOtherGroupKey(section: DetailAdjustSection): string {
+  return `IFRS조정그룹|${section}|${OTHER_GROUP_LABEL}`;
+}
+
+/** PL(sim) 초기 접힘 상태용 — 순서 정의가 있는 섹션의 '기타합계' 그룹 키 */
+export const IFRS_OTHER_GROUP_KEYS = (Object.keys(SECTION_ITEM_ORDER) as DetailAdjustSection[])
+  .map(ifrsOtherGroupKey);
+
 export const IFRS_PARENT_OF: Record<DetailAdjustSection, string> = {
   매출: IFRS_SALES,
   매출원가: IFRS_COGS,
@@ -37,8 +69,9 @@ export const IFRS_PARENT_OF: Record<DetailAdjustSection, string> = {
 };
 
 // 내부거래 항목 판별 — DISCOVERY 브랜드의 본사 반품.
-// 상세 CSV에서 항목명이 '본사반품' / 'Discovery 반품' 두 형태로 쓰여 둘 다 인식한다.
-const HQ_RETURN_ITEM_NAMES = ['본사반품', 'discovery 반품'];
+// 상세 CSV에서 항목명이 '본사반품' / 'Discovery 반품' 으로 쓰이고, 매출측은
+// 'Discovery 반품(관리차이)' 로 한 줄 더 나뉘어 있어 셋 다 합산 대상으로 인식한다.
+const HQ_RETURN_ITEM_NAMES = ['본사반품', 'discovery 반품', 'discovery 반품(관리차이)'];
 export function isHqReturnItem(it: { brandRaw: string; item: string }): boolean {
   if (it.brandRaw.trim().toUpperCase() !== 'DISCOVERY') return false;
   return HQ_RETURN_ITEM_NAMES.includes(it.item.trim().toLowerCase());
@@ -49,6 +82,10 @@ export interface IFRSItemSeries {
   section: DetailAdjustSection;
   item: string;
   values: number[]; // 12개월
+  /** 표시 들여쓰기 — 1 = 섹션 직속, 2 = '기타합계' 그룹의 하위 */
+  level: 1 | 2;
+  /** '기타합계' 묶음 행 (접기/펼치기 가능) */
+  isGroup?: boolean;
 }
 
 export interface IFRSAdjustSet {
@@ -98,12 +135,23 @@ export function buildIFRSAdjust(
   const out = emptySet();
   out.hasData = currentItems.length > 0;
 
+  // 어느 연도에도 값이 없는 항목은 행을 만들지 않는다.
+  // (예: 2025 파일의 'DISCOVERY 본사반품' 은 이름만 있고 12개월 전부 공란)
+  // 연간 합이 0이어도 월별로 값이 있으면 유지한다 (예: 관리조정(월변경) 은 +/- 상계).
+  const hasAnyValue = new Set<string>();
+  for (const source of [currentItems, ...unionWith.map(o => pickItems(o, brand))]) {
+    for (const it of source) {
+      if (it.values.some(v => v !== 0)) hasAnyValue.add(`${it.section}|${it.item}`);
+    }
+  }
+
   for (const section of IFRS_SECTIONS) {
     // 표시 순서: 당해연도 파일 순서 → 다른 연도에만 있는 항목
     const order: string[] = [];
     const seen = new Set<string>();
     const pushName = (name: string) => {
       if (seen.has(name)) return;
+      if (!hasAnyValue.has(`${section}|${name}`)) return;
       seen.add(name);
       order.push(name);
     };
@@ -121,15 +169,55 @@ export function buildIFRSAdjust(
       for (let i = 0; i < 12; i++) arr[i] += it.values[i];
     }
 
-    out.items[section] = order.map(item => ({
+    const leaves = order.map(item => ({
       key: ifrsItemKey(section, item),
       section,
       item,
       values: sums.get(item) ?? zeros(),
+      level: 1 as const,
     }));
-    for (const s of out.items[section]) {
-      for (let i = 0; i < 12; i++) out.total[section][i] += s.values[i];
+
+    // 섹션 합계는 항상 leaf 기준 ('기타' 그룹을 더하면 이중 계상된다)
+    for (const leaf of leaves) {
+      for (let i = 0; i < 12; i++) out.total[section][i] += leaf.values[i];
     }
+
+    const spec = SECTION_ITEM_ORDER[section];
+    if (!spec) {
+      out.items[section] = leaves;
+      continue;
+    }
+
+    // 지정 순서대로 정렬하고, 매칭되지 않은 나머지는 '기타합계' 그룹으로 묶는다
+    const rankOf = (item: string) => spec.findIndex(prefix => item.startsWith(prefix));
+    const ranked = leaves
+      .map(leaf => ({ leaf, rank: rankOf(leaf.item) }))
+      .filter(x => x.rank >= 0)
+      .sort((a, b) => a.rank - b.rank)
+      .map(x => x.leaf);
+    const rest = leaves.filter(leaf => rankOf(leaf.item) < 0);
+
+    if (rest.length === 0) {
+      out.items[section] = ranked;
+      continue;
+    }
+
+    const groupValues = zeros();
+    for (const leaf of rest) {
+      for (let i = 0; i < 12; i++) groupValues[i] += leaf.values[i];
+    }
+    out.items[section] = [
+      ...ranked,
+      {
+        key: ifrsOtherGroupKey(section),
+        section,
+        item: OTHER_GROUP_LABEL,
+        values: groupValues,
+        level: 1 as const,
+        isGroup: true,
+      },
+      ...rest.map(leaf => ({ ...leaf, level: 2 as const })),
+    ];
   }
 
   // 내부거래(본사반품): 매출 +A / 매출원가 +B 로 (IFRS)영업이익에 (A−B) 가 반영되어 있다.
