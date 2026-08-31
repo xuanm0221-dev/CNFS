@@ -7,6 +7,8 @@ import fs from 'fs';
 import path from 'path';
 import Papa from 'papaparse';
 import iconv from 'iconv-lite';
+import { loadDetailAdjust } from '@/lib/ifrs-adjust-loader';
+import { isHqReturnItem } from '@/lib/ifrs-adjust';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +28,11 @@ export interface FIPLResponse {
   data: Record<string, FIYearData>;
   /** 연도별 분기 누적평균환율 (CNY→KRW). 예: 2025 2분기 = 1~6월 평균 */
   rates: Record<string, (number | null)[]>;
+  /**
+   * 연도별 분기 본사반품 매출 인식액 (DISCOVERY). 재무조정/{year}_상세.csv 기준.
+   * FI기준 매출의 DISCOVERY 행에 포함되어 있어, 정상매출과 구분해 보여주는 데 쓴다.
+   */
+  hqReturnSales: Record<string, (number | null)[]>;
 }
 
 // 빈 셀은 null (미결산 분기), 숫자는 쉼표·공백·괄호음수 처리
@@ -90,7 +97,27 @@ export async function GET() {
     }
 
     const years = Object.keys(data).map(Number).sort((a, b) => a - b);
-    const payload: FIPLResponse = { years, data, rates };
+
+    // 본사반품 매출 인식액 (DISCOVERY) — 상세파일의 매출 섹션에서 뽑아 분기 합산
+    const hqReturnSales: Record<string, (number | null)[]> = {};
+    for (const y of years) {
+      const detail = await loadDetailAdjust(y);
+      if (!detail) continue;
+      const monthly = new Array(12).fill(0);
+      let found = false;
+      for (const it of detail.items) {
+        if (it.section !== '매출' || !isHqReturnItem(it)) continue;
+        found = true;
+        for (let i = 0; i < 12; i++) monthly[i] += it.values[i];
+      }
+      if (!found) continue;
+      hqReturnSales[String(y)] = [0, 1, 2, 3].map(q => {
+        const sum = monthly.slice(q * 3, q * 3 + 3).reduce((t, v) => t + v, 0);
+        return sum === 0 ? null : sum;
+      });
+    }
+
+    const payload: FIPLResponse = { years, data, rates, hqReturnSales };
     return NextResponse.json(payload, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('FI기준 손익 API 에러:', error);

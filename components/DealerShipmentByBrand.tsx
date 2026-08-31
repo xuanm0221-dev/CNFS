@@ -3,11 +3,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { MONTH_HEADERS, QUARTER_HEADERS } from './pl-forecast/plForecastConfig';
+import {
+  DEALER_SHIPMENT_BRANDS,
+  DealerShipmentBrand,
+  DealerShipmentPlanResponse,
+  DealerShipmentSeason,
+  TagSalesYearResponse,
+  buildCurrentYearSeries,
+  buildPrevYearSeries,
+  empty12,
+  emptySeasonMap,
+} from '@/lib/dealer-shipment';
 
-type Brand = 'MLB' | 'MLB KIDS' | 'DISCOVERY' | 'DUVETICA' | 'SUPRA';
-type Season = '당년S' | '당년F' | '1년차' | '차기시즌' | 'ACC';
+type Brand = DealerShipmentBrand;
+type Season = DealerShipmentSeason;
 
-const BRANDS: Brand[] = ['MLB', 'MLB KIDS', 'DISCOVERY', 'DUVETICA', 'SUPRA'];
+const BRANDS: Brand[] = DEALER_SHIPMENT_BRANDS;
 
 // 손익계산서 상단 브랜드 탭 id → SalesBrand
 const BRAND_ID_TO_NAME: Record<string, Brand> = {
@@ -18,21 +29,6 @@ const BRAND_ID_TO_NAME: Record<string, Brand> = {
   supra: 'SUPRA',
 };
 
-interface TagSalesBrandData {
-  '직영': Record<string, (number | null)[]>;
-  '대리상(ACC)': Record<string, (number | null)[]>;
-  '대리상(의류)': Record<string, (number | null)[]>;
-}
-
-interface TagSalesYearResponse {
-  year?: number;
-  brands?: Record<Brand, TagSalesBrandData>;
-}
-
-interface DealerShipmentPlanResponse {
-  brands?: Record<Brand, Record<Season, (number | null)[]>>;
-}
-
 interface BrandActualResponse {
   availableMonths?: number[];
 }
@@ -42,44 +38,6 @@ interface DealerShipmentByBrandProps {
   quarterlyMode: boolean;
   /** 손익계산서 상단 브랜드 탭의 현재 id. null = 전체(법인 합산). */
   selectedBrand?: string | null;
-}
-
-function empty12(): (number | null)[] {
-  return new Array(12).fill(null);
-}
-
-function emptySeasonMap(): Record<Season, (number | null)[]> {
-  return { 당년S: empty12(), 당년F: empty12(), '1년차': empty12(), 차기시즌: empty12(), ACC: empty12() };
-}
-
-function sumClothingByYearGte(
-  clothing: Record<string, (number | null)[]>,
-  minYear: number,
-): (number | null)[] {
-  const out: (number | null)[] = empty12();
-  for (const [tag, series] of Object.entries(clothing)) {
-    if (tag === '과시즌') continue;
-    const m = tag.match(/^(\d{2})[SF]$/);
-    if (!m) continue;
-    const yr = Number(m[1]);
-    if (!Number.isFinite(yr) || yr < minYear) continue;
-    for (let i = 0; i < 12; i += 1) {
-      const v = series[i] ?? null;
-      if (v != null) out[i] = (out[i] ?? 0) + v;
-    }
-  }
-  return out;
-}
-
-function pairSum(a: (number | null)[], b: (number | null)[]): (number | null)[] {
-  const out: (number | null)[] = empty12();
-  for (let i = 0; i < 12; i += 1) {
-    const va = a[i] ?? null;
-    const vb = b[i] ?? null;
-    if (va == null && vb == null) out[i] = null;
-    else out[i] = (va ?? 0) + (vb ?? 0);
-  }
-  return out;
 }
 
 function formatKRow(v: number | null): string {
@@ -168,68 +126,14 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
     return Math.max(...brandActual.availableMonths);
   }, [brandActual]);
 
-  // 26년 series per brand × season (K 단위)
-  //   1~latestActualMonth: Snowflake Tag매출 전처리 (이미 K)
-  //   latestActualMonth+1 ~ 12월: 26년대리상출고계획.csv (API에서 CNY로 변환되어 옴 → /1000 = K)
-  const series26 = useMemo(() => {
-    const out = {} as Record<Brand, Record<Season, (number | null)[]>>;
-    for (const b of BRANDS) {
-      const cloth = tag26?.brands?.[b]?.['대리상(의류)'] ?? {};
-      const sf당년S = cloth['26S'] ?? empty12();
-      const sf당년F = cloth['26F'] ?? empty12();
-      const sf25S = cloth['25S'] ?? empty12();
-      const sf25F = cloth['25F'] ?? empty12();
-      const sf차기 = sumClothingByYearGte(cloth, 27);
-      const sfACC = Object.values(tag26?.brands?.[b]?.['대리상(ACC)'] ?? {})[0] ?? empty12();
-      const sf1년차 = pairSum(sf25S, sf25F);
-
-      const csvBrand = plan?.brands?.[b];
-      const actualBySeason: Record<Season, (number | null)[]> = {
-        당년S: sf당년S,
-        당년F: sf당년F,
-        '1년차': sf1년차,
-        차기시즌: sf차기,
-        ACC: sfACC,
-      };
-      const result: Record<Season, (number | null)[]> = emptySeasonMap();
-      for (const season of ['당년S', '당년F', '1년차', '차기시즌', 'ACC'] as Season[]) {
-        const csvSeries = csvBrand?.[season] ?? empty12();
-        const actualSeries = actualBySeason[season];
-        for (let i = 0; i < 12; i += 1) {
-          if (i < latestActualMonth) {
-            result[season][i] = actualSeries[i] ?? null;
-          } else {
-            const csvCny = csvSeries[i];
-            result[season][i] = csvCny == null ? null : csvCny / 1000; // CNY → K
-          }
-        }
-      }
-      out[b] = result;
-    }
-    return out;
-  }, [tag26, plan, latestActualMonth]);
+  // 26년 series per brand × season (K 단위) — 손익계산서와 사업계획이 같은 계산을 쓴다
+  const series26 = useMemo(
+    () => buildCurrentYearSeries(tag26, plan, latestActualMonth, 26),
+    [tag26, plan, latestActualMonth],
+  );
 
   // 25년 series per brand × season (K — Snowflake 전처리는 이미 K 단위)
-  const series25 = useMemo(() => {
-    const out = {} as Record<Brand, Record<Season, (number | null)[]>>;
-    for (const b of BRANDS) {
-      const cloth = tag25?.brands?.[b]?.['대리상(의류)'] ?? {};
-      const sf당년S = cloth['25S'] ?? empty12();
-      const sf당년F = cloth['25F'] ?? empty12();
-      const sf24S = cloth['24S'] ?? empty12();
-      const sf24F = cloth['24F'] ?? empty12();
-      const sf차기 = sumClothingByYearGte(cloth, 26);
-      const sfACC = Object.values(tag25?.brands?.[b]?.['대리상(ACC)'] ?? {})[0] ?? empty12();
-      out[b] = {
-        당년S: [...sf당년S],
-        당년F: [...sf당년F],
-        '1년차': pairSum(sf24S, sf24F),
-        차기시즌: sf차기,
-        ACC: [...sfACC],
-      };
-    }
-    return out;
-  }, [tag25]);
+  const series25 = useMemo(() => buildPrevYearSeries(tag25, 25), [tag25]);
 
   if (loading) {
     return (

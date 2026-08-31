@@ -1,10 +1,11 @@
 'use client';
 
-// FI기준 손익표 — 파일/재무조정/FI기준손익.csv 를 분기별 표로 보여주는 모달.
+// 중국현지 재무제표 기준손익 — 파일/재무조정/FI기준손익.csv 를 분기별 표로 보여주는 모달.
 //   매출은 브랜드 5개 합계(하위 브랜드 행 전개), 매출원가·평가감·판관비는 파일 값 그대로
 //   (재무식이라 브랜드 구분 불가).
 //   매출총이익 = 매출 − 매출원가 − 평가감,  영업이익 = 매출총이익 − 판관비
 //   2026년은 같은 셀에 전년(2025) 동일분기 대비 증감액·증감률을 함께 표시한다.
+//   DISCOVERY 매출에는 본사반품 인식액이 섞여 있어, 해당 분기 셀에 정상매출/본사반품을 나눠 적는다.
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
@@ -18,6 +19,8 @@ interface FIRow {
   label: string;
   kind: RowKind;
   values: (number | null)[];
+  /** 본사반품 분해를 붙일 행 표시 (DISCOVERY 매출) */
+  splitHqReturn?: boolean;
 }
 
 // 분기별 합산 — 전부 null 이면 null (미결산 분기는 '-' 로 남긴다)
@@ -54,6 +57,7 @@ function buildRows(year: FIYearData): FIRow[] {
     label: b,
     kind: 'child' as const,
     values: year.매출[b] ?? [null, null, null, null],
+    splitHqReturn: b === 'DISCOVERY',
   }));
   const 매출 = sumQuarters(brandRows.map(r => r.values));
   const 매출총이익 = combine([
@@ -134,10 +138,10 @@ export default function FIBasisPLModal({ year, onClose }: Props) {
         const res = await fetch('/api/fs/pl/fi', { cache: 'no-store' });
         const json = await res.json();
         if (!mounted) return;
-        if (!res.ok) throw new Error(json?.error ?? 'FI기준 손익 데이터를 불러오지 못했습니다.');
+        if (!res.ok) throw new Error(json?.error ?? '중국현지 재무제표 기준손익 데이터를 불러오지 못했습니다.');
         setPayload(json);
       } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : 'FI기준 손익 데이터를 불러오지 못했습니다.');
+        if (mounted) setError(err instanceof Error ? err.message : '중국현지 재무제표 기준손익 데이터를 불러오지 못했습니다.');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -158,6 +162,11 @@ export default function FIBasisPLModal({ year, onClose }: Props) {
     currency === 'CNY' ? list : list.map(r => ({ ...r, values: toKRW(r.values, payload?.rates?.[String(y)]) }));
   const rows = yearData ? convert(buildRows(yearData), year) : [];
   const prevRows = prevData ? convert(buildRows(prevData), year - 1) : null;
+  // 본사반품 매출도 같은 방식으로 환산 (환산이 선형이라 정상매출 + 본사반품 = DISCOVERY 유지)
+  const hqReturnRaw = payload?.hqReturnSales?.[String(year)];
+  const hqReturn = hqReturnRaw
+    ? (currency === 'CNY' ? hqReturnRaw : toKRW(hqReturnRaw, payload?.rates?.[String(year)]))
+    : null;
   // 전년비는 전년 데이터가 있을 때만 (2025 탭은 2024 데이터가 파일에 없어 자동으로 숨겨진다)
   const showYoY = prevRows !== null;
 
@@ -169,7 +178,7 @@ export default function FIBasisPLModal({ year, onClose }: Props) {
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
           <div>
-            <h2 className="text-base font-semibold text-slate-800">FI기준 손익표 — {year}년</h2>
+            <h2 className="text-base font-semibold text-slate-800">중국현지 재무제표 기준손익 — {year}년</h2>
             <p className="mt-0.5 text-xs text-slate-500">
               파일/재무조정/FI기준손익.csv
               {currency === 'KRW' && ` · 분기 누적평균환율 ${(payload?.rates?.[String(year)] ?? []).map(r => r ?? '-').join(' / ')} 로 누적 환산 후 전분기 차감`}
@@ -258,6 +267,7 @@ export default function FIBasisPLModal({ year, onClose }: Props) {
                       {QUARTERS.map((q, qi) => {
                         const v = row.values[qi];
                         const prev = prevRows?.[ri]?.values[qi] ?? null;
+                        const hq = row.splitHqReturn ? (hqReturn?.[qi] ?? null) : null;
                         const diff = v !== null && prev !== null ? v - prev : null;
                         const rate = diff !== null && prev !== null && prev !== 0 ? (diff / Math.abs(prev)) * 100 : null;
                         return (
@@ -266,6 +276,11 @@ export default function FIBasisPLModal({ year, onClose }: Props) {
                             className={`border border-slate-200 px-3 py-2 text-right tabular-nums ${bg} ${isBold ? 'font-semibold' : ''} ${v !== null && v < 0 ? 'text-rose-600' : 'text-slate-800'}`}
                           >
                             <div>{formatValue(v, unit)}</div>
+                            {row.splitHqReturn && hq !== null && hq !== 0 && v !== null && (
+                              <div className="mt-0.5 whitespace-nowrap text-[11px] font-normal text-slate-500">
+                                ①정상매출 {formatValue(v - hq, unit)} ②본사반품매출인식 {formatValue(hq, unit)}
+                              </div>
+                            )}
                             {showYoY && (
                               <div className={`mt-0.5 text-[11px] font-normal ${diff === null ? 'text-slate-300' : diff >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                                 {diff === null

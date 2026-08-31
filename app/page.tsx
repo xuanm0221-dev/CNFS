@@ -765,15 +765,18 @@ export default function Home() {
                   {plJsonDownloading ? '생성 중…' : `${plYear} JSON`}
                 </button>
 
-                {/* FI기준 손익표 — 재무조정/FI기준손익.csv 분기별 표 (2024년은 파일에 없어 미표시) */}
+                {/* 중국현지 재무제표 기준손익 — 재무조정/FI기준손익.csv 분기별 표 (2024년은 파일에 없어 미표시) */}
                 {(plYear === 2025 || plYear === 2026) && (
                   <button
                     onClick={() => setFiPlModalOpen(true)}
-                    title={`${plYear}년 FI기준 손익표 (분기별)`}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                    title={`${plYear}년 중국현지 재무제표 기준손익 (분기별 · CNY/KRW)`}
+                    className="group inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm transition-all hover:border-emerald-300 hover:from-emerald-100 hover:to-teal-100 hover:shadow"
                   >
-                    <Table2 className="h-3.5 w-3.5 text-slate-400" />
-                    FI기준 손익표
+                    <Table2 className="h-3.5 w-3.5 text-emerald-600" />
+                    중국현지 재무제표 기준손익
+                    <span className="rounded-full bg-white/70 px-1.5 py-px text-[10px] font-bold tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                      CNY · KRW
+                    </span>
                   </button>
                 )}
 
