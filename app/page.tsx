@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Download, Table2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Download, Table2, GitCompare } from 'lucide-react';
 import Tabs from '@/components/Tabs';
 import DevStatusTab from '@/components/DevStatusTab';
 import BusinessPlan from '@/components/business-plan/BusinessPlan';
@@ -29,6 +29,7 @@ import DealerShipmentByBrand from '@/components/DealerShipmentByBrand';
 import TagRecoveryRateTable from '@/components/TagRecoveryRateTable';
 import CumulativeCostRateTable from '@/components/CumulativeCostRateTable';
 import FIBasisPLModal from '@/components/FIBasisPLModal';
+import PLVersionCompareModal from '@/components/PLVersionCompareModal';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(5);
@@ -49,6 +50,7 @@ export default function Home() {
   const [plAllRowsCollapsed, setPlAllRowsCollapsed] = useState<boolean>(true); // PL 모든 행 접기
   const [plJsonDownloading, setPlJsonDownloading] = useState<boolean>(false); // 손익계산서 JSON 다운로드 진행중
   const [fiPlModalOpen, setFiPlModalOpen] = useState<boolean>(false); // FI기준 손익표 모달 (2025·2026)
+  const [planCompareOpen, setPlanCompareOpen] = useState<boolean>(false); // 전월대비 모달 (2026)
   const [summaryData, setSummaryData] = useState<ExecutiveSummaryData | null>(null);
   const [plData, setPlData] = useState<TableRow[] | null>(null);
   const [bsData, setBsData] = useState<TableRow[] | null>(null);
@@ -780,6 +782,21 @@ export default function Home() {
                   </button>
                 )}
 
+                {/* 전월대비 — 2026.csv vs 2026_기존.csv (지난달 보고본) */}
+                {plYear === 2026 && (
+                  <button
+                    onClick={() => setPlanCompareOpen(true)}
+                    title="2026 계획 — 현재 버전 vs 전월(지난달 보고) 버전 비교"
+                    className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-gradient-to-r from-indigo-50 to-sky-50 px-3 py-1 text-xs font-semibold text-indigo-800 shadow-sm transition-all hover:border-indigo-300 hover:from-indigo-100 hover:to-sky-100 hover:shadow"
+                  >
+                    <GitCompare className="h-3.5 w-3.5 text-indigo-600" />
+                    전월대비
+                    <span className="rounded-full bg-white/70 px-1.5 py-px text-[10px] font-bold tracking-wide text-indigo-700 ring-1 ring-inset ring-indigo-200">
+                      현재 · 기존
+                    </span>
+                  </button>
+                )}
+
                 {/* 컨트롤 버튼 (펼치기/월별/YTD) */}
                 <div className="ml-auto flex items-center gap-1.5">
                   <button
@@ -1164,6 +1181,11 @@ export default function Home() {
         {/* FI기준 손익표 모달 */}
         {fiPlModalOpen && activeTab === 1 && (
           <FIBasisPLModal year={plYear} onClose={() => setFiPlModalOpen(false)} />
+        )}
+
+        {/* 전월대비 모달 */}
+        {planCompareOpen && activeTab === 1 && (
+          <PLVersionCompareModal year={plYear} onClose={() => setPlanCompareOpen(false)} />
         )}
       </div>
       </>
