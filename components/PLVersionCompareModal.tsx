@@ -61,7 +61,7 @@ export default function PLVersionCompareModal({ year, onClose }: Props) {
   const [brand, setBrand] = useState<string>('all');
   // 채널별 보기는 기본 접힘 — 손익계산서와 동일
   const [collapsed, setCollapsed] = useState<Set<string>>(
-    () => new Set(['Tag매출_채널보기', '실판매출_채널보기']),
+    () => new Set(['Tag매출', '실판매출']),
   );
   const toggle = (account: string) =>
     setCollapsed((prev) => {
@@ -101,7 +101,7 @@ export default function PLVersionCompareModal({ year, onClose }: Props) {
   }, [onClose]);
 
   const allRows = data?.rows ?? [];
-  // 접힌 '채널별 보기' 그룹의 하위(level 2)는 숨긴다
+  // 접힌 부모(Tag매출/실판매출)의 채널 행은 숨긴다
   const rows = (() => {
     const out: typeof allRows = [];
     let hideUnderLevel = -1;
@@ -109,7 +109,7 @@ export default function PLVersionCompareModal({ year, onClose }: Props) {
       if (hideUnderLevel >= 0 && r.level > hideUnderLevel) continue;
       hideUnderLevel = -1;
       out.push(r);
-      if (r.isReference && r.level === 1 && collapsed.has(r.account)) hideUnderLevel = r.level;
+      if (r.isChannelParent && collapsed.has(r.account)) hideUnderLevel = r.level;
     }
     return out;
   })();
@@ -137,16 +137,11 @@ export default function PLVersionCompareModal({ year, onClose }: Props) {
         const a = annual(v);
         const isBold = r.account === '영업이익(관리식)' || r.account === '매출총이익';
         // 채널별 보기 = 참고 기준. 손익계산서와 같은 보라 톤 2단계로 구분한다.
-        const isGroupRow = r.isReference === true && r.level === 1;
-        const refTone = !r.isReference
-          ? ''
-          : r.level === 1
-            ? 'bg-violet-100 text-violet-900 italic'
-            : 'bg-violet-50/50 text-violet-700 italic';
+        const isGroupRow = r.isChannelParent === true;
         return (
-          <tr key={`${title}-${r.account}`} className={r.isReference ? '' : 'hover:bg-sky-50/40'}>
+          <tr key={`${title}-${r.account}`} className="hover:bg-sky-50/40">
             <td
-              className={`border border-slate-200 py-1.5 pr-3 ${refTone} ${isGroupRow ? 'cursor-pointer' : ''} ${isBold ? 'font-semibold text-slate-800' : r.isReference ? '' : 'text-slate-700'}`}
+              className={`border border-slate-200 py-1.5 pr-3 ${isGroupRow ? 'cursor-pointer' : ''} ${isBold ? 'font-semibold text-slate-800' : 'text-slate-700'}`}
               style={{ paddingLeft: `${12 + r.level * 16}px` }}
               onClick={isGroupRow ? () => toggle(r.account) : undefined}
             >
@@ -162,16 +157,16 @@ export default function PLVersionCompareModal({ year, onClose }: Props) {
             {q.map((val, i) => (
               <td
                 key={i}
-                className={`border border-slate-200 px-3 py-1.5 text-right tabular-nums ${refTone} ${
-                  opts?.diff ? diffTone(val) : r.isReference ? '' : val != null && val < 0 ? 'text-rose-600' : 'text-slate-800'
+                className={`border border-slate-200 px-3 py-1.5 text-right tabular-nums ${
+                  opts?.diff ? diffTone(val) : val != null && val < 0 ? 'text-rose-600' : 'text-slate-800'
                 } ${isBold ? 'font-semibold' : ''}`}
               >
                 {fmtK(val, opts?.diff)}
               </td>
             ))}
             <td
-              className={`border border-slate-200 px-3 py-1.5 text-right font-semibold tabular-nums ${refTone || 'bg-slate-50/60'} ${
-                opts?.diff ? diffTone(a) : r.isReference ? '' : a != null && a < 0 ? 'text-rose-600' : 'text-slate-800'
+              className={`border border-slate-200 px-3 py-1.5 text-right font-semibold tabular-nums bg-slate-50/60 ${
+                opts?.diff ? diffTone(a) : a != null && a < 0 ? 'text-rose-600' : 'text-slate-800'
               }`}
             >
               {fmtK(a, opts?.diff)}
