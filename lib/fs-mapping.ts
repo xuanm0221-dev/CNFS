@@ -5,6 +5,19 @@ import {
   type IFRSAdjustSet,
 } from './ifrs-adjust';
 
+/** 손익계산서 채널별 보기 — 온·오프라인 4채널 (CSV 계정명의 접미어) */
+export const SALES_CHANNELS = ['직영(ON)', '직영(OFF)', '대리상(ON)', '대리상(OFF)'] as const;
+
+/** 채널별 보기 묶음 행의 account 키 — 부모(Tag매출/실판매출)별로 분리 */
+export function channelGroupKey(parent: 'Tag매출' | '실판매출'): string {
+  return `${parent}_채널보기`;
+}
+
+/** 채널 행의 account 키 — CSV 계정명과 동일 */
+export function channelRowKey(parent: 'Tag매출' | '실판매출', channel: string): string {
+  return `${parent}_${channel}`;
+}
+
 // 월별 데이터를 Map으로 변환
 export function createMonthDataMap(data: FinancialData[]): Map<string, number[]> {
   const map = new Map<string, number[]>();
@@ -32,6 +45,9 @@ export const CORPORATE_PL_BRAND_IDS: string[] = ['mlb', 'kids', 'discovery', 'du
 const CORPORATE_SUM_ACCOUNTS: string[] = [
   // Tag매출 4-leaf (대리상/직영 × 의류/ACC)
   'Tag매출_대리상_APP', 'Tag매출_대리상_ACC', 'Tag매출_직영_APP', 'Tag매출_직영_ACC',
+  // 채널별 보기 4채널 (2025~ CSV) — Tag매출 / 실판매출 각각
+  'Tag매출_직영(ON)', 'Tag매출_직영(OFF)', 'Tag매출_대리상(ON)', 'Tag매출_대리상(OFF)',
+  '실판매출_직영(ON)', '실판매출_직영(OFF)', '실판매출_대리상(ON)', '실판매출_대리상(OFF)',
   // 실판매출 / 매출원가 / 평가감
   '실판매출', '매출원가', '평가감(설정)', '평가감(환입)',
   // 직접비 10항목
@@ -149,6 +165,13 @@ export function calculatePL(
   const Tag매출_대리상 = Tag매출_대리상_APP.map((v, i) => v + Tag매출_대리상_ACC[i]);
   const Tag매출_직영 = Tag매출_직영_APP.map((v, i) => v + Tag매출_직영_ACC[i]);
   const Tag매출 = Tag매출_대리상.map((v, i) => v + Tag매출_직영[i]);
+
+  // 온·오프라인 채널 분해 (2025~ CSV 에만 있는 행). 파일에 없으면 전부 0 이라 행을 만들지 않는다.
+  //   Tag매출_직영(ON) / (OFF) / 대리상(ON) / (OFF),  실판매출_직영(ON) ... 동일 4채널
+  const channelSeries = (parent: 'Tag매출' | '실판매출') =>
+    SALES_CHANNELS.map(ch => ({ channel: ch, values: getAccountValues(map, `${parent}_${ch}`) }));
+  const hasChannelData = (list: { values: number[] }[]) =>
+    list.some(x => x.values.some(v => v !== 0));
   
   // 실판매출 (파일에서 직접 읽기)
   const 실판매출 = getAccountValues(map, '실판매출');
@@ -236,6 +259,39 @@ export function calculatePL(
   }
   void isBrand; // 향후 사용 위해 시그니처 유지
 
+  /**
+   * 채널별 보기 묶음 행 + 하위 4채널.
+   * 부모(Tag매출/실판매출) 아래 level 1 에 토글 행을 두고, 채널은 level 2.
+   * CSV 에 채널 행이 없는 연도(2024)는 값이 전부 0 이라 아예 만들지 않는다.
+   */
+  const channelRows = (parent: 'Tag매출' | '실판매출'): TableRow[] => {
+    const series = channelSeries(parent);
+    if (!hasChannelData(series)) return [];
+    const total = series[0].values.map((_, i) => series.reduce((sum, s) => sum + s.values[i], 0));
+    return [
+      {
+        account: channelGroupKey(parent),
+        displayLabel: '채널별 보기 (참고)',
+        level: 1,
+        isGroup: true,
+        isCalculated: true,
+        isReference: true,
+        values: total,
+        format: 'number',
+      },
+      ...series.map(s => ({
+        account: channelRowKey(parent, s.channel),
+        displayLabel: s.channel,
+        level: 2,
+        isGroup: false,
+        isCalculated: false,
+        isReference: true,
+        values: s.values,
+        format: 'number' as const,
+      })),
+    ];
+  };
+
   const rows: TableRow[] = [
     ...리테일매출Rows,
     {
@@ -248,6 +304,8 @@ export function calculatePL(
       values: Tag매출,
       format: 'number',
     },
+    // 채널별 보기 (2025~) — 대리상·직영 위에 둔다. 4채널이 직영 2 + 대리상 2 라 둘을 포괄한다.
+    ...channelRows('Tag매출'),
     // 3단계 분해: 대리상/직영 → 의류/ACC (브랜드·법인 동일)
     { account: '대리상', level: 1, isGroup: true, isCalculated: true, values: Tag매출_대리상, format: 'number' as const },
     { account: '대리상_의류', displayLabel: '의류', level: 2, isGroup: false, isCalculated: false, values: Tag매출_대리상_APP, format: 'number' as const },
@@ -258,13 +316,14 @@ export function calculatePL(
     {
       account: '실판매출',
       level: 0,
-      isGroup: false,
+      isGroup: hasChannelData(channelSeries('실판매출')),
       isCalculated: false,
       isBold: true,
       isHighlight: 'sky',
       values: 실판매출,
       format: 'number',
     },
+    ...channelRows('실판매출'),
     {
       account: '매출원가 합계',
       level: 0,

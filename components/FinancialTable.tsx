@@ -641,6 +641,19 @@ export default function FinancialTable({
               const hasThickDivider = row.account === '매출총이익' || row.account === '영업이익률(관리식)';
               // 재무&관리차이(-) 행만 오렌지 텍스트 (내부거래제거 후 영업이익은 배경색만 오렌지)
               const isOrangeText = row.account === '재무&관리차이(-)';
+              // 참고 기준 행(채널별 보기) — 본 계정 계층과 다른 분해축이라 이탤릭 + 보라 톤으로 구분.
+              // 합계(그룹) 행은 진하게, 하위 채널은 연하게 해서 펼쳤을 때 층이 구분되게 한다.
+              const isReference = row.isReference === true;
+              const refRowClass = !isReference
+                ? ''
+                : row.isGroup
+                  ? 'italic [&>td]:!bg-violet-100 [&>td]:!text-violet-900'
+                  : 'italic [&>td]:!bg-violet-50/50 [&>td]:!text-violet-700';
+              const refCellClass = !isReference
+                ? ''
+                : row.isGroup
+                  ? '!bg-violet-100 !text-violet-900 italic'
+                  : '!bg-violet-50/50 !text-violet-700 italic';
 
               return (
               <tr
@@ -652,6 +665,7 @@ export default function FinancialTable({
                   ${row.isBold ? 'font-semibold' : ''}
                   ${hasThickDivider ? '[&>td]:!border-b-[3px] [&>td]:!border-b-slate-400' : ''}
                   ${isOrangeText ? '[&>td]:!text-orange-700' : ''}
+                  ${refRowClass}
                   hover:bg-gray-50
                 `}
               >
@@ -663,6 +677,7 @@ export default function FinancialTable({
                     ${isBalanceCheck && !isBalanceOk ? 'bg-red-100' : ''}
                     ${!isBalanceCheck && (getHighlightClass(row.isHighlight))}
                     ${!isBalanceCheck && (!row.isHighlight || row.isHighlight === 'none') ? 'bg-white' : ''}
+                    ${refCellClass}
                     ${row.isGroup ? 'cursor-pointer' : ''}
                     ${row.isBold ? 'font-semibold' : ''}
                     ${compactLayout ? 'overflow-hidden text-ellipsis' : ''}

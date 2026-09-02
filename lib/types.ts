@@ -21,6 +21,7 @@ export interface TableRow {
   year2024Value?: number | null; // CF용 2024년 값
   brandComparisons?: BrandComparisonData; // 브랜드별 비교 데이터 (브랜드별 손익 보기 전용)
   displayLabel?: string; // 표시용 라벨 — 있으면 account 대신 표시. account는 내부 매칭 키로만 사용.
+  isReference?: boolean; // 참고 기준 행 — 본 계정 계층과 다른 분해축(예: 채널별 보기). 이탤릭 + 별도 배경으로 구분.
 }
 
 // 비교 데이터 (PL 2025년 전용)
