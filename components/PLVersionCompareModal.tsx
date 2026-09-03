@@ -1,7 +1,7 @@
 'use client';
 
 // 지난달 보고 대비 — 현재 버전(2026.csv) vs 전월 버전(2026_기존.csv, 지난달 보고본)
-//   표 3개를 분리해서 세로로 쌓는다 — ① 현재버전 ② 전월대비(현재 − 전월) ③ 전월버전
+//   표 3개를 분리해서 세로로 쌓는다 — ① 전월대비(현재 − 전월) ② 현재버전 ③ 전월버전
 //   상단 탭으로 법인/브랜드를 전환한다.
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
@@ -250,13 +250,8 @@ export default function PLVersionCompareModal({ year, onClose }: Props) {
                 </p>
               )}
               <div className="space-y-5">
-                {table('① 현재 버전', (r) => r.current, {
-                  head: 'bg-sky-600 text-white',
-                  ring: 'border-sky-300',
-                  th: 'bg-sky-50 text-sky-900',
-                })}
                 {table(
-                  '② 전월대비 (현재 − 전월)',
+                  '① 전월대비 (현재 − 전월)',
                   (r) => r.current.map((v, i) => {
                     const b = r.baseline[i];
                     if (v == null && b == null) return null;
@@ -265,6 +260,11 @@ export default function PLVersionCompareModal({ year, onClose }: Props) {
                   { head: 'bg-amber-500 text-white', ring: 'border-amber-300', th: 'bg-amber-50 text-amber-900' },
                   true,
                 )}
+                {table('② 현재 버전', (r) => r.current, {
+                  head: 'bg-sky-600 text-white',
+                  ring: 'border-sky-300',
+                  th: 'bg-sky-50 text-sky-900',
+                })}
                 {table('③ 전월 버전 (지난달 보고)', (r) => r.baseline, {
                   head: 'bg-slate-500 text-white',
                   ring: 'border-slate-300',
