@@ -133,6 +133,7 @@ export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNum
         prev = 0;
       for (const r of data2026.rows) {
         if (r.대분류 !== 대) continue;
+        if (r.채널) continue; // 채널은 브랜드 합계에 포함 - 더하면 이중 계상
         const key = rowKey(r.대분류, r.중분류, r.소분류);
         curr += dataCurr.get(key)?.total ?? 0;
         prev += dataPrev.get(key)?.total ?? 0;
@@ -147,6 +148,7 @@ export async function getCFExplanationSummaryNumbers(): Promise<CFExplanationNum
           let cSub = 0, pSub = 0;
           for (const r of data2026.rows) {
             if (r.대분류 !== '영업활동' || r.중분류 !== 중) continue;
+            if (r.채널) continue; // 채널 제외 (브랜드 합계만 합산)
             const k = rowKey(r.대분류, r.중분류, r.소분류);
             cSub += dataCurr.get(k)?.total ?? 0;
             pSub += dataPrev.get(k)?.total ?? 0;

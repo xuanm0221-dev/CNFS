@@ -12,7 +12,7 @@ import type { CFExplanationNumbers } from '@/lib/cf-explanation-data';
 type StaticCFRow = {
   key: string;
   label: string;
-  level: 0 | 1 | 2;
+  level: 0 | 1 | 2 | 3;
   isGroup: boolean;
   actual2025: number | null;
 };
@@ -20,7 +20,7 @@ type StaticCFRow = {
 type StaticWorkingCapitalRow = {
   key: string;
   label: string;
-  level: 0 | 1 | 2;
+  level: 0 | 1 | 2 | 3;
   isGroup: boolean;
   actual2025: number | null;
 };
@@ -50,7 +50,7 @@ type PurchaseMonthlyMap = {
 };
 
 type CFSummaryApiRow = {
-  level: 0 | 1 | 2;
+  level: 0 | 1 | 2 | 3;
   account: string;
   values: number[];
 };
@@ -84,11 +84,31 @@ const PL_TAG_COST_RATIO_KEY = 'pl_tag_cost_ratio_annual';
 const STATIC_CF_ROWS: StaticCFRow[] = [
   { key: 'operating', label: '영업활동', level: 0, isGroup: true, actual2025: null },
   { key: 'operating_receipts', label: '매출수금', level: 1, isGroup: true, actual2025: null },
-  { key: 'operating_receipts_mlb', label: 'MLB', level: 2, isGroup: false, actual2025: null },
-  { key: 'operating_receipts_kids', label: 'MLB KIDS', level: 2, isGroup: false, actual2025: null },
-  { key: 'operating_receipts_discovery', label: 'DISCOVERY', level: 2, isGroup: false, actual2025: null },
-  { key: 'operating_receipts_duvetica', label: 'DUVETICA', level: 2, isGroup: false, actual2025: null },
-  { key: 'operating_receipts_supra', label: 'SUPRA', level: 2, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_mlb', label: 'MLB', level: 2, isGroup: true, actual2025: null },
+  { key: 'operating_receipts_mlb_dir_on', label: '직영(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_mlb_dir_off', label: '직영(OFF)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_mlb_dlr_on', label: '대리상(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_mlb_dlr_off', label: '대리상(OFF)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_kids', label: 'MLB KIDS', level: 2, isGroup: true, actual2025: null },
+  { key: 'operating_receipts_kids_dir_on', label: '직영(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_kids_dir_off', label: '직영(OFF)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_kids_dlr_on', label: '대리상(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_kids_dlr_off', label: '대리상(OFF)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_discovery', label: 'DISCOVERY', level: 2, isGroup: true, actual2025: null },
+  { key: 'operating_receipts_discovery_dir_on', label: '직영(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_discovery_dir_off', label: '직영(OFF)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_discovery_dlr_on', label: '대리상(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_discovery_dlr_off', label: '대리상(OFF)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_duvetica', label: 'DUVETICA', level: 2, isGroup: true, actual2025: null },
+  { key: 'operating_receipts_duvetica_dir_on', label: '직영(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_duvetica_dir_off', label: '직영(OFF)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_duvetica_dlr_on', label: '대리상(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_duvetica_dlr_off', label: '대리상(OFF)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_supra', label: 'SUPRA', level: 2, isGroup: true, actual2025: null },
+  { key: 'operating_receipts_supra_dir_on', label: '직영(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_supra_dir_off', label: '직영(OFF)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_supra_dlr_on', label: '대리상(ON)', level: 3, isGroup: false, actual2025: null },
+  { key: 'operating_receipts_supra_dlr_off', label: '대리상(OFF)', level: 3, isGroup: false, actual2025: null },
   { key: 'operating_payments', label: '물품대', level: 1, isGroup: true, actual2025: null },
   { key: 'operating_payments_hq', label: '본사', level: 2, isGroup: false, actual2025: null },
   { key: 'operating_payments_local', label: '현지', level: 2, isGroup: false, actual2025: null },
@@ -151,7 +171,29 @@ const HARDCODED_WC_MONTHLY_K = {
 } as const;
 const WC_AR_DIRECT_SHARE_OF_DEALER_AR = 52193 / 672991;
 const WC_AP_GOODS_SHARE_OF_HQ_AP = 21410 / 732511;
-const CF_GROUP_KEYS = ['operating', 'operating_receipts', 'operating_payments', 'operating_expenses', 'capex'] as const;
+const CF_GROUP_KEYS = [
+  'operating', 'operating_receipts', 'operating_payments', 'operating_expenses', 'capex',
+  // 매출수금 하위 브랜드 — 채널 4개를 여닫는 그룹 (기본 접힘)
+  'operating_receipts_mlb', 'operating_receipts_kids', 'operating_receipts_discovery',
+  'operating_receipts_duvetica', 'operating_receipts_supra',
+] as const;
+
+/** cf-hierarchy 응답의 브랜드명 → STATIC_CF_ROWS 키 조각 */
+const RECEIPT_BRAND_KEY: Record<string, string> = {
+  'MLB': 'mlb',
+  'MLB KIDS': 'kids',
+  'DISCOVERY': 'discovery',
+  'DUVETICA': 'duvetica',
+  'SUPRA': 'supra',
+};
+
+/** 채널명 → 키 조각. 표시 순서는 cf-hierarchy API 가 이미 정렬해서 내려준다 */
+const RECEIPT_CHANNEL_KEY: Record<string, string> = {
+  '직영(ON)': 'dir_on',
+  '직영(OFF)': 'dir_off',
+  '대리상(ON)': 'dlr_on',
+  '대리상(OFF)': 'dlr_off',
+};
 const WC_GROUP_KEYS = ['wc_ar', 'wc_inventory', 'wc_ap'] as const;
 const VALUATION_REDUCTION_RATE: { MLB: number; 'MLB KIDS': number; DISCOVERY: number } = {
   MLB: 0.133924,
@@ -812,6 +854,7 @@ export default function PLCashFlowTab() {
       const result: Record<string, number[]> = {};
       let level0 = '';
       let level1 = '';
+      let level2 = '';
 
       for (const row of rows) {
         if (row.level === 0) {
@@ -819,16 +862,23 @@ export default function PLCashFlowTab() {
           level1 = '';
         } else if (row.level === 1) {
           level1 = row.account;
+        } else if (row.level === 2) {
+          level2 = row.account;
         }
 
         let key: string | null = null;
         if (row.level === 0 && row.account === '영업활동') key = 'operating';
         else if (row.level === 1 && level0 === '영업활동' && row.account === '매출수금') key = 'operating_receipts';
-        else if (row.level === 2 && level0 === '영업활동' && level1 === '매출수금' && row.account === 'MLB') key = 'operating_receipts_mlb';
-        else if (row.level === 2 && level0 === '영업활동' && level1 === '매출수금' && row.account === 'MLB KIDS') key = 'operating_receipts_kids';
-        else if (row.level === 2 && level0 === '영업활동' && level1 === '매출수금' && row.account === 'DISCOVERY') key = 'operating_receipts_discovery';
-        else if (row.level === 2 && level0 === '영업활동' && level1 === '매출수금' && row.account === 'DUVETICA') key = 'operating_receipts_duvetica';
-        else if (row.level === 2 && level0 === '영업활동' && level1 === '매출수금' && row.account === 'SUPRA') key = 'operating_receipts_supra';
+        else if (row.level === 2 && level0 === '영업활동' && level1 === '매출수금' && RECEIPT_BRAND_KEY[row.account]) {
+          key = `operating_receipts_${RECEIPT_BRAND_KEY[row.account]}`;
+        }
+        // 브랜드 하위 채널 (level 3) — 직전 level 2 행이 브랜드
+        else if (
+          row.level === 3 && level0 === '영업활동' && level1 === '매출수금'
+          && RECEIPT_BRAND_KEY[level2] && RECEIPT_CHANNEL_KEY[row.account]
+        ) {
+          key = `operating_receipts_${RECEIPT_BRAND_KEY[level2]}_${RECEIPT_CHANNEL_KEY[row.account]}`;
+        }
         else if (row.level === 1 && level0 === '영업활동' && row.account === '물품대') key = 'operating_payments';
         else if (row.level === 2 && level0 === '영업활동' && level1 === '물품대' && row.account === '본사') key = 'operating_payments_hq';
         else if (row.level === 2 && level0 === '영업활동' && level1 === '물품대' && row.account === '현지') key = 'operating_payments_local';
@@ -1401,7 +1451,7 @@ export default function PLCashFlowTab() {
                   const isNetCash = row.key === 'net_cash';
                   const isMajor = row.level === 0 && !isNetCash;
                   const isMedium = row.level === 1;
-                  const indentPx = row.level === 0 ? 12 : row.level === 1 ? 36 : 60;
+                  const indentPx = row.level === 0 ? 12 : row.level === 1 ? 36 : row.level === 2 ? 60 : 84;
                   // 대분류 행 배경색: 계정별 분기 (현금흐름표 탭과 동일)
                   const majorBg =
                     row.key === 'operating' ? 'bg-highlight-sky'
@@ -1590,7 +1640,7 @@ export default function PLCashFlowTab() {
 
           {/* 현금·차입금 잔액표 설명: 차입금 해석 (원→M, 계획대비) */}
           <div className="mt-3 px-1 text-xs leading-relaxed text-slate-600">
-            ※ 본사 수입 {formatSignedM(-cfExplanationNumbers.물품대_planVs)} 및 수입 시점 연말 이연 → 연말 차입금 잔액 계획비 {formatSignedM(cashDebtVsRollingAmount('borrowing'))} / 연간 차입금 실행 계획비 {formatSignedM(-cfExplanationNumbers.차입금_planVs)}
+            ※ 연말 차입금 잔액 계획비 {formatSignedM(cashDebtVsRollingAmount('borrowing'))} / 연간 차입금 실행 계획비 {formatSignedM(-cfExplanationNumbers.차입금_planVs)}
           </div>
 
           <div className="mt-8">

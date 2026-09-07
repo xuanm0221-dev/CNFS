@@ -633,10 +633,32 @@ export function readBSPlanData(filePath: string): {
 }
 
 // 현금흐름표 계층형 CSV (대분류, 중분류, 소분류, 1월~12월)
+/**
+ * CF CSV 매출수금 하위 채널 4종 — 화면 표시 순서 그대로.
+ * CSV 는 대리상(OFF)이 대리상(ON)보다 먼저 오지만 이 순서로 재정렬해 보여준다.
+ */
+export const CF_SALES_CHANNELS = ['직영(ON)', '직영(OFF)', '대리상(ON)', '대리상(OFF)'] as const;
+
+/** 소분류가 "{브랜드}_{채널}" 형태면 분해. 아니면 null (= 브랜드 합계 행) */
+export function splitCFChannel(소분류: string): { 브랜드: string; 채널: string } | null {
+  for (const ch of CF_SALES_CHANNELS) {
+    const suffix = `_${ch}`;
+    if (소분류.endsWith(suffix) && 소분류.length > suffix.length) {
+      return { 브랜드: 소분류.slice(0, -suffix.length), 채널: ch };
+    }
+  }
+  return null;
+}
+
 export interface CFHierarchyRow {
   대분류: string;
   중분류: string;
+  /** CSV 원문 그대로 ("MLB" 또는 "MLB_직영(ON)") — 행 식별 키로 쓰인다 */
   소분류: string;
+  /** 채널 행일 때만: 상위 브랜드명 */
+  브랜드?: string;
+  /** 채널 행일 때만: 채널명. 비어 있으면 브랜드 합계 행 (= 합산 대상) */
+  채널?: string;
   values: number[]; // 1월~12월 순서
 }
 
@@ -683,7 +705,12 @@ export async function readCFHierarchyCSV(
     const values = monthIndices.map(({ index }) =>
       cleanNumericValue(row[index] ?? '0')
     );
-    result.push({ 대분류, 중분류, 소분류, values });
+    const ch = splitCFChannel(소분류);
+    result.push(
+      ch
+        ? { 대분류, 중분류, 소분류, 브랜드: ch.브랜드, 채널: ch.채널, values }
+        : { 대분류, 중분류, 소분류, values },
+    );
   }
   return { year, rows: result };
 }

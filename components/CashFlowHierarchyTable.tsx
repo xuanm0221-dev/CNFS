@@ -180,7 +180,7 @@ export default function CashFlowHierarchyTable({
               const isMajor = row.level === 0 && !isNetCash;
               const isMedium = row.level === 1;
               // 대분류 0, 중분류 1칸, 소분류 2칸(중분류보다 한 칸 더). net cash는 대분류와 동일 배경
-              const indentPx = row.level === 0 ? 12 : row.level === 1 ? 36 : 60;
+              const indentPx = row.level === 0 ? 12 : row.level === 1 ? 36 : row.level === 2 ? 60 : 84;
               const label = row.account;
 
               // 대분류 행 배경색: 계정별로 분기

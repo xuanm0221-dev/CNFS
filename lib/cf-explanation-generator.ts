@@ -37,13 +37,12 @@ const NUMBER_MARKERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', 
 
 // 항목명+금액 뒤에 괄호로 붙는 인라인 설명 (부연 설명 ①②③ 과 달리 같은 줄에 표시)
 const EXPENSE_INLINE_NOTES: Record<string, string> = {
-  'Withholding/VAT':
-    '전월 계획상 본사 8~9월 수입 3.5억이 4Q로 이연 → VAT 시점 차이로 3Q 납부액 증가 (3Q 증가분 > 4Q 감소분)',
   '광고비': 'DX광고비',
 };
 
 // 이 항목 뒤에서 줄바꿈 (설명이 길어 한 줄을 차지하는 항목만 지정)
-const EXPENSE_LINE_BREAK_AFTER = new Set<string>(['Withholding/VAT']);
+// Withholding/VAT 는 인라인 설명을 지우면서 함께 제외 — 짧은 항목 뒤에서 끊으면 어색하다
+const EXPENSE_LINE_BREAK_AFTER = new Set<string>();
 
 // 메인 라인에 표시할 최대 항목 수 (절대치 상위 N개)
 const EXPENSE_DISPLAY_LIMIT = 3;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
-import { readCFHierarchyCSV, CFHierarchyRow, readCFPlanData } from '@/lib/csv';
+import { readCFHierarchyCSV, CFHierarchyRow, readCFPlanData, CF_SALES_CHANNELS } from '@/lib/csv';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,8 @@ function pathPairForJson(filePath: string): { relative: string; absolute: string
 }
 
 export interface CFHierarchyApiRow {
-  level: 0 | 1 | 2;
+  /** 3 = 소분류(브랜드) 하위 채널 */
+  level: 0 | 1 | 2 | 3;
   account: string;
   isGroup: boolean;
   values: number[]; // 2026: [전년합계(0), 1~12월(1-12), 당년합계(13), YoY(14), 계획(15), 계획-전년(16), N-1차이금액(17), N-1%(18)]
@@ -98,11 +99,22 @@ export async function GET(request: NextRequest) {
     type Node = { 중분류: string; 소분류: string[] };
     const tree = new Map<string, Node[]>();
     const 대분류Only = new Set<string>(); // 중·소 없이 대분류만 있는 행
+    // 브랜드별 채널 목록 - key: "대|중|브랜드", value: { 채널명, CSV 소분류 원문 }
+    const 채널목록 = new Map<string, { 채널: string; 소분류: string }[]>();
 
     for (const r of latest.rows) {
       const 대 = r.대분류;
       const 중 = (r.중분류 ?? '').trim();
       const 소 = (r.소분류 ?? '').trim();
+
+      // 채널 행은 소분류 목록에 넣지 않는다 - 브랜드 합계에 이미 포함돼 있어 더하면 이중 계상
+      if (r.채널) {
+        const k = `${대}|${중}|${r.브랜드 ?? ''}`;
+        const list = 채널목록.get(k) ?? [];
+        if (!list.some((c) => c.채널 === r.채널)) list.push({ 채널: r.채널, 소분류: 소 });
+        채널목록.set(k, list);
+        continue;
+      }
 
       if (!중 && !소) {
         대분류Only.add(대);
@@ -216,19 +228,39 @@ export async function GET(request: NextRequest) {
           });
           for (const 소분류명 of 소목록) {
             const arr = getValues(대분류명, 중분류명, 소분류명);
+            // 합계는 브랜드 행만 더한다 (채널은 그 안에 이미 포함)
             for (let i = 0; i < len; i++) {
               중분류Values[i] += arr[i];
               대분류Values[i] += arr[i];
             }
+            // 지정 순서(직영ON·직영OFF·대리상ON·대리상OFF)로 재정렬 - CSV 순서와 다르다
+            const 채널들 = (채널목록.get(`${대분류명}|${중분류명}|${소분류명}`) ?? [])
+              .slice()
+              .sort(
+                (x, y) =>
+                  CF_SALES_CHANNELS.indexOf(x.채널 as (typeof CF_SALES_CHANNELS)[number]) -
+                  CF_SALES_CHANNELS.indexOf(y.채널 as (typeof CF_SALES_CHANNELS)[number]),
+              );
             rows.push({
               level: 2,
               account: 소분류명,
-              isGroup: false,
+              isGroup: 채널들.length > 0,
               values: arr,
               대분류: 대분류명,
               중분류: 중분류명,
               소분류: 소분류명,
             });
+            for (const c of 채널들) {
+              rows.push({
+                level: 3,
+                account: c.채널,
+                isGroup: false,
+                values: getValues(대분류명, 중분류명, c.소분류),
+                대분류: 대분류명,
+                중분류: 중분류명,
+                소분류: c.소분류,
+              });
+            }
           }
           const idx = rows.findIndex(
             (r) => r.level === 1 && r.중분류 === 중분류명 && r.isGroup
