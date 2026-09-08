@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { readCSV, readAdjustCSV } from '@/lib/csv';
+import { readCSV } from '@/lib/csv';
 import { calculatePL, calculateComparisonData, calculateBrandBreakdown } from '@/lib/fs-mapping';
 import { loadCorporatePLFromBrands } from '@/lib/pl-corporate-loader';
 import { loadRetailPLByBrand, loadRetailPLForCorporate, makeEmptyRetailPLData } from '@/lib/retail-pl-loader';
 import { TableRow } from '@/lib/types';
-import { loadIFRSAdjust } from '@/lib/ifrs-adjust-loader';
+import { loadIFRSAdjust, loadLegacyAdjust } from '@/lib/ifrs-adjust-loader';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,11 +34,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 재무조정 데이터 읽기 헬퍼 (byBrand: 브랜드별 · total: 법인 합산)
-    const loadAdjustData = async (y: number) => {
-      const p = path.join(process.cwd(), '파일', '재무조정', `${y}.csv`);
-      try { return await readAdjustCSV(p, y); } catch { return undefined; }
-    };
+    // 구 재무조정 (2024 전용). 상세파일이 있는 연도는 undefined 가 온다.
+    const loadAdjustData = loadLegacyAdjust;
 
     // 법인 PL = 5개 브랜드 PL CSV 합산 (별도 법인 CSV 미사용)
     const corporateData = await loadCorporatePLFromBrands(year);

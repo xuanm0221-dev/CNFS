@@ -1214,13 +1214,10 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
   });
   // 재무조정 데이터 (FY26 + FY25) — byBrand: 브랜드별 · total: 법인 합계
   type IFRSAdjustState = { total: IFRSAdjustSet; byBrand: Record<string, IFRSAdjustSet> } | null;
-  type AdjustState = {
-    byBrand: Record<string, Record<string, (number | null)[]>>;
-    total: Record<string, (number | null)[]>;
-    ifrs: IFRSAdjustState;
-  };
-  const [financialAdjust26, setFinancialAdjust26] = useState<AdjustState>({ byBrand: {}, total: {}, ifrs: null });
-  const [financialAdjust25, setFinancialAdjust25] = useState<AdjustState>({ byBrand: {}, total: {}, ifrs: null });
+  // API 가 ifrs 만 내려준다 (구 재무&관리차이 응답은 미사용이라 제거됨)
+  type AdjustState = { ifrs: IFRSAdjustState };
+  const [financialAdjust26, setFinancialAdjust26] = useState<AdjustState>({ ifrs: null });
+  const [financialAdjust25, setFinancialAdjust25] = useState<AdjustState>({ ifrs: null });
 
   const [directExpenseRatioLoading, setDirectExpenseRatioLoading] = useState<boolean>(false);
   const [directExpenseRatioError, setDirectExpenseRatioError] = useState<string | null>(null);
@@ -1595,8 +1592,8 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
         const json26 = await res26.json();
         const json25 = await res25.json();
         if (!mounted) return;
-        setFinancialAdjust26({ byBrand: json26.byBrand ?? {}, total: json26.total ?? {}, ifrs: json26.ifrs ?? null });
-        setFinancialAdjust25({ byBrand: json25.byBrand ?? {}, total: json25.total ?? {}, ifrs: json25.ifrs ?? null });
+        setFinancialAdjust26({ ifrs: json26.ifrs ?? null });
+        setFinancialAdjust25({ ifrs: json25.ifrs ?? null });
       } catch { /* 무시 */ }
     };
     fetchAdjust();

@@ -52,7 +52,7 @@ const SAVE_FILES: { label: string; file: string; how: string }[] = [
   { label: '시나리오 기말재고', file: '보조파일(simu)/scenario_inventory_closing.json', how: '재고자산(sim) → 기본 스냅샷 저장(dev)' },
   { label: '본사 ACC 예산', file: 'data/inventory/hq-acc-budget.json', how: '재고자산(sim) → ACC 예산 저장 (브랜드 3개)' },
   { label: '리테일 계획', file: 'data/retail-plan.json', how: 'PL(sim) → 리테일 계획 저장' },
-  { label: '연간 출고계획', file: 'data/inventory/annual-shipment-plan.json', how: '재고자산(sim) → 연간 출고계획 저장' },
+  { label: '연간 출고계획', file: 'data/inventory/annual-shipment-plan.json', how: '재고자산(sim) → 보조지표→ 본사 의류매입' },
 ];
 
 /** 버튼 없이 자동 저장되지만 커밋은 필요한 파일 */

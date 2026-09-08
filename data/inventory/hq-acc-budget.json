@@ -1,19 +1,19 @@
 {
   "MLB": {
     "arrival": 1146.23,
-    "order": 1394.6,
+    "order": 1284.79,
     "arrivalThroughMonth": 4,
     "orderThroughMonth": 12
   },
   "MLB KIDS": {
     "arrival": 42.43,
-    "order": 63.97,
+    "order": 51.52,
     "arrivalThroughMonth": 4,
     "orderThroughMonth": 12
   },
   "DISCOVERY": {
     "arrival": 2.66,
-    "order": 0.23,
+    "order": 0.11,
     "arrivalThroughMonth": 4,
     "orderThroughMonth": 8
   }
