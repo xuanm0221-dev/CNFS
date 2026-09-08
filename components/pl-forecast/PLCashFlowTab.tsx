@@ -1638,11 +1638,6 @@ export default function PLCashFlowTab() {
             </div>
           </div>
 
-          {/* 현금·차입금 잔액표 설명: 차입금 해석 (원→M, 계획대비) */}
-          <div className="mt-3 px-1 text-xs leading-relaxed text-slate-600">
-            ※ 연말 차입금 잔액 계획비 {formatSignedM(cashDebtVsRollingAmount('borrowing'))} / 연간 차입금 실행 계획비 {formatSignedM(-cfExplanationNumbers.차입금_planVs)}
-          </div>
-
           <div className="mt-8">
             <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-sm">
               <table className="w-full border-collapse text-sm">
