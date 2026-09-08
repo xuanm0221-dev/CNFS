@@ -4567,7 +4567,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                   <div>
                     <div className="font-medium text-slate-700">· 매출원가</div>
                     <div className="pl-3">= <span className="font-mono">(Tag매출 ÷ 1.13) × Tag대비원가율</span></div>
-                    <div className="pl-3 font-mono text-blue-600 font-semibold text-xs mt-0.5">보조파일(simu)/Tag대비원가율.csv</div>
+                    <div className="pl-3 font-mono text-blue-600 font-semibold text-xs mt-0.5">파일/PL_brand/브랜드별/2026.csv · 매출원가×1.13÷Tag매출</div>
                   </div>
                   <div>
                     <div className="font-medium text-slate-700">· 직접비</div>
@@ -5255,9 +5255,9 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
             <div className="flex-1 flex items-center gap-6">
               <div className="shrink-0">
                 <div className="text-sm font-semibold text-slate-800">Tag대비원가율 보조지표 🟢Live</div>
-                <div className="text-xs text-slate-500">실적월까지 공백, 익월부터 12월까지 CSV 원천값 표시</div>
+                <div className="text-xs text-slate-500">실적월까지 공백, 익월부터 12월까지 PL 계산값 표시</div>
               </div>
-              <div className="font-mono font-semibold text-blue-600 text-xs">보조파일(simu)/Tag대비원가율.csv</div>
+              <div className="font-mono font-semibold text-blue-600 text-xs">파일/PL_brand/브랜드별/2026.csv · 매출원가×1.13÷Tag매출</div>
             </div>
             <div className="text-xs text-slate-500">
               {tagCostRatioLoading
@@ -6218,7 +6218,7 @@ export default function PLForecastTab({ scenarioOverride = null }: PLForecastTab
                                 <span className="font-semibold text-slate-800">재고자산(K)</span>{' '}
                                 = (TAG_K ÷ 1.13) × 원가율 × (1 − 평가감율).{' '}
                                 TAG_K는 재고자산(sim)에서 시나리오별로 계산·저장한 브랜드별 기말 TAG 잔액.{' '}
-                                원가율 출처: <span className="font-mono text-[10px]">보조파일(simu)/Tag대비원가율.csv</span>.{' '}
+                                원가율 출처: <span className="font-mono text-[10px]">파일/PL_brand/브랜드별/2026.csv · 매출원가×1.13÷Tag매출</span>.{' '}
                                 평가감율(고정): MLB 13.39% / MLB KIDS 27.68% / DISCOVERY 2.25%.{' '}
                                 <span className="text-slate-400">※ 브랜드 행에 마우스를 올리면 해당 시나리오의 TAG·원가율·평가감율 확인 가능.</span>
                               </p>
