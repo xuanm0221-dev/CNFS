@@ -254,13 +254,33 @@ const PRIOR_YEAR_SHIPPED_26S_K: Record<OtbBrand, number> = {
 };
 
 /**
+ * 26S OTB 에 반영되지 않은 반품 (CNY K).
+ * 당년S 출고에서 차감해야 실제 대리상 출고량이 된다. 계획 변경 시 이 값을 직접 수정.
+ */
+const RETURN_26S_K: Record<OtbBrand, number> = {
+  'MLB': 40_000,
+  'MLB KIDS': 0,
+  'DISCOVERY': 68_430,
+};
+
+/**
+ * 26F OTB 중 27년에 출고될 예정분 (CNY K).
+ * 26년 대리상 출고에서 빼야 실제 26년 출고량이 된다. 계획 변경 시 이 값을 직접 수정.
+ */
+const NEXT_YEAR_SHIP_26F_K: Record<OtbBrand, number> = {
+  'MLB': 220_000,
+  'MLB KIDS': 8_000,
+  'DISCOVERY': 62_000,
+};
+
+/**
  * 25F OTB 에 반영되지 않은 반품 (CNY K).
  * 1년차 출고에서 차감해야 실제 대리상 출고량이 된다. 계획 변경 시 이 값을 직접 수정.
  */
 const RETURN_25F_K: Record<OtbBrand, number> = {
-  'MLB': 27_983,
+  'MLB': 37_983,
   'MLB KIDS': 0,
-  'DISCOVERY': 0,
+  'DISCOVERY': 34_500,
 };
 
 /**
@@ -280,10 +300,22 @@ function otbDeductionTitles(otbData: OtbData | null, planBrand: OtbBrand): Recor
   const f = (v: number) => v.toLocaleString();
   const out: Record<string, string> = {};
 
+  const rawCurrF = Math.round((otbData['26F']?.[planBrand] ?? 0) / 1000);
+  const nextYearShip = NEXT_YEAR_SHIP_26F_K[planBrand] ?? 0;
+  if (nextYearShip > 0) {
+    out['당년F'] = `OTB ${f(rawCurrF)} − 27년 출고예정 ${f(nextYearShip)} = ${f(rawCurrF - nextYearShip)} (CNY K)`;
+  }
+
+  // 당년S 는 차감이 둘(전년 기출고·반품) — 값이 있는 항목만 문구에 넣는다
   const rawCurrS = Math.round((otbData['26S']?.[planBrand] ?? 0) / 1000);
   const shipped = PRIOR_YEAR_SHIPPED_26S_K[planBrand] ?? 0;
-  if (shipped > 0) {
-    out['당년S'] = `OTB ${f(rawCurrS)} − 전년(25년) 기출고 ${f(shipped)} = ${f(rawCurrS - shipped)} (CNY K)`;
+  const returned26S = RETURN_26S_K[planBrand] ?? 0;
+  const currSTerms: string[] = [];
+  if (shipped > 0) currSTerms.push(`− 전년(25년) 기출고 ${f(shipped)}`);
+  if (returned26S > 0) currSTerms.push(`− 반품 ${f(returned26S)}`);
+  if (currSTerms.length > 0) {
+    out['당년S'] =
+      `OTB ${f(rawCurrS)} ${currSTerms.join(' ')} = ${f(rawCurrS - shipped - returned26S)} (CNY K)`;
   }
 
   const rawYear1 = Math.round((otbData['25F']?.[planBrand] ?? 0) / 1000);
@@ -304,13 +336,17 @@ function otbDeductionTitles(otbData: OtbData | null, planBrand: OtbBrand): Recor
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-/** OTB(CNY) → 대리상 의류 Sell-in(CNY K) 매핑. 당년F=26F, 당년S=26S, 차기시즌=27F+27S. 1년차/2년차/과시즌=0 */
+/** OTB(CNY) → 대리상 의류 Sell-in(CNY K) 매핑. 당년F=26F−27년출고예정, 당년S=26S−전년기출고−반품, 차기시즌=27F+27S. 2년차/과시즌=0 */
 function otbToDealerSellInPlan(otbData: OtbData | null, planBrand: OtbBrand): Partial<Record<RowKey, number>> {
   if (!otbData) return {};
   const out: Partial<Record<RowKey, number>> = {};
-  out['당년F'] = Math.round((otbData['26F']?.[planBrand] ?? 0) / 1000);
-  // 당년S = 26S OTB − 전년(25년) 말 기출고분
-  out['당년S'] = Math.round((otbData['26S']?.[planBrand] ?? 0) / 1000) - (PRIOR_YEAR_SHIPPED_26S_K[planBrand] ?? 0);
+  // 당년F = 26F OTB − 27년 출고예정분
+  out['당년F'] = Math.round((otbData['26F']?.[planBrand] ?? 0) / 1000) - (NEXT_YEAR_SHIP_26F_K[planBrand] ?? 0);
+  // 당년S = 26S OTB − 전년(25년) 말 기출고분 − 반품(OTB 미반영분)
+  out['당년S'] =
+    Math.round((otbData['26S']?.[planBrand] ?? 0) / 1000)
+    - (PRIOR_YEAR_SHIPPED_26S_K[planBrand] ?? 0)
+    - (RETURN_26S_K[planBrand] ?? 0);
   // 1년차 = 25F OTB − 반품(OTB 미반영분)
   out['1년차'] = Math.round((otbData['25F']?.[planBrand] ?? 0) / 1000) - (RETURN_25F_K[planBrand] ?? 0);
   out['2년차'] = 0;
