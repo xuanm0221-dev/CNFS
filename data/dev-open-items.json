@@ -1,0 +1,37 @@
+{
+  "_설명": "상태 탭의 '미해결 · 확인 필요' 목록. 대시보드에서 완료/되돌리기 토글하면 이 파일이 갱신된다. 손으로 항목을 추가해도 된다.",
+  "items": [
+    {
+      "id": "direct-acc-app-actual",
+      "title": "Tag매출 직영 ACC/APP — 실적월(1~8월) 소스 미정",
+      "detail": "계획월(9~12월)은 ALL_BRANDS_Stock_Devaluation 의 '직영출고' 시트에서 나오는 것을 확인했다(값 일치). 실적월은 두 엑셀 어디에도 없어 Snowflake 후보였으나, 수기 조정이 섞여 있어 보류. 현재 스크립트는 이 4행을 건드리지 않고 기존 CSV 값을 그대로 둔다.",
+      "where": "scripts/excel_to_pl_csv.py — SKIP_ACCOUNTS",
+      "since": "2026-09-09",
+      "status": "open"
+    },
+    {
+      "id": "dealer-acc-app-enable",
+      "title": "Tag매출 대리상 ACC/APP — 자동화 켤지 결정",
+      "detail": "소스는 이미 확인됐다. '#. 연간({브랜드})' 의 26년 대리상 '출고 매출Tag (V+)' 행과 바로 아래 '시즌별 ACC' 행. ACC = 시즌별 ACC, APP = 출고Tag − ACC. MLB 1월로 검증 결과 702,606 / 551,098 로 CSV 와 정확히 일치. 켜기만 하면 되지만 직영 쪽과 함께 처리하려고 보류 중.",
+      "where": "scripts/excel_to_pl_csv.py — SKIP_ACCOUNTS",
+      "since": "2026-09-09",
+      "status": "open"
+    },
+    {
+      "id": "tab-config-cleanup",
+      "title": "tab-config 죽은 코드 삭제 여부",
+      "detail": "탭 그룹 숨기기 기능을 제거하면서 참조 0건이 됐다. 2026-09-09 삭제 완료 — app/api/tab-config/route.ts, public/data/tab-config.json. 되살리려면 git show 6771f29:app/api/tab-config/route.ts",
+      "where": "app/api/tab-config/route.ts · public/data/tab-config.json",
+      "since": "2026-09-09",
+      "status": "done"
+    },
+    {
+      "id": "excel-sync-scope",
+      "title": "엑셀 자동화를 BS·cashflow 로 넓힐지",
+      "detail": "지금은 파일/PL_brand/*.csv 5개만 엑셀에서 생성한다. 매월 손대는 CSV 는 그 밖에도 BS/2026.csv, cashflow/2026.csv, 현금차입금잔액/2026.csv, 재무조정/2026.csv, 여신회수계획/26.MM.csv, 대리상AR선수금/26.MM.csv 가 있다. PL 이 안정되면 같은 방식으로 확장할 수 있다.",
+      "where": "scripts/excel_to_pl_csv.py",
+      "since": "2026-09-09",
+      "status": "open"
+    }
+  ]
+}

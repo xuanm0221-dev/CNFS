@@ -18,6 +18,15 @@ interface StatusItem {
   dirty?: boolean;
 }
 
+interface OpenItem {
+  id: string;
+  title: string;
+  detail?: string;
+  where?: string;
+  since?: string;
+  status: 'open' | 'done';
+}
+
 interface StatusResponse {
   items: StatusItem[];
   gitAvailable: boolean;
@@ -71,6 +80,33 @@ export default function DevStatusTab({ baseMonth = 7 }: { baseMonth?: number }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 미해결 · 확인 필요 (data/dev-open-items.json)
+  const [openItems, setOpenItems] = useState<OpenItem[]>([]);
+  const [showDone, setShowDone] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const loadOpenItems = useCallback(() => {
+    fetch('/api/dev/open-items', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((json: { items?: OpenItem[] }) => setOpenItems(json.items ?? []))
+      .catch(() => setOpenItems([]));
+  }, []);
+
+  const toggleItem = async (item: OpenItem) => {
+    setTogglingId(item.id);
+    try {
+      const res = await fetch('/api/dev/open-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, status: item.status === 'done' ? 'open' : 'done' }),
+      });
+      const json = (await res.json()) as { items?: OpenItem[] };
+      if (json.items) setOpenItems(json.items);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -84,7 +120,7 @@ export default function DevStatusTab({ baseMonth = 7 }: { baseMonth?: number }) 
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadOpenItems(); }, [load, loadOpenItems]);
 
   const items = data?.items ?? [];
   const stale = items.filter((i) => {
@@ -103,7 +139,7 @@ export default function DevStatusTab({ baseMonth = 7 }: { baseMonth?: number }) 
         <span className="rounded-md bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">dev 전용</span>
         <button
           type="button"
-          onClick={load}
+          onClick={() => { load(); loadOpenItems(); }}
           className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-600 shadow-sm hover:bg-slate-50"
         >
           새로고침
@@ -138,6 +174,83 @@ export default function DevStatusTab({ baseMonth = 7 }: { baseMonth?: number }) 
           </div>
         </div>
       )}
+
+      {/* 미해결 · 확인 필요 — data/dev-open-items.json */}
+      {openItems.length > 0 && (() => {
+        const pending = openItems.filter((i) => i.status !== 'done');
+        const done = openItems.filter((i) => i.status === 'done');
+        const shown = showDone ? openItems : pending;
+        return (
+          <div className="mb-5">
+            <div className="mb-1.5 flex flex-wrap items-baseline gap-2">
+              <span className="text-sm font-bold text-slate-800">미해결 · 확인 필요</span>
+              <span className={`rounded-md px-1.5 py-0.5 text-xs font-semibold ${
+                pending.length ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                {pending.length ? `${pending.length}건 남음` : '전부 처리됨'}
+              </span>
+              <span className="text-xs text-slate-500">
+                결정이 필요하거나 소스가 아직 정해지지 않은 항목. 항목 추가는
+                <code className="mx-1 rounded bg-slate-100 px-1">data/dev-open-items.json</code>
+                직접 편집.
+              </span>
+              {done.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDone((v) => !v)}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-50"
+                >
+                  {showDone ? '완료 숨기기' : `완료 ${done.length}건 보기`}
+                </button>
+              )}
+            </div>
+            <div className="space-y-2">
+              {shown.map((item) => {
+                const isDone = item.status === 'done';
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-xl border px-4 py-3 ${
+                      isDone ? 'border-slate-200 bg-slate-50' : 'border-amber-300 bg-amber-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className={`text-sm font-bold ${isDone ? 'text-slate-400 line-through' : 'text-amber-900'}`}>
+                          {item.title}
+                        </div>
+                        {item.detail && (
+                          <div className={`mt-1 text-xs leading-relaxed ${isDone ? 'text-slate-400' : 'text-amber-800'}`}>
+                            {item.detail}
+                          </div>
+                        )}
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                          {item.where && (
+                            <code className="rounded bg-white/70 px-1.5 py-0.5 font-mono">{item.where}</code>
+                          )}
+                          {item.since && <span>기록 {item.since}</span>}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleItem(item)}
+                        disabled={togglingId === item.id}
+                        className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                          isDone
+                            ? 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-100'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        }`}
+                      >
+                        {togglingId === item.id ? '…' : isDone ? '되돌리기' : '완료'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {loading && <div className="py-10 text-center text-sm text-slate-400">불러오는 중…</div>}
       {error && (
