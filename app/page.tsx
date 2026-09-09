@@ -289,7 +289,7 @@ export default function Home() {
   // 배포 준비 상태 탭 — 개발 모드에서만 노출 (운영 빌드에서는 배열에서 아예 빠짐)
   const isDev = process.env.NODE_ENV === 'development';
   const tabs = ['경영요약', '손익계산서', '재무상태표', '현금흐름표', '여신사용현황', '재고자산 (sim)', 'PL (sim)', 'CF (sim)',
-    ...(isDev ? ['상태'] : [])];
+    ...(isDev ? ['Dev'] : [])];
   const tabTypes: TabType[] = ['SUMMARY', 'PL', 'BS', 'CF', 'CREDIT', 'INVENTORY', 'PL', 'PL_CF', 'PL_CF'];
 
   // 손익계산서 JSON 다운로드 — 선택 연도의 전 브랜드(법인 포함) × 월별 1~12월 × 계정 전체

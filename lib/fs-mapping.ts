@@ -6,6 +6,33 @@ import {
 } from './ifrs-adjust';
 
 /** 손익계산서 채널별 보기 — 온·오프라인 4채널 (CSV 계정명의 접미어) */
+/** 직접비 세부 항목 — 손익계산서 표와 전월대비 비교 표가 공유한다 */
+export const DIRECT_EXPENSE_ITEMS = [
+  '급여(매장)',
+  '복리후생비(매장)',
+  '플랫폼수수료',
+  'TP수수료',
+  '직접광고비',
+  '대리상지원금',
+  '물류비',
+  '매장임차료',
+  '감가상각비',
+  '기타(직접비)',
+] as const;
+
+/** 영업비 세부 항목 */
+export const OPEX_ITEMS = [
+  '급여(사무실)',
+  '복리후생비(사무실)',
+  '광고비',
+  '수주회',
+  '지급수수료',
+  '임차료',
+  '감가상각비(영업비)',
+  '세금과공과',
+  '기타(영업비)',
+] as const;
+
 export const SALES_CHANNELS = ['직영(ON)', '직영(OFF)', '대리상(ON)', '대리상(OFF)'] as const;
 
 /** 채널별 보기 묶음 행의 account 키 — 부모(Tag매출/실판매출)별로 분리 */
@@ -13,8 +40,15 @@ export function channelGroupKey(parent: 'Tag매출' | '실판매출'): string {
   return `${parent}_채널보기`;
 }
 
+/**
+ * 채널 분해가 있는 계정 — CSV 에 `{계정}_{채널}` 행으로 들어온다.
+ * 평가감(설정) 은 원본 엑셀에 채널 구분이 없어 제외한다(총액만 존재).
+ */
+export const CHANNEL_SPLIT_ACCOUNTS = ['Tag매출', '실판매출', '매출원가', '평가감(환입)'] as const;
+export type ChannelSplitAccount = typeof CHANNEL_SPLIT_ACCOUNTS[number];
+
 /** 채널 행의 account 키 — CSV 계정명과 동일 */
-export function channelRowKey(parent: 'Tag매출' | '실판매출', channel: string): string {
+export function channelRowKey(parent: ChannelSplitAccount, channel: string): string {
   return `${parent}_${channel}`;
 }
 
@@ -48,6 +82,9 @@ const CORPORATE_SUM_ACCOUNTS: string[] = [
   // 채널별 보기 4채널 (2025~ CSV) — Tag매출 / 실판매출 각각
   'Tag매출_직영(ON)', 'Tag매출_직영(OFF)', 'Tag매출_대리상(ON)', 'Tag매출_대리상(OFF)',
   '실판매출_직영(ON)', '실판매출_직영(OFF)', '실판매출_대리상(ON)', '실판매출_대리상(OFF)',
+  // 매출원가 / 평가감(환입) 채널 4개 — 지난달 보고 대비 모달의 참고 분해용
+  '매출원가_직영(ON)', '매출원가_직영(OFF)', '매출원가_대리상(ON)', '매출원가_대리상(OFF)',
+  '평가감(환입)_직영(ON)', '평가감(환입)_직영(OFF)', '평가감(환입)_대리상(ON)', '평가감(환입)_대리상(OFF)',
   // 실판매출 / 매출원가 / 평가감
   '실판매출', '매출원가', '평가감(설정)', '평가감(환입)',
   // 직접비 10항목
@@ -189,35 +226,14 @@ export function calculatePL(
   const 매출총이익 = 실판매출.map((v, i) => v - 매출원가합계[i]);
   
   // 직접비
-  const 직접비항목 = [
-    '급여(매장)',
-    '복리후생비(매장)',
-    '플랫폼수수료',
-    'TP수수료',
-    '직접광고비',
-    '대리상지원금',
-    '물류비',
-    '매장임차료',
-    '감가상각비',
-    '기타(직접비)'
-  ];
+  const 직접비항목 = DIRECT_EXPENSE_ITEMS;
   const 직접비values = 직접비항목.map(acc => getAccountValues(map, acc));
   const 직접비합계 = 직접비values[0].map((_, i) =>
     직접비values.reduce((sum, arr) => sum + arr[i], 0)
   );
   
   // 영업비
-  const 영업비항목 = [
-    '급여(사무실)',
-    '복리후생비(사무실)',
-    '광고비',
-    '수주회',
-    '지급수수료',
-    '임차료',
-    '감가상각비(영업비)',
-    '세금과공과',
-    '기타(영업비)'
-  ];
+  const 영업비항목 = OPEX_ITEMS;
   const 영업비values = 영업비항목.map(acc => getAccountValues(map, acc));
   const 영업비합계 = 영업비values[0].map((_, i) =>
     영업비values.reduce((sum, arr) => sum + arr[i], 0)

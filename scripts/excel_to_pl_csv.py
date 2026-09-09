@@ -91,6 +91,14 @@ def build_spec():
                         ('실판매출_대리상(OFF)', 'OFF_FR')]:
         spec[csv_acc] = ('Sales Revenue（VAT-）', ch, None)
     spec['매출원가'] = ('COGS', 'TOTAL', None)
+    # 매출원가·평가감(환입) 은 엑셀에 채널 4칸이 그대로 있다 (합 = TOTAL 확인).
+    # 평가감(설정) 은 채널 칸이 비어 있어(총액만 존재) 분해하지 않는다.
+    for csv_acc, ch in [('매출원가_직영(ON)', 'EC_OR'), ('매출원가_직영(OFF)', 'OFF_OR'),
+                        ('매출원가_대리상(ON)', 'EC_FR'), ('매출원가_대리상(OFF)', 'OFF_FR')]:
+        spec[csv_acc] = ('COGS', ch, None)
+    for csv_acc, ch in [('평가감(환입)_직영(ON)', 'EC_OR'), ('평가감(환입)_직영(OFF)', 'OFF_OR'),
+                        ('평가감(환입)_대리상(ON)', 'EC_FR'), ('평가감(환입)_대리상(OFF)', 'OFF_FR')]:
+        spec[csv_acc] = ('Impairment-Reversal', ch, None)
     # 평가감(설정) 은 여기서 만들지 않는다. 재무식은 분기(3·6·9·12월)에 평가감을
     # 다시 계산해 수기로 넣는데, PL 시트에는 그 조정 전 값이 남아 있다.
     # 조정 후 정본은 '#. 연간({브랜드})' 의 재고평가감 행 → read_valuation() 에서 읽고
@@ -320,6 +328,43 @@ def load_locks():
     return locks
 
 
+# ── 신규 행 삽입 위치 ──
+# 스크립트가 만드는데 CSV 에 아직 없는 계정은 여기 지정한 행 바로 뒤에 끼워 넣는다.
+# (없으면 파일 끝에 붙인다. 대시보드는 계정명으로 읽으므로 위치는 가독성 문제일 뿐이다.)
+INSERT_AFTER = {
+    '매출원가_직영(ON)': '매출원가',
+    '매출원가_직영(OFF)': '매출원가_직영(ON)',
+    '매출원가_대리상(ON)': '매출원가_직영(OFF)',
+    '매출원가_대리상(OFF)': '매출원가_대리상(ON)',
+    '평가감(환입)_직영(ON)': '평가감(환입)',
+    '평가감(환입)_직영(OFF)': '평가감(환입)_직영(ON)',
+    '평가감(환입)_대리상(ON)': '평가감(환입)_직영(OFF)',
+    '평가감(환입)_대리상(OFF)': '평가감(환입)_대리상(ON)',
+}
+
+
+def add_missing_rows(rows, excel):
+    """엑셀에는 있는데 CSV 에 없는 계정을 빈 행으로 만들어 둔다.
+
+    값 채우기는 이후 compare/apply 단계가 평소대로 처리한다.
+    돌려주는 값: 새로 만든 계정명 목록.
+    """
+    width = max((len(r) for r in rows), default=14)
+    present = set(r[0].strip() for r in rows if r)
+    added = []
+    for acc in excel:
+        if acc in present or acc not in INSERT_AFTER:
+            continue
+        blank = [''] * width
+        blank[0] = acc
+        anchor = INSERT_AFTER[acc]
+        pos = next((i for i, r in enumerate(rows) if r and r[0].strip() == anchor), None)
+        rows.insert(pos + 1 if pos is not None else len(rows), blank)
+        present.add(acc)
+        added.append(acc)
+    return added
+
+
 # ────────────────────────── 비교 ──────────────────────────
 def compare(rows, excel, tol=1.0, locks=None, brand=None):
     """CSV 현재값 vs 엑셀값.
@@ -519,13 +564,16 @@ def run_pass(month, year, baseline, brand_filter, do_apply, locks):
                     ]
 
             rows = read_csv_rows(csv_path)
+            added = add_missing_rows(rows, excel)
             diffs, annual, locked = compare(rows, excel, locks=locks, brand=folder_name)
             report(label_name, os.path.relpath(csv_path, ROOT), diffs, annual, missing, locked)
+            if added:
+                print('  [신규 행] %s' % ', '.join(added))
             total += len(diffs)
 
-            if do_apply and diffs:
+            if do_apply and (diffs or added):
                 write_csv_rows(csv_path, apply_diffs(rows, diffs))
-                print('  → %d개 셀 반영 완료' % len(diffs))
+                print('  → %d개 셀 반영%s' % (len(diffs), ', 행 %d개 추가' % len(added) if added else ''))
                 print()
     finally:
         wb.close()
