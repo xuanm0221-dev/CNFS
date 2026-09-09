@@ -49,3 +49,11 @@ snowflake.log
 
 # playwright 콘솔 로그
 .playwright-mcp/
+
+# 원본 엑셀 (로컬 전용, 절대 커밋 금지)
+엑셀파일(git푸시제외)/
+~$*.xlsx
+
+# python 캐시
+__pycache__/
+*.pyc

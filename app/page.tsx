@@ -290,13 +290,6 @@ export default function Home() {
   const isDev = process.env.NODE_ENV === 'development';
   const tabs = ['경영요약', '손익계산서', '재무상태표', '현금흐름표', '여신사용현황', '재고자산 (sim)', 'PL (sim)', 'CF (sim)',
     ...(isDev ? ['상태'] : [])];
-  const tabGroups = useMemo(
-    () => [
-      { id: 'group1', label: '재무제표', tabIndexes: [0, 1, 2, 3] },
-      { id: 'group2', label: '자금월보', tabIndexes: [5, 6, 7] },
-    ],
-    []
-  );
   const tabTypes: TabType[] = ['SUMMARY', 'PL', 'BS', 'CF', 'CREDIT', 'INVENTORY', 'PL', 'PL_CF', 'PL_CF'];
 
   // 손익계산서 JSON 다운로드 — 선택 연도의 전 브랜드(법인 포함) × 월별 1~12월 × 계정 전체
@@ -724,7 +717,7 @@ export default function Home() {
       )}
       {!businessPlanOpen && (
       <>
-      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} groups={tabGroups} />
+      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* 탭 콘텐츠 - 헤더(56) + 탭바(~56) 높이만큼 오프셋 */}
       <div className="p-0 pt-[112px]">
