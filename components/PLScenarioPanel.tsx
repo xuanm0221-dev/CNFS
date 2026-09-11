@@ -190,7 +190,7 @@ export default function PLScenarioPanel({ brand, year, params, view }: Props) {
         남은 달 합산 YoY(2026 계획 ÷ 2025 실적)에 ±%p 를 준 배율을 현재 계획의 각 달에 곱합니다 — 월 패턴 유지.
         직영 Tag·실판은 채널별 YoY, 대리상 의류는 고정(주문분), 대리상 ACC 만 YoY ±.
         매출원가는 월별 Tag 대비 원가율 고정. 직접비 변동비(급여·복리후생비 ← 직영OFF / 플랫폼·TP·직접광고 ← 직영ON / 대리상지원금 ← 대리상 / 물류비 ← 전체)는 월별 비용율 고정.
-        평가감·고정비·영업비는 그대로.
+        평가감·고정비·영업비는 그대로. 리테일매출은 출고 Tag 배율을 그대로 따릅니다(직영=Tag 직영, 대리상=Tag 대리상).
         {isPassthroughOnly && <span className="ml-1 font-semibold text-amber-700">이 브랜드는 시나리오 대상이 아니라 세 열이 같습니다.</span>}
         {!isPassthroughOnly && brand === 'all' && (
           <span className="ml-1 text-slate-400">(DUVETICA·SUPRA 는 현재 그대로 합산)</span>

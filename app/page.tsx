@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Download, Table2, GitCompare, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Table2, GitCompare, Sparkles } from 'lucide-react';
 import Tabs from '@/components/Tabs';
 import DevStatusTab from '@/components/DevStatusTab';
 import BusinessPlan from '@/components/business-plan/BusinessPlan';
@@ -33,7 +33,7 @@ import PLVersionCompareModal from '@/components/PLVersionCompareModal';
 import PLScenarioModal from '@/components/PLScenarioModal';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<number>(5);
+  const [activeTab, setActiveTab] = useState<number>(1); // 진입 시 손익계산서
   const [inventoryTabMounted, setInventoryTabMounted] = useState<boolean>(true);
   const [plYear, setPlYear] = useState<number>(2026);
   const [plBrand, setPlBrand] = useState<string | null>(null); // null=踰뺤씤, 'mlb', 'kids' ??
@@ -49,7 +49,6 @@ export default function Home() {
   const [plMonthsCollapsed, setPlMonthsCollapsed] = useState<boolean>(true); // PL 월별 데이터 접기
   const [plQuarterlyMode, setPlQuarterlyMode] = useState<boolean>(true); // PL 분기보기 (월별 12개 컬럼을 1Q~4Q 4개 컬럼으로 교체) — 기본값 true
   const [plAllRowsCollapsed, setPlAllRowsCollapsed] = useState<boolean>(true); // PL 모든 행 접기
-  const [plJsonDownloading, setPlJsonDownloading] = useState<boolean>(false); // 손익계산서 JSON 다운로드 진행중
   const [fiPlModalOpen, setFiPlModalOpen] = useState<boolean>(false); // FI기준 손익표 모달 (2025·2026)
   const [planCompareOpen, setPlanCompareOpen] = useState<boolean>(false); // 지난달 보고 대비 모달 (2026)
   const [scenarioOpen, setScenarioOpen] = useState<boolean>(false); // 시나리오 모달 (2026)
@@ -296,63 +295,6 @@ export default function Home() {
 
   // 손익계산서 JSON 다운로드 — 선택 연도의 전 브랜드(법인 포함) × 월별 1~12월 × 계정 전체
   // values는 API가 이미 1~12월 12개만 반환 (분기/YTD/연간은 UI 파생값이라 미포함)
-  const downloadPlJson = async () => {
-    setPlJsonDownloading(true);
-    try {
-      const year = plYear;
-      const baseParam = year === 2025 || year === 2026 ? `&baseMonth=${baseMonth}` : '';
-
-      const results = await Promise.all(
-        brands.map(async (b) => {
-          const url =
-            b.id === null
-              ? `/api/fs/pl?year=${year}${baseParam}`
-              : `/api/fs/pl/brand?brand=${b.id}&year=${year}${baseParam}`;
-          const res = await fetch(url, { cache: 'no-store' });
-          if (!res.ok) throw new Error(`${b.label} 데이터를 불러오지 못했습니다.`);
-          const json = await res.json();
-          const rows: TableRow[] = json.rows ?? [];
-          // 손익계산서 표 구조 그대로 (레벨·포맷 등 메타 포함). 전년대비 비교값(comparisons)은 월별이 아니라 제외.
-          return [
-            b.label,
-            rows.map((r) => ({
-              account: r.account,
-              ...(r.displayLabel ? { displayLabel: r.displayLabel } : {}),
-              level: r.level,
-              isGroup: r.isGroup,
-              isCalculated: r.isCalculated,
-              ...(r.isBold ? { isBold: r.isBold } : {}),
-              ...(r.isHighlight ? { isHighlight: r.isHighlight } : {}),
-              format: r.format ?? 'number',
-              values: r.values,
-            })),
-          ] as const;
-        })
-      );
-
-      // 대시보드는 한국시간(KST) 기준
-      const kstIso = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('Z', '+09:00');
-      const payload = {
-        year,
-        exportedAt: kstIso,
-        note: '월별 1~12월 손익계산서 (계정 전체). values = [1월, 2월, …, 12월]',
-        brands: Object.fromEntries(results),
-      };
-
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `손익계산서_${year}_월별_브랜드별_${kstIso.slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'JSON 다운로드에 실패했습니다.');
-    } finally {
-      setPlJsonDownloading(false);
-    }
-  };
-
   // 데이터 로딩
   const loadData = async (type: TabType, year?: number, month?: number, brand?: string | null) => {
     setLoading(true);
@@ -751,16 +693,6 @@ export default function Home() {
                 <div className="h-6 w-px bg-slate-300 mx-1"></div>
                 <BrandTabs brands={brands} activeBrand={plBrand} onChange={setPlBrand} />
 
-                {/* JSON 다운로드 — 선택 연도 × 전 브랜드 × 월별 1~12월 × 계정 전체 */}
-                <button
-                  onClick={downloadPlJson}
-                  disabled={plJsonDownloading}
-                  title={`${plYear}년 브랜드별·월별(1~12월) 손익계산서 전체 계정 JSON 다운로드`}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Download className="h-3.5 w-3.5 text-slate-400" />
-                  {plJsonDownloading ? '생성 중…' : `${plYear} JSON`}
-                </button>
 
                 {/* 중국현지 재무제표 기준손익 — 재무조정/FI기준손익.csv 분기별 표 (2024년은 파일에 없어 미표시) */}
                 {(plYear === 2025 || plYear === 2026) && (

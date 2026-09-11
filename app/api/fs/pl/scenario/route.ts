@@ -13,6 +13,8 @@ import {
 } from '@/lib/fs-mapping';
 import { BASE_MONTH } from '@/lib/base-month';
 import { loadIFRSAdjust } from '@/lib/ifrs-adjust-loader';
+import { loadRetailPLByBrand } from '@/lib/retail-pl-loader';
+import type { RetailPLData } from '@/lib/fs-mapping';
 import type { DetailAdjustSection } from '@/lib/csv';
 
 export const dynamic = 'force-dynamic';
@@ -60,12 +62,36 @@ function brandPath(brand: string, year: number): string {
   return path.join(process.cwd(), '파일', 'PL_brand', brand, `${year}.csv`);
 }
 
+/**
+ * 리테일매출 7행 — 손익계산서 본표(calculatePL)와 같은 조립.
+ *   대리상/직영 = 1~실적월은 의류+ACC 합, 이후는 저장된 플랜(없으면 0)
+ *   리테일매출 = 대리상 + 직영
+ * 시나리오 규칙이 따로 없어 세 시나리오에서 같은 값으로 흐른다.
+ */
+function retailSeries(r: RetailPLData): Record<string, number[]> {
+  const latest = r.latestActualMonth ?? 0;
+  const 대리상 = r.대리상_의류.map((v, i) => (i < latest ? v + r.대리상_ACC[i] : r.대리상_플랜?.[i] ?? 0));
+  const 직영 = r.직영_의류.map((v, i) => (i < latest ? v + r.직영_ACC[i] : r.직영_플랜?.[i] ?? 0));
+  return {
+    '리테일매출': 대리상.map((v, i) => v + 직영[i]),
+    '리테일_대리상': 대리상,
+    '리테일_대리상_의류': [...r.대리상_의류],
+    '리테일_대리상_ACC': [...r.대리상_ACC],
+    '리테일_직영': 직영,
+    '리테일_직영_의류': [...r.직영_의류],
+    '리테일_직영_ACC': [...r.직영_ACC],
+  };
+}
+
 async function readAccounts(brand: string, year: number): Promise<Record<string, number[]> | null> {
   const p = brandPath(brand, year);
   if (!fs.existsSync(p)) return null;
   const map = createMonthDataMap(await readCSV(p, year));
   const out: Record<string, number[]> = {};
   for (const acc of ACCOUNTS) out[acc] = getAccountValues(map, acc).slice(0, 12);
+  // 리테일매출 (2025/2026 만 있다 — 없으면 행이 0 으로 남는다)
+  const retail = await loadRetailPLByBrand(year, brand);
+  if (retail) Object.assign(out, retailSeries(retail));
   return out;
 }
 

@@ -93,7 +93,7 @@ export default function PLScenarioModal({ year, onClose }: Props) {
         scenarios: keys,
         exportedAt: kstIso,
         unit: 'CNY (원 단위). percent 행은 비율',
-        note: '1~기준월은 실적, 기준월+1~12월만 시나리오. values = [1월, …, 12월]. prevYear = 전년 실적. DUVETICA·SUPRA 는 시나리오 미적용(세 값 동일).',
+        note: '1~기준월은 실적, 기준월+1~12월만 시나리오. values = [1월, …, 12월]. prevYear = 전년 실적. 리테일매출은 출고 Tag 배율을 그대로 따름(직영=Tag직영, 대리상=Tag대리상). DUVETICA·SUPRA 는 시나리오 미적용(세 값 동일).',
         brands,
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });

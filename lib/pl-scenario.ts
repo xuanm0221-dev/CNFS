@@ -17,6 +17,9 @@
 //                  대리상지원금                         ← 대리상(ON+OFF)
 //                  물류비                               ← 전체
 //   · 영업비   : 전부 고정
+//   · 리테일   : 출고 Tag 와 같은 배율로 움직인다 — 직영은 Tag 직영(ON+OFF) 배율,
+//                대리상은 Tag 대리상 배율(= ACC 만 움직인 결과), 대리상 ACC 리프는 Tag ACC 배율.
+//                리테일 계획월은 대리상·직영 합계(플랜)로만 있어 의류/ACC 로 못 나누기 때문.
 //   · DUVETICA·SUPRA 는 계산하지 않는다 (긍정 = 부정 = 현재)
 //   · 2025 실적이 0 이면 그 항목은 배율 1 (현재 그대로)
 import type { PLScenarioResponse, ScenarioBrandData, ScenarioIFRS } from '@/app/api/fs/pl/scenario/route';
@@ -79,6 +82,14 @@ export const IFRS_ADJ_KEY = {
 } as const;
 
 export const SCENARIO_ROWS: ScenarioRowSpec[] = [
+  // ── 리테일매출 — 본표와 같은 위치(Tag매출 앞). 출고 Tag 배율을 그대로 따른다 ──
+  { account: '리테일매출', label: '리테일매출(실판)', level: 0, isExpandable: true, isBold: true, highlight: 'mint' },
+  { account: '리테일_대리상', label: '대리상', level: 1, isExpandable: true },
+  { account: '리테일_대리상_의류', label: '의류', level: 2 },
+  { account: '리테일_대리상_ACC', label: 'ACC', level: 2 },
+  { account: '리테일_직영', label: '직영', level: 1, isExpandable: true },
+  { account: '리테일_직영_의류', label: '의류', level: 2 },
+  { account: '리테일_직영_ACC', label: 'ACC', level: 2 },
   { account: 'Tag매출', label: 'Tag매출', level: 0, isExpandable: true, isBold: true, highlight: 'sky' },
   { account: 'Tag매출_대리상(ON)', label: '대리상(ON)', level: 1 },
   { account: 'Tag매출_대리상(OFF)', label: '대리상(OFF)', level: 1 },
@@ -209,6 +220,20 @@ function buildBrandScenario(
   out['Tag매출_대리상(ON)'] = mul(get(cur, 'Tag매출_대리상(ON)'), dealerRatio);
   out['Tag매출_대리상(OFF)'] = mul(get(cur, 'Tag매출_대리상(OFF)'), dealerRatio);
   out['Tag매출'] = add(tOn, tOff, out['Tag매출_대리상(ON)'], out['Tag매출_대리상(OFF)']);
+
+  // ── 리테일매출: 출고 Tag 배율 그대로 ──
+  //   직영 = Tag 직영(ON+OFF) 배율, 대리상 = Tag 대리상 배율(ACC 만 움직인 결과),
+  //   대리상 ACC 리프 = Tag ACC 배율, 대리상 의류 리프 = 고정.
+  //   실적월은 배율 1 이라 그대로고, 계획월은 리프가 0·합계(플랜)만 있어 합계에 배율이 걸린다.
+  const directRatio = ratio(add(tOn, tOff), add(get(cur, 'Tag매출_직영(ON)'), get(cur, 'Tag매출_직영(OFF)')));
+  const accRatio = ratio(tAcc, get(cur, 'Tag매출_대리상_ACC'));
+  out['리테일_직영'] = mul(get(cur, '리테일_직영'), directRatio);
+  out['리테일_직영_의류'] = mul(get(cur, '리테일_직영_의류'), directRatio);
+  out['리테일_직영_ACC'] = mul(get(cur, '리테일_직영_ACC'), directRatio);
+  out['리테일_대리상'] = mul(get(cur, '리테일_대리상'), dealerRatio);
+  out['리테일_대리상_ACC'] = mul(get(cur, '리테일_대리상_ACC'), accRatio);
+  // 리테일_대리상_의류 는 그대로 (cur 복사본)
+  out['리테일매출'] = add(out['리테일_대리상'], out['리테일_직영']);
 
   // ── 실판매출 ──
   const sOn = mul(get(cur, '실판매출_직영(ON)'), scale(get(cur, '실판매출_직영(ON)'), get(prev, '실판매출_직영(ON)'), from, dDir));
