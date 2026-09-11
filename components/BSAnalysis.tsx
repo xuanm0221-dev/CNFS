@@ -58,13 +58,13 @@ export default function BSAnalysis({ bsData, year, previousYearData }: BSAnalysi
   
   // 차입가능한도 state
   const [loanLimits, setLoanLimits] = useState({
-    합계: { current: 1000000, total: 1000000 },
+    합계: { current: 1050000, total: 1050000 },
     산업은행: { current: 120000, total: 120000 },
     조상은행: { current: 150000, total: 150000 },
     KDB: { current: 140000, total: 140000 },
     KB: { current: 140000, total: 140000 },
     중국은행: { current: 200000, total: 200000 },
-    광대은행: { current: 150000, total: 150000 },
+    광대은행: { current: 200000, total: 200000 },
     공상은행: { current: 100000, total: 100000 },
   });
   

@@ -58,11 +58,6 @@ function generateWCRemarks(
   const 재고Change = formatChange('재고자산', 재고YoY);
   if (재고Change) wcChanges.push(재고Change);
   
-  // 본사선급금
-  const 선급금YoY = getYoYValue(currentBSData, '선급금(본사)');
-  const 선급금Change = formatChange('선급금', 선급금YoY);
-  if (선급금Change) wcChanges.push(선급금Change);
-  
   // AP = 본사 AP + 제품 AP 통합
   const 본사APYoY = getYoYValue(currentBSData, '본사 AP');
   const 제품APYoY = getYoYValue(currentBSData, '제품 AP');
@@ -75,6 +70,11 @@ function generateWCRemarks(
     remarks['운전자본'] = `${yearLabel}: ${wcChanges.join(', ')}`;
   }
   
+  // 1-2. 본사선급금 — 운전자본 밖 단독 계정
+  const 선급금YoY = getYoYValue(currentBSData, '선급금(본사)');
+  const 선급금Change = formatChange('선급금', 선급금YoY);
+  if (선급금Change) remarks['본사선급금'] = `${yearLabel}: ${선급금Change}`;
+
   // 2. from대리상
   const fromDealerChanges: string[] = [];
   [

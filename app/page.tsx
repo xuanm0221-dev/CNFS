@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Download, Table2, GitCompare } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Download, Table2, GitCompare, Sparkles } from 'lucide-react';
 import Tabs from '@/components/Tabs';
 import DevStatusTab from '@/components/DevStatusTab';
 import BusinessPlan from '@/components/business-plan/BusinessPlan';
@@ -30,6 +30,7 @@ import TagRecoveryRateTable from '@/components/TagRecoveryRateTable';
 import CumulativeCostRateTable from '@/components/CumulativeCostRateTable';
 import FIBasisPLModal from '@/components/FIBasisPLModal';
 import PLVersionCompareModal from '@/components/PLVersionCompareModal';
+import PLScenarioModal from '@/components/PLScenarioModal';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(5);
@@ -51,6 +52,7 @@ export default function Home() {
   const [plJsonDownloading, setPlJsonDownloading] = useState<boolean>(false); // 손익계산서 JSON 다운로드 진행중
   const [fiPlModalOpen, setFiPlModalOpen] = useState<boolean>(false); // FI기준 손익표 모달 (2025·2026)
   const [planCompareOpen, setPlanCompareOpen] = useState<boolean>(false); // 지난달 보고 대비 모달 (2026)
+  const [scenarioOpen, setScenarioOpen] = useState<boolean>(false); // 시나리오 모달 (2026)
   const [summaryData, setSummaryData] = useState<ExecutiveSummaryData | null>(null);
   const [plData, setPlData] = useState<TableRow[] | null>(null);
   const [bsData, setBsData] = useState<TableRow[] | null>(null);
@@ -787,6 +789,25 @@ export default function Home() {
                   </button>
                 )}
 
+                {/* 시나리오 — 현재 계획에서 긍정·부정 즉석 계산 */}
+                {plYear === 2026 && (
+                  <button
+                    onClick={() => setScenarioOpen(true)}
+                    title="2026 계획 — 긍정·부정 시나리오 (YoY ±%p)"
+                    className="group inline-flex items-center gap-2 rounded-full border border-violet-200 bg-gradient-to-r from-violet-50 via-fuchsia-50 to-pink-50 px-3 py-1 text-xs font-semibold text-violet-900 shadow-sm transition-all hover:border-violet-300 hover:from-violet-100 hover:via-fuchsia-100 hover:to-pink-100 hover:shadow-md hover:-translate-y-px"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-violet-600 transition-transform group-hover:rotate-12" />
+                    시나리오
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-1.5 py-px text-[10px] font-bold tracking-wide ring-1 ring-inset ring-violet-200">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500" />
+                      <span className="text-rose-700">부정</span>
+                      <span className="text-slate-300">·</span>
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span className="text-emerald-700">긍정</span>
+                    </span>
+                  </button>
+                )}
+
                 {/* 컨트롤 버튼 (펼치기/월별/YTD) */}
                 <div className="ml-auto flex items-center gap-1.5">
                   <button
@@ -1176,6 +1197,11 @@ export default function Home() {
         {/* 지난달 보고 대비 모달 */}
         {planCompareOpen && activeTab === 1 && (
           <PLVersionCompareModal year={plYear} onClose={() => setPlanCompareOpen(false)} />
+        )}
+
+        {/* 시나리오 모달 */}
+        {scenarioOpen && activeTab === 1 && (
+          <PLScenarioModal year={plYear} onClose={() => setScenarioOpen(false)} />
         )}
       </div>
       </>

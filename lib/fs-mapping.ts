@@ -1093,21 +1093,23 @@ export function calculateWorkingCapital(data: FinancialData[]): TableRow[] {
   // 계산
   const 외상매출금 = 직영AR.map((v, i) => v + 대리상AR[i]);
   const 외상매입금 = 본사AP.map((v, i) => -(v + 제품AP[i] + 미착품WC[i])); // 마이너스
-  const 운전자본 = 외상매출금.map((v, i) => v + 재고자산[i] + 선급금본사[i] + 외상매입금[i]);
+  // 본사선급금은 운전자본 밖의 단독 계정으로 뺀다 (from대리상처럼)
+  const 운전자본 = 외상매출금.map((v, i) => v + 재고자산[i] + 외상매입금[i]);
   
   const from대리상 = 대리상선수금.map((v, i) => -(v + 대리상지원금[i])); // 마이너스
   const from현금차입금 = 현금및현금성자산.map((v, i) => v - 차입금[i]);
   const from이익창출 = 이익잉여금.map((v, i) => -v); // 마이너스
   
   const 선급비용 = 선급금기타.map((v, i) => v + 이연법인세자산[i]);
-  const 고정자산보증금 = 유무형자산.map((v, i) => v - 장기보증금[i]);
-  const 미수금미지급금 = 기타유동자산.map((v, i) => v - 기타유동부채[i]);
-  const 기타운전자본 = 선급비용.map((v, i) => v + 고정자산보증금[i] + 미수금미지급금[i]);
+  // 고정자산·보증금·미수금·미지급금은 각자 행으로 보여 준다 (보증금·미지급금은 부채라 마이너스)
+  const 기타운전자본 = 선급비용.map((v, i) =>
+    v + 유무형자산[i] - 장기보증금[i] + 기타유동자산[i] - 기타유동부채[i],
+  );
   
   const 리스관련 = 사용권자산.map((v, i) => v - 리스부채[i]);
   
-  const balanceCheck = 운전자본.map((v, i) => 
-    v + from대리상[i] + from현금차입금[i] + from이익창출[i] + 기타운전자본[i] + 리스관련[i] - 자본금[i]
+  const balanceCheck = 운전자본.map((v, i) =>
+    v + 선급금본사[i] + from대리상[i] + from현금차입금[i] + from이익창출[i] + 기타운전자본[i] + 리스관련[i] - 자본금[i]
   );
   
   const rows: TableRow[] = [
@@ -1140,7 +1142,6 @@ export function calculateWorkingCapital(data: FinancialData[]): TableRow[] {
           { account: 'DISCOVERY', level: 2, isGroup: false, isCalculated: false, values: DISCOVERY, format: 'number' as const },
         ]
       : [{ account: '재고자산', level: 1, isGroup: false, isCalculated: false, values: 재고자산, format: 'number' as const }]),
-    { account: '본사선급금', level: 1, isGroup: false, isCalculated: false, values: 선급금본사, format: 'number' },
     {
       account: '외상매입금',
       level: 1,
@@ -1153,6 +1154,16 @@ export function calculateWorkingCapital(data: FinancialData[]): TableRow[] {
     { account: '본사AP', level: 2, isGroup: false, isCalculated: false, values: 본사AP.map(v => -v), format: 'number' },
     { account: '제품AP', level: 2, isGroup: false, isCalculated: false, values: 제품AP.map(v => -v), format: 'number' },
     { account: '미착품', level: 2, isGroup: false, isCalculated: false, values: 미착품WC.map(v => -v), format: 'number' },
+    {
+      account: '본사선급금',
+      level: 0,
+      isGroup: false,
+      isCalculated: false,
+      isBold: true,
+      isHighlight: 'sky',
+      values: 선급금본사,
+      format: 'number',
+    },
     {
       account: 'from대리상',
       level: 0,
@@ -1199,8 +1210,10 @@ export function calculateWorkingCapital(data: FinancialData[]): TableRow[] {
       format: 'number',
     },
     { account: '선급비용', level: 1, isGroup: false, isCalculated: true, values: 선급비용, format: 'number' },
-    { account: '고정자산/보증금', level: 1, isGroup: false, isCalculated: true, values: 고정자산보증금, format: 'number' },
-    { account: '미수금/미지급금', level: 1, isGroup: false, isCalculated: true, values: 미수금미지급금, format: 'number' },
+    { account: '고정자산', level: 1, isGroup: false, isCalculated: false, values: 유무형자산, format: 'number' },
+    { account: '보증금', level: 1, isGroup: false, isCalculated: false, values: 장기보증금.map(v => -v), format: 'number' },
+    { account: '미수금', level: 1, isGroup: false, isCalculated: false, values: 기타유동자산, format: 'number' },
+    { account: '미지급금', level: 1, isGroup: false, isCalculated: false, values: 기타유동부채.map(v => -v), format: 'number' },
     {
       account: '리스관련',
       level: 0,
