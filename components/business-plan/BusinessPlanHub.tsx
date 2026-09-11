@@ -107,6 +107,7 @@ const SHIPMENT_ROWS: { season: DealerShipmentSeason; label: string }[] = [
   { season: '당년S', label: '당시즌 S' },
   { season: '1년차', label: '1년차' },
   { season: '차기시즌', label: '차기시즌' },
+  { season: '과시즌', label: '과시즌' },
 ];
 
 /** 대리상 Tag연간출고 합계 — 5개 시즌 전체 합 */

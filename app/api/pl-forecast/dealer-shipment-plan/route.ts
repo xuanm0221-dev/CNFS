@@ -8,14 +8,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type PlanBrand = 'MLB' | 'MLB KIDS' | 'DISCOVERY' | 'DUVETICA' | 'SUPRA';
-type PlanSeason = '당년S' | '당년F' | '1년차' | '차기시즌' | 'ACC';
+type PlanSeason = '당년S' | '당년F' | '1년차' | '차기시즌' | '과시즌' | 'ACC';
 
 export interface DealerShipmentPlanResponse {
   brands: Record<PlanBrand, Record<PlanSeason, (number | null)[]>>;
 }
 
 const BRANDS: PlanBrand[] = ['MLB', 'MLB KIDS', 'DISCOVERY', 'DUVETICA', 'SUPRA'];
-const SEASONS: PlanSeason[] = ['당년S', '당년F', '1년차', '차기시즌', 'ACC'];
+const SEASONS: PlanSeason[] = ['당년S', '당년F', '1년차', '차기시즌', '과시즌', 'ACC'];
 
 function empty12(): (number | null)[] {
   return new Array(12).fill(null);
@@ -27,6 +27,7 @@ function emptyByBrand(): Record<PlanSeason, (number | null)[]> {
     당년F: empty12(),
     '1년차': empty12(),
     차기시즌: empty12(),
+    과시즌: empty12(),
     ACC: empty12(),
   };
 }
@@ -55,8 +56,9 @@ function normalizeSeason(raw: string): PlanSeason | null {
   if (v === '당년F') return '당년F';
   if (v === '1년차') return '1년차';
   if (v === '차기시즌') return '차기시즌';
+  if (v === '과시즌') return '과시즌';
   if (v.toUpperCase() === 'ACC') return 'ACC';
-  return null; // 과시즌 등은 무시
+  return null; // 그 밖의 표기는 무시
 }
 
 export async function GET() {

@@ -32,6 +32,14 @@
       "where": "scripts/excel_to_pl_csv.py",
       "since": "2026-09-09",
       "status": "open"
+    },
+    {
+      "id": "dealer-shipment-month-shift",
+      "title": "대리상 출고표 vs 손익계산서 — MLB·KIDS 3·4월 상쇄 차이 (엑셀 월 이동 조정)",
+      "detail": "출고표 실적월은 Snowflake(시스템 전기월), 손익계산서는 엑셀 PL(조정 후)이라 월별로 어긋난다. MLB 25F 반품 39,625 는 SF 4월 / 엑셀 3월, KIDS 26S 출고 10,492 는 SF 3월 / 엑셀 4월. 두 달 합·연간은 일치. 어느 쪽을 기준으로 맞출지 결정 필요 — (1) 지금대로 (2) 출고표 월 배분을 PL에 맞춤 (3) 엑셀 조정 제거.",
+      "where": "lib/dealer-shipment.ts · 파일/PL_brand/{mlb,kids}/2026.csv",
+      "since": "2026-09-11",
+      "status": "open"
     }
   ]
 }

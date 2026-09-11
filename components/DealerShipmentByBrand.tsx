@@ -158,7 +158,7 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
     src: Record<Brand, Record<Season, (number | null)[]>>,
   ): Record<Season, (number | null)[]> => {
     const result: Record<Season, (number | null)[]> = emptySeasonMap();
-    for (const season of ['당년S', '당년F', '1년차', '차기시즌', 'ACC'] as Season[]) {
+    for (const season of ['당년S', '당년F', '1년차', '차기시즌', '과시즌', 'ACC'] as Season[]) {
       for (let i = 0; i < 12; i += 1) {
         let s = 0;
         let any = false;
@@ -195,7 +195,7 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
       return defined.length ? defined.reduce((s, v) => s + v, 0) : null;
     };
     const total26 = empty12().map((_, mi) =>
-      sumParts([curr.당년F[mi], curr.당년S[mi], curr.ACC[mi], curr['1년차'][mi], curr.차기시즌[mi]]),
+      sumParts([curr.당년F[mi], curr.당년S[mi], curr.ACC[mi], curr['1년차'][mi], curr.차기시즌[mi], curr.과시즌[mi]]),
     );
     const total25 = empty12().map((_, mi) =>
       sumParts([prev.당년F[mi], prev.당년S[mi], prev.ACC[mi], prev['1년차'][mi], prev.차기시즌[mi]]),
@@ -218,6 +218,8 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
       { label: 'YoY (1년차)', num: curr['1년차'], denom: prev['1년차'], isYoy: true },
       { label: '차기시즌', num: curr.차기시즌, denom: prev.차기시즌 },
       { label: 'YoY (차기시즌)', num: curr.차기시즌, denom: prev.차기시즌, isYoy: true },
+      { label: '과시즌', num: curr.과시즌, denom: prev.과시즌 },
+      { label: 'YoY (과시즌)', num: curr.과시즌, denom: prev.과시즌, isYoy: true },
       { label: '합계', num: total26, denom: total25, isTotal: true },
       { label: 'YoY (합계)', num: total26, denom: total25, isYoy: true, isTotal: true },
     ];
@@ -281,7 +283,9 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
                           ? 'bg-white'
                           : r.label === '차기시즌' || r.label === 'YoY (차기시즌)'
                             ? 'bg-highlight-sky'
-                            : 'bg-highlight-yellow';
+                            : r.label === '과시즌' || r.label === 'YoY (과시즌)'
+                              ? 'bg-white'
+                              : 'bg-highlight-yellow';
                 const rowCls = r.isYoy
                   ? `${groupBg} italic`
                   : r.isTotal

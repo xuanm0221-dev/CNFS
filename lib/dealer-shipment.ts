@@ -10,13 +10,13 @@
  */
 
 export type DealerShipmentBrand = 'MLB' | 'MLB KIDS' | 'DISCOVERY' | 'DUVETICA' | 'SUPRA';
-export type DealerShipmentSeason = '당년S' | '당년F' | '1년차' | '차기시즌' | 'ACC';
+export type DealerShipmentSeason = '당년S' | '당년F' | '1년차' | '차기시즌' | '과시즌' | 'ACC';
 
 export const DEALER_SHIPMENT_BRANDS: DealerShipmentBrand[] = [
   'MLB', 'MLB KIDS', 'DISCOVERY', 'DUVETICA', 'SUPRA',
 ];
 export const DEALER_SHIPMENT_SEASONS: DealerShipmentSeason[] = [
-  '당년S', '당년F', '1년차', '차기시즌', 'ACC',
+  '당년S', '당년F', '1년차', '차기시즌', '과시즌', 'ACC',
 ];
 
 export interface TagSalesBrandData {
@@ -41,7 +41,9 @@ export function empty12(): (number | null)[] {
 }
 
 export function emptySeasonMap(): SeasonSeries {
-  return { 당년S: empty12(), 당년F: empty12(), '1년차': empty12(), 차기시즌: empty12(), ACC: empty12() };
+  return {
+    당년S: empty12(), 당년F: empty12(), '1년차': empty12(), 차기시즌: empty12(), 과시즌: empty12(), ACC: empty12(),
+  };
 }
 
 /** minYear 이상 시즌(의류 태그 'yyS'/'yyF')만 합산 — 차기시즌 계산용 */
@@ -56,6 +58,31 @@ export function sumClothingByYearGte(
     if (!m) continue;
     const yr = Number(m[1]);
     if (!Number.isFinite(yr) || yr < minYear) continue;
+    for (let i = 0; i < 12; i += 1) {
+      const v = series[i] ?? null;
+      if (v != null) out[i] = (out[i] ?? 0) + v;
+    }
+  }
+  return out;
+}
+
+/**
+ * 2년차 이상 + '과시즌' 태그 합산 — 출고표의 '과시즌' 행.
+ * 당년S/F·1년차·차기시즌에 안 들어가는 나머지 전부라, 이 행이 있어야
+ * 시즌 합계가 손익계산서 Tag매출 대리상과 맞는다.
+ */
+export function sumClothingOldSeasons(
+  clothing: Record<string, (number | null)[]>,
+  yy: number,
+): (number | null)[] {
+  const out: (number | null)[] = empty12();
+  for (const [tag, series] of Object.entries(clothing)) {
+    let take = tag === '과시즌';
+    if (!take) {
+      const m = tag.match(/^(\d{2})[SF]$/);
+      if (m) take = Number(m[1]) <= yy - 2;
+    }
+    if (!take) continue;
     for (let i = 0; i < 12; i += 1) {
       const v = series[i] ?? null;
       if (v != null) out[i] = (out[i] ?? 0) + v;
@@ -89,6 +116,7 @@ function actualSeasonSeries(
     당년F: [...cur('F')],
     '1년차': pairSum(prev('S'), prev('F')),
     차기시즌: sumClothingByYearGte(cloth, yy + 1),
+    과시즌: sumClothingOldSeasons(cloth, yy),
     ACC: [...(Object.values(tag?.brands?.[brand]?.['대리상(ACC)'] ?? {})[0] ?? empty12())],
   };
 }
