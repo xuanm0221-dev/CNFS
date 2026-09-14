@@ -152,6 +152,7 @@ const STATIC_WORKING_CAPITAL_ROWS: StaticWorkingCapitalRow[] = [
   { key: 'wc_ap', label: '매입채무', level: 1, isGroup: true, actual2025: -753922000 },
   { key: 'wc_ap_hq', label: '본사 AP', level: 2, isGroup: false, actual2025: -732511214 },
   { key: 'wc_ap_goods', label: '상품 AP', level: 2, isGroup: false, actual2025: -21410471 },
+  { key: 'wc_ap_transit', label: '미착품', level: 2, isGroup: false, actual2025: 0 }, // 2026년부터 발생
 ];
 
 const WC_TOTAL_ACTUAL2025 = (() => {
@@ -566,6 +567,8 @@ export default function PLCashFlowTab() {
   const [cfSourcesLegendOpen, setCfSourcesLegendOpen] = useState(false);
   const [wcPlanByKey, setWcPlanByKey] = useState<Record<string, number>>({});
   const [wcForecastByKey, setWcForecastByKey] = useState<Record<string, number>>({});
+  /** 미착품 1~12월 (원, AP 부호 = 음수). 소스: /api/fs/bs workingCapital '미착품' 행 (파일/BS/2026.csv). 없으면 null */
+  const [wcTransitMonthly, setWcTransitMonthly] = useState<(number | null)[]>(new Array(12).fill(null));
 
   useEffect(() => {
     fetch('/api/fs/bs?year=2026', { cache: 'no-store' })
@@ -576,6 +579,13 @@ export default function PLCashFlowTab() {
           return;
         }
         setWcPlanByKey(buildWcPlanByKeyFromBsWorkingCapital(data.workingCapital));
+        const transitRow = data.workingCapital.find((r) => r.account === '미착품');
+        setWcTransitMonthly(
+          Array.from({ length: 12 }, (_, i) => {
+            const v = transitRow?.values?.[i];
+            return typeof v === 'number' && Number.isFinite(v) ? v : null;
+          }),
+        );
       })
       .catch(() => setWcPlanByKey({}));
   }, []);
@@ -1153,12 +1163,14 @@ export default function PLCashFlowTab() {
       }, null) ??
       0;
     const apGoods = forecastApGoods ?? HARDCODED_WC_MONTHLY_K.wc_ap_goods[monthEndIndex] ?? apHq * WC_AP_GOODS_SHARE_OF_HQ_AP;
+    // 미착품: BS 12월 값 그대로 (2026년부터). 자금보고시점·snapshot 을 거치지 않는다
+    const apTransit = toDisplayK(wcTransitMonthly[monthEndIndex]) ?? 0;
 
     if (rowKey === 'wc_total') {
-      return arDirect + arDealer + inventoryMlb + inventoryKids + inventoryDiscovery + apHq + apGoods;
+      return arDirect + arDealer + inventoryMlb + inventoryKids + inventoryDiscovery + apHq + apGoods + apTransit;
     }
     if (rowKey === 'wc_mom') {
-      const currentTotal = arDirect + arDealer + inventoryMlb + inventoryKids + inventoryDiscovery + apHq + apGoods;
+      const currentTotal = arDirect + arDealer + inventoryMlb + inventoryKids + inventoryDiscovery + apHq + apGoods + apTransit;
       const baseActual = WC_TOTAL_ACTUAL2025;
       const baseActualK = toDisplayK(baseActual);
       if (baseActualK == null) return null;
@@ -1169,11 +1181,12 @@ export default function PLCashFlowTab() {
     if (rowKey === 'wc_inventory_mlb') return inventoryMlb;
     if (rowKey === 'wc_inventory_kids') return inventoryKids;
     if (rowKey === 'wc_inventory_discovery') return inventoryDiscovery;
-    if (rowKey === 'wc_ap') return apHq + apGoods;
+    if (rowKey === 'wc_ap') return apHq + apGoods + apTransit;
     if (rowKey === 'wc_ar_direct') return arDirect;
     if (rowKey === 'wc_ar_dealer') return arDealer;
     if (rowKey === 'wc_ap_hq') return apHq;
     if (rowKey === 'wc_ap_goods') return apGoods;
+    if (rowKey === 'wc_ap_transit') return apTransit;
     return null;
   };
 
@@ -1234,7 +1247,8 @@ export default function PLCashFlowTab() {
       if (value == null) return sum;
       return (sum ?? 0) + value;
     }, null);
-    const apTotal = [apHq, apGoods].reduce<number | null>((sum, value) => {
+    const apTransit = toDisplayK(wcTransitMonthly[monthIndex]);
+    const apTotal = [apHq, apGoods, apTransit].reduce<number | null>((sum, value) => {
       if (value == null) return sum;
       return (sum ?? 0) + value;
     }, null);
@@ -1254,6 +1268,7 @@ export default function PLCashFlowTab() {
     if (rowKey === 'wc_ap') return apTotal;
     if (rowKey === 'wc_ap_hq') return apHq;
     if (rowKey === 'wc_ap_goods') return apGoods;
+    if (rowKey === 'wc_ap_transit') return apTransit;
     if (rowKey === 'wc_mom') {
       if (grandTotal == null) return null;
       if (monthIndex === 0) {
@@ -1365,7 +1380,7 @@ export default function PLCashFlowTab() {
       차입금_planVs: cfPlanVsRollingAmount('borrowings') ?? 0,
       netCash_planVs: cfPlanVsRollingAmount('net_cash') ?? 0,
     };
-  }, [cfValuesByKey, cashBorrowingData, inventoryHqClosing, tagCostRatio, shipmentMonthlyByBrand, purchaseMonthlyByBrand, wcForecastByKey]);
+  }, [cfValuesByKey, cashBorrowingData, inventoryHqClosing, tagCostRatio, shipmentMonthlyByBrand, purchaseMonthlyByBrand, wcForecastByKey, wcTransitMonthly]);
 
   const cfInputsLoaded =
     tagCostRatioLoaded &&
@@ -1743,9 +1758,10 @@ export default function PLCashFlowTab() {
                 <div>직영AR: (실적월) 실적값, (계획월) 대리상AR × (2025년 기말 직영AR/대리상AR 비중)</div>
                 <div>대리상AR: (실적월) 실적값, (계획월) 매출채권합계(대리상) ÷ 1.13 × Tag대비원가율</div>
                 <div>재고자산: Tag재고 ÷ 1.13 × Tag대비원가율 × (3월부터 (1-평가감율), 1~2월은 평가감율 미적용)</div>
-                <div>매입채무: 본사AP + 상품AP</div>
+                <div>매입채무: 본사AP + 상품AP + 미착품</div>
                 <div>본사AP: (실적월) 실적값, (계획월) 매입채무합계(HQ) ÷ 1.13 × Tag대비원가율</div>
                 <div>상품AP: (실적월) 실적값, (계획월) 본사AP × (2025년 기말 상품AP/본사AP 비중)</div>
+                <div>미착품: 2026년부터 발생 — 1~12월 모두 BS(파일/BS/2026.csv) 값 그대로 (2025년 기말 0)</div>
               </div>
             )}
             <div className="mt-3 flex justify-end gap-2">

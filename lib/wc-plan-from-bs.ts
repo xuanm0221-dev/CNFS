@@ -40,10 +40,11 @@ export function buildWcPlanByKeyFromBsWorkingCapital(rows: TableRow[]): Record<s
   put('wc_inventory_discovery', annualPlanOf(rows, 'DISCOVERY'));
   put('wc_ap_hq', annualPlanOf(rows, '본사AP'));
   put('wc_ap_goods', annualPlanOf(rows, '제품AP'));
+  put('wc_ap_transit', annualPlanOf(rows, '미착품')); // 2026년부터 (2025 기말 0)
 
   put('wc_ar', groupOrLeafSumPlan(rows, '외상매출금', ['직영AR', '대리상AR']));
   put('wc_inventory', groupOrLeafSumPlan(rows, '재고자산', ['MLB', 'KIDS', 'DISCOVERY']));
-  put('wc_ap', groupOrLeafSumPlan(rows, '외상매입금', ['본사AP', '제품AP']));
+  put('wc_ap', groupOrLeafSumPlan(rows, '외상매입금', ['본사AP', '제품AP', '미착품']));
 
   put('wc_total', sumCompAnnualPlan(rows, ['외상매출금', '재고자산', '외상매입금']));
 
