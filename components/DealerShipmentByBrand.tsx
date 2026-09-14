@@ -14,6 +14,7 @@ import {
   empty12,
   emptySeasonMap,
 } from '@/lib/dealer-shipment';
+import { BASE_YEAR } from '@/lib/base-month';
 
 type Brand = DealerShipmentBrand;
 type Season = DealerShipmentSeason;
@@ -38,6 +39,11 @@ interface DealerShipmentByBrandProps {
   quarterlyMode: boolean;
   /** 손익계산서 상단 브랜드 탭의 현재 id. null = 전체(법인 합산). */
   selectedBrand?: string | null;
+  /**
+   * 표시 연도. 기준연도(BASE_YEAR)면 실적+계획, 그 이전 연도면 12개월 전부 실적.
+   * 이전 연도는 전년 비교(YoY)를 붙이지 않는다 — 그 전전년 데이터까지는 뽑지 않기로 함.
+   */
+  year?: number;
 }
 
 function formatKRow(v: number | null): string {
@@ -80,31 +86,36 @@ function sumRange(arr: (number | null)[], start: number, end: number): number | 
   return any ? s : null;
 }
 
-export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, selectedBrand = null }: DealerShipmentByBrandProps) {
-  const [tag26, setTag26] = useState<TagSalesYearResponse | null>(null);
-  const [tag25, setTag25] = useState<TagSalesYearResponse | null>(null);
+export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, selectedBrand = null, year = BASE_YEAR }: DealerShipmentByBrandProps) {
+  const isCurrentYear = year === BASE_YEAR;
+  const yy = year % 100;
+  const [tagCur, setTagCur] = useState<TagSalesYearResponse | null>(null);
+  const [tagPrev, setTagPrev] = useState<TagSalesYearResponse | null>(null);
   const [plan, setPlan] = useState<DealerShipmentPlanResponse | null>(null);
   const [brandActual, setBrandActual] = useState<BrandActualResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<boolean>(true);
+  const [collapsed, setCollapsed] = useState<boolean>(false); // 기본 펼침
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
     setError(null);
+    // 기준연도: 당년 + 전년 Tag, 계획 CSV, 결산월(brand-actual).
+    // 이전 연도: 당년 Tag 만 — 12개월 전부 실적이라 계획·결산월이 필요 없고, 전년 비교는 붙이지 않는다.
+    const jsonOrNull = (url: string) => fetch(url, { cache: 'no-store' }).then((r) => r.json());
     Promise.all([
-      fetch('/api/pl-forecast/tag-sales-2025-preprocess?year=2026', { cache: 'no-store' }).then((r) => r.json()),
-      fetch('/api/pl-forecast/tag-sales-2025-preprocess?year=2025', { cache: 'no-store' }).then((r) => r.json()),
-      fetch('/api/pl-forecast/dealer-shipment-plan', { cache: 'no-store' }).then((r) => r.json()),
-      fetch('/api/pl-forecast/brand-actual?year=2026', { cache: 'no-store' }).then((r) => r.json()),
+      jsonOrNull(`/api/pl-forecast/tag-sales-2025-preprocess?year=${year}`),
+      isCurrentYear ? jsonOrNull(`/api/pl-forecast/tag-sales-2025-preprocess?year=${year - 1}`) : Promise.resolve(null),
+      isCurrentYear ? jsonOrNull('/api/pl-forecast/dealer-shipment-plan') : Promise.resolve(null),
+      isCurrentYear ? jsonOrNull(`/api/pl-forecast/brand-actual?year=${year}`) : Promise.resolve(null),
     ])
-      .then(([t26, t25, p, ba]) => {
+      .then(([tc, tp, p, ba]) => {
         if (!mounted) return;
-        setTag26(t26 as TagSalesYearResponse);
-        setTag25(t25 as TagSalesYearResponse);
-        setPlan(p as DealerShipmentPlanResponse);
-        setBrandActual(ba as BrandActualResponse);
+        setTagCur(tc as TagSalesYearResponse);
+        setTagPrev(tp as TagSalesYearResponse | null);
+        setPlan(p as DealerShipmentPlanResponse | null);
+        setBrandActual(ba as BrandActualResponse | null);
       })
       .catch((e: unknown) => {
         if (!mounted) return;
@@ -116,24 +127,27 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [year, isCurrentYear]);
 
   // 실적/계획 판단 기준: 결산 완료월 (BASE_MONTH 기반 brand-actual API 의 availableMonths)
   // → Snowflake 가 현재 진행월(부분 데이터)도 갖고 있어서 데이터 존재 기준은 부적합.
   //   사용자가 "결산 완료" 선언한 월까지만 실적, 그 이후는 계획.
   const latestActualMonth = useMemo<number>(() => {
+    if (!isCurrentYear) return 12; // 지난 연도는 전부 결산 완료
     if (!brandActual?.availableMonths || brandActual.availableMonths.length === 0) return 0;
     return Math.max(...brandActual.availableMonths);
-  }, [brandActual]);
+  }, [brandActual, isCurrentYear]);
+  /** 전년 데이터가 있을 때만 YoY 행·전년 열을 그린다 */
+  const hasPrev = tagPrev != null;
 
   // 26년 series per brand × season (K 단위) — 손익계산서와 사업계획이 같은 계산을 쓴다
-  const series26 = useMemo(
-    () => buildCurrentYearSeries(tag26, plan, latestActualMonth, 26),
-    [tag26, plan, latestActualMonth],
+  const seriesCur = useMemo(
+    () => buildCurrentYearSeries(tagCur, plan, latestActualMonth, yy),
+    [tagCur, plan, latestActualMonth, yy],
   );
 
   // 25년 series per brand × season (K — Snowflake 전처리는 이미 K 단위)
-  const series25 = useMemo(() => buildPrevYearSeries(tag25, 25), [tag25]);
+  const seriesPrev = useMemo(() => buildPrevYearSeries(tagPrev, yy - 1), [tagPrev, yy]);
 
   if (loading) {
     return (
@@ -180,8 +194,8 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
       ? BRAND_ID_TO_NAME[selectedBrand]
       : null;
   const titleSuffix = selectedBrandName == null ? '법인 (5브랜드 합산)' : selectedBrandName;
-  const currSeries = selectedBrandName == null ? sumSeriesAcrossBrands(series26) : series26[selectedBrandName];
-  const prevSeries = selectedBrandName == null ? sumSeriesAcrossBrands(series25) : series25[selectedBrandName];
+  const currSeries = selectedBrandName == null ? sumSeriesAcrossBrands(seriesCur) : seriesCur[selectedBrandName];
+  const prevSeries = selectedBrandName == null ? sumSeriesAcrossBrands(seriesPrev) : seriesPrev[selectedBrandName];
 
   const renderTable = (
     curr: Record<Season, (number | null)[]>,
@@ -222,7 +236,7 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
       { label: 'YoY (과시즌)', num: curr.과시즌, denom: prev.과시즌, isYoy: true },
       { label: '합계', num: total26, denom: total25, isTotal: true },
       { label: 'YoY (합계)', num: total26, denom: total25, isYoy: true, isTotal: true },
-    ];
+    ].filter((r) => hasPrev || !r.isYoy);
 
     return (
       <div
@@ -236,9 +250,11 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
                 <th className="sticky left-0 z-10 min-w-[260px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
                   대리상 출고표 — {titleLabel}
                 </th>
-                <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
-                  전년 연간
-                </th>
+                {hasPrev && (
+                  <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
+                    전년 연간
+                  </th>
+                )}
                 {showQuarterly &&
                   QUARTER_HEADERS.map((label, idx) => {
                     const isForecast = (idx + 1) * 3 > latestActualMonth;
@@ -299,9 +315,11 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
                     >
                       {r.label}
                     </td>
-                    <td className="border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
-                      {r.isYoy ? '' : formatKRow(sumArr(r.denom))}
-                    </td>
+                    {hasPrev && (
+                      <td className="border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
+                        {r.isYoy ? '' : formatKRow(sumArr(r.denom))}
+                      </td>
+                    )}
                     {showQuarterly &&
                       [0, 1, 2, 3].map((qi) => {
                         const start = qi * 3;
@@ -354,8 +372,14 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
         <span className="flex-1">
           <span className="block font-semibold text-slate-800">대리상 출고표</span>
           <span className="mt-0.5 block text-xs text-slate-500">
-            1~{latestActualMonth}월: Snowflake 실적 · {latestActualMonth + 1}~12월:{' '}
-            <code className="rounded bg-slate-100 px-1">26년대리상출고계획.csv</code> (단위: 千 CNY)
+            {isCurrentYear ? (
+              <>
+                1~{latestActualMonth}월: Snowflake 실적 · {latestActualMonth + 1}~12월:{' '}
+                <code className="rounded bg-slate-100 px-1">{yy}년대리상출고계획.csv</code> (단위: 千 CNY)
+              </>
+            ) : (
+              <>{year}년 1~12월: Snowflake 실적 (단위: 千 CNY) · 전년 비교 없음</>
+            )}
           </span>
         </span>
         <span className="inline-flex items-center gap-1 text-xs text-slate-500">

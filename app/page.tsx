@@ -827,11 +827,12 @@ export default function Home() {
                   hideInternalControls={true}
                   quarterlyMode={plQuarterlyMode}
                 />
-                {plYear === 2026 && (
+                {(plYear === 2026 || plYear === 2025) && (
                   <DealerShipmentByBrand
                     monthsCollapsed={plMonthsCollapsed}
                     quarterlyMode={plQuarterlyMode}
                     selectedBrand={plBrand}
+                    year={plYear}
                   />
                 )}
                 {plYear === 2026 && <TagRecoveryRateTable />}
