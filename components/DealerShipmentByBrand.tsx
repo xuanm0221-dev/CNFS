@@ -63,6 +63,26 @@ function yoyPct(num: number | null, denom: number | null): number | null {
   return (num / denom) * 100;
 }
 
+/**
+ * 금액 셀 — 위에 당년 금액, 아래 작은 글씨로 YoY%. 전년이 없거나 계산 불가면 금액만.
+ * YoY 행을 따로 두지 않고 셀 안에 넣어 행 수를 절반으로 줄인다.
+ */
+function AmountCell({ num, denom, showYoy, className }: {
+  num: number | null; denom: number | null; showYoy: boolean; className: string;
+}) {
+  const pct = showYoy ? yoyPct(num, denom) : null;
+  const pctText = pct == null ? '' : formatPctRow(pct);
+  const pctTone = pct == null ? '' : pct < 100 ? 'text-rose-600' : pct > 100 ? 'text-emerald-600' : 'text-slate-500';
+  return (
+    <td className={className}>
+      <div className="flex flex-col items-end leading-tight">
+        <span>{formatKRow(num)}</span>
+        {pctText && <span className={`text-[10px] ${pctTone}`}>{pctText}</span>}
+      </div>
+    </td>
+  );
+}
+
 function sumArr(arr: (number | null)[]): number | null {
   let s = 0;
   let any = false;
@@ -215,40 +235,29 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
       sumParts([prev.당년F[mi], prev.당년S[mi], prev.ACC[mi], prev['1년차'][mi], prev.차기시즌[mi]]),
     );
 
+    // YoY 는 행이 아니라 각 금액 셀 아래 (YoY%) 로 붙는다
     const rowDefs: Array<{
       label: string;
-      isYoy?: boolean;
       isTotal?: boolean;
       num: (number | null)[];
       denom: (number | null)[];
     }> = [
       { label: 'ACC', num: curr.ACC, denom: prev.ACC },
-      { label: 'YoY (ACC)', num: curr.ACC, denom: prev.ACC, isYoy: true },
       { label: '당년F', num: curr.당년F, denom: prev.당년F },
-      { label: 'YoY (F)', num: curr.당년F, denom: prev.당년F, isYoy: true },
       { label: '당년S', num: curr.당년S, denom: prev.당년S },
-      { label: 'YoY (S)', num: curr.당년S, denom: prev.당년S, isYoy: true },
       { label: '1년차', num: curr['1년차'], denom: prev['1년차'] },
-      { label: 'YoY (1년차)', num: curr['1년차'], denom: prev['1년차'], isYoy: true },
       { label: '차기시즌', num: curr.차기시즌, denom: prev.차기시즌 },
-      { label: 'YoY (차기시즌)', num: curr.차기시즌, denom: prev.차기시즌, isYoy: true },
       { label: '과시즌', num: curr.과시즌, denom: prev.과시즌 },
-      { label: 'YoY (과시즌)', num: curr.과시즌, denom: prev.과시즌, isYoy: true },
       { label: '합계', num: total26, denom: total25, isTotal: true },
-      { label: 'YoY (합계)', num: total26, denom: total25, isYoy: true, isTotal: true },
-    ].filter((r) => hasPrev || !r.isYoy);
+    ];
 
     return (
-      <div
-        key={`dealer-ship-tbl-${keyPrefix}`}
-        className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-sm"
-      >
-        <div className="overflow-auto">
+      <div key={`dealer-ship-tbl-${keyPrefix}`} className="overflow-auto">
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 min-w-[260px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
-                  대리상 출고표 — {titleLabel}
+                <th className="sticky left-0 z-10 min-w-[200px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
+                  {titleLabel}
                 </th>
                 {hasPrev && (
                   <th className="min-w-[130px] border-b border-r border-slate-200 bg-navy px-3 py-2 text-center font-semibold text-white">
@@ -289,35 +298,29 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
             <tbody>
               {rowDefs.map((r) => {
                 const groupBg =
-                  r.label === 'ACC' || r.label === 'YoY (ACC)'
+                  r.label === 'ACC'
                     ? 'bg-highlight-sky'
-                    : r.label === '당년F' || r.label === 'YoY (F)'
+                    : r.label === '당년F'
                       ? 'bg-white'
-                      : r.label === '당년S' || r.label === 'YoY (S)'
+                      : r.label === '당년S'
                         ? 'bg-highlight-sky'
-                        : r.label === '1년차' || r.label === 'YoY (1년차)'
+                        : r.label === '1년차'
                           ? 'bg-white'
-                          : r.label === '차기시즌' || r.label === 'YoY (차기시즌)'
+                          : r.label === '차기시즌'
                             ? 'bg-highlight-sky'
-                            : r.label === '과시즌' || r.label === 'YoY (과시즌)'
+                            : r.label === '과시즌'
                               ? 'bg-white'
                               : 'bg-highlight-yellow';
-                const rowCls = r.isYoy
-                  ? `${groupBg} italic`
-                  : r.isTotal
-                    ? `${groupBg} font-semibold [&>td]:!border-b-0`
-                    : `${groupBg} [&>td]:!border-b-0`;
+                const rowCls = r.isTotal ? `${groupBg} font-semibold` : groupBg;
+                const cell = 'border-b border-r border-slate-200 px-3 py-2 text-right';
                 return (
                   <tr key={`dr-${keyPrefix}-${r.label}`} className={rowCls}>
-                    <td
-                      className="sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit px-3 py-2 text-slate-800"
-                      style={r.isYoy ? { paddingLeft: 28 } : undefined}
-                    >
+                    <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit px-3 py-2 text-slate-800">
                       {r.label}
                     </td>
                     {hasPrev && (
-                      <td className="border-b border-r border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
-                        {r.isYoy ? '' : formatKRow(sumArr(r.denom))}
+                      <td className={`${cell} bg-inherit font-medium`}>
+                        {formatKRow(sumArr(r.denom))}
                       </td>
                     )}
                     {showQuarterly &&
@@ -325,53 +328,47 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
                         const start = qi * 3;
                         const end = start + 3;
                         return (
-                          <td
+                          <AmountCell
                             key={`dc-${keyPrefix}-${r.label}-q${qi}`}
-                            className="border-b border-r border-slate-200 px-3 py-2 text-right"
-                          >
-                            {r.isYoy
-                              ? formatPctRow(yoyPct(sumRange(r.num, start, end), sumRange(r.denom, start, end)))
-                              : formatKRow(sumRange(r.num, start, end))}
-                          </td>
+                            num={sumRange(r.num, start, end)}
+                            denom={sumRange(r.denom, start, end)}
+                            showYoy={hasPrev}
+                            className={cell}
+                          />
                         );
                       })}
                     {showMonths &&
                       MONTH_HEADERS.map((_, mi) => (
-                        <td
+                        <AmountCell
                           key={`dc-${keyPrefix}-${r.label}-${mi}`}
-                          className="border-b border-r border-slate-200 px-3 py-2 text-right"
-                        >
-                          {r.isYoy ? formatPctRow(yoyPct(r.num[mi], r.denom[mi])) : formatKRow(r.num[mi])}
-                        </td>
+                          num={r.num[mi]}
+                          denom={r.denom[mi]}
+                          showYoy={hasPrev}
+                          className={cell}
+                        />
                       ))}
-                    <td className="border-b border-slate-200 bg-inherit px-3 py-2 text-right font-medium">
-                      {r.isYoy
-                        ? formatPctRow(yoyPct(sumArr(r.num), sumArr(r.denom)))
-                        : formatKRow(sumArr(r.num))}
-                    </td>
+                    <AmountCell
+                      num={sumArr(r.num)}
+                      denom={sumArr(r.denom)}
+                      showYoy={hasPrev}
+                      className="border-b border-slate-200 bg-inherit px-3 py-2 text-right font-medium"
+                    />
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </div>
       </div>
     );
   };
 
+  // Tag대비 회수율 표와 같은 꼴 — 카드 하나에 제목 띠(설명·접기 토글) + 표
   return (
-    <div className="mt-8">
-      <button
-        type="button"
-        onClick={() => setCollapsed((prev) => !prev)}
-        className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white/85 px-4 py-3 text-left shadow-sm transition-colors hover:bg-slate-50"
-      >
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#3b5f93] text-xs font-semibold text-white">
-          출
-        </span>
-        <span className="flex-1">
-          <span className="block font-semibold text-slate-800">대리상 출고표</span>
-          <span className="mt-0.5 block text-xs text-slate-500">
+    <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-sm">
+      <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50/60 px-4 py-2">
+        <div>
+          <div className="font-semibold text-slate-800">대리상 출고표</div>
+          <div className="mt-0.5 text-xs text-slate-500">
             {isCurrentYear ? (
               <>
                 1~{latestActualMonth}월: Snowflake 실적 · {latestActualMonth + 1}~12월:{' '}
@@ -380,13 +377,17 @@ export default function DealerShipmentByBrand({ monthsCollapsed, quarterlyMode, 
             ) : (
               <>{year}년 1~12월: Snowflake 실적 (단위: 千 CNY) · 전년 비교 없음</>
             )}
-          </span>
-        </span>
-        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((prev) => !prev)}
+          className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+        >
           {collapsed ? '펼치기' : '접기'}
           {collapsed ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronUp className="h-3.5 w-3.5 text-slate-400" />}
-        </span>
-      </button>
+        </button>
+      </div>
       {!collapsed && renderTable(currSeries, prevSeries, titleSuffix, selectedBrandName ?? 'all')}
     </div>
   );
