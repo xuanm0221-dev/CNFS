@@ -111,8 +111,8 @@ function hqAccEntryToAmountText(e: HqAccBudgetEntry): { arrival: string; order: 
   };
 }
 
-/** 리오더 모달 기본 대리상 성장률 — 내부값 10 = 화면 110% (10% 성장) */
-const REORDER_DEFAULT_GROWTH_RATE = 10;
+/** 리오더 모달 기본 대리상 성장률 — 내부값 5 = 화면 105% (본문 기본과 동일, 2026-09-15 변경: 110%→105%) */
+const REORDER_DEFAULT_GROWTH_RATE = 5;
 
 /** 대리상·직영 판매추정 소표 공통: 열 비율 통일로 세로 구분선 정렬 */
 const SALE_ESTIMATE_TABLE_CLASS = 'min-w-0 w-full flex-1 table-fixed border-collapse text-xs';
@@ -983,7 +983,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
   // 브랜드별 PL용 모달 — null이면 닫힘, 브랜드명이면 그 브랜드 모달 오픈
   const [plModalBrand, setPlModalBrand] = useState<AnnualPlanBrand | null>(null);
   const [reorderModalOpen, setReorderModalOpen] = useState(false);
-  // 대리상 ACC 재고주수 비교 모달 (MLB) — 리오더 시뮬 표(110%)를 같이 쓴다
+  // 대리상 ACC 재고주수 비교 모달 (MLB) — 리오더 시뮬 표(리오더 성장률 기준)를 같이 쓴다
   const [accWoiModalOpen, setAccWoiModalOpen] = useState(false);
   /** PL Tag매출_대리상_ACC 연간(K) + PL 리테일 대리상 9~12월 성장률 — 비교 모달 (3)열 */
   const [plAccMlb, setPlAccMlb] = useState<{ sellInK: number; retailGrowthPct: number | null; baseMonth: number } | null>(null);
@@ -2496,7 +2496,7 @@ export default function InventoryDashboard({ onScenarioRecalc }: InventoryDashbo
       setReorderTopTable(null);
       return;
     }
-    // 리오더 시뮬 기본값 = 대리상 10% 성장 (화면 표기 110%)
+    // 리오더 시뮬 기본값 = REORDER_DEFAULT_GROWTH_RATE (화면 표기 100+값 %)
     setReorderGrowthRate((prev) => (prev ?? REORDER_DEFAULT_GROWTH_RATE));
   }, [reorderSimActive, growthRateByBrand]);
 
