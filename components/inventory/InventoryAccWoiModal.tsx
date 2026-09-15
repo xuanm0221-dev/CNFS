@@ -17,6 +17,8 @@ interface Props {
   year: number;
   /** (1) 본문 대리상 표 (표시 데이터) */
   baseDealer: InventoryTableData | null;
+  /** 전년(2025) 대리상 표 — 2025년 탭과 같은 데이터. 비교용 우측 열 */
+  prevDealer: InventoryTableData | null;
   /** (2) 리오더 성장률로 재역산 + 리오더 반영된 대리상 표. 계산 전이면 null */
   reorderDealer: InventoryTableData | null;
   /** 행 키별 리오더 물량 (CNY K) */
@@ -48,6 +50,7 @@ export default function InventoryAccWoiModal({
   onClose,
   year,
   baseDealer,
+  prevDealer,
   reorderDealer,
   reorderByKey,
   plAccSellInK,
@@ -60,7 +63,9 @@ export default function InventoryAccWoiModal({
   if (!open) return null;
 
   const base = byKey(baseDealer);
+  const prev = byKey(prevDealer);
   const re = byKey(reorderDealer);
+  const prevYear = year - 1;
   const acc = base['ACC합계'];
 
   // (3) 현지 ACC출고계획 — ACC합계만
@@ -84,6 +89,8 @@ export default function InventoryAccWoiModal({
   const tdLabel = 'border border-slate-300 px-3 py-1.5 text-left text-sm whitespace-nowrap';
   const tdNum = 'border border-slate-300 px-3 py-1.5 text-right text-sm tabular-nums whitespace-nowrap';
   const reorderBg = 'bg-slate-50 text-xs font-normal not-italic text-slate-500';
+  const prevTh = 'border border-slate-400 bg-slate-400 px-3 py-2 text-center text-xs font-semibold text-white';
+  const prevTd = 'bg-slate-100 text-slate-600';
 
   const rowCls = (key: string) => (key === 'ACC합계' ? 'bg-highlight-sky font-semibold text-slate-900' : 'bg-white italic text-slate-700');
   const footRowCls = 'bg-highlight-sky font-semibold text-slate-900';
@@ -92,11 +99,12 @@ export default function InventoryAccWoiModal({
   // 위·아래 표 열 폭 동일 (첫 열 라벨 길이에 따라 달라지지 않게 table-fixed + 공용 colgroup)
   const Cols = () => (
     <colgroup>
-      <col style={{ width: '26%' }} />
+      <col style={{ width: '22%' }} />
+      <col style={{ width: '15%' }} />
+      <col style={{ width: '11%' }} />
       <col style={{ width: '17%' }} />
-      <col style={{ width: '13%' }} />
-      <col style={{ width: '20%' }} />
-      <col style={{ width: '24%' }} />
+      <col style={{ width: '19%' }} />
+      <col style={{ width: '16%' }} />
     </colgroup>
   );
   const Head = ({ first }: { first: string }) => (
@@ -119,13 +127,17 @@ export default function InventoryAccWoiModal({
           현지 ACC출고계획
           <span className={thSub}>{fmtGrowth(plRetailGrowthPct)}</span>
         </th>
+        <th className={prevTh}>
+          {prevYear}년말
+          <span className={thSub}>(실적)</span>
+        </th>
       </tr>
     </thead>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4" onClick={onClose}>
-      <div className="my-8 w-full max-w-[880px] rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="my-8 w-full max-w-[1000px] rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {/* 헤더 */}
         <div className="flex items-center justify-between gap-3 rounded-t-2xl border-b border-slate-200 bg-slate-50 px-5 py-3">
           <div className="flex items-baseline gap-3">
@@ -175,6 +187,7 @@ export default function InventoryAccWoiModal({
                     <td className={`${tdNum} ${reorderBg}`} />
                     <td className={tdNum}>{r ? formatWoi(r.woi) : reorderPending ? <Pending /> : ''}</td>
                     <td className={tdNum}>{isTotal ? (plWoi != null ? formatWoi(plWoi) : plPending ? <Pending /> : '') : ''}</td>
+                    <td className={`${tdNum} ${prevTd}`}>{prev[key] ? formatWoi(prev[key].woi) : ''}</td>
                   </tr>
                 );
               })}
@@ -199,6 +212,7 @@ export default function InventoryAccWoiModal({
                     {/* 리오더 모달과 동일: 리오더 성장률로 재역산한 매입 + 리오더 */}
                     <td className={tdNum}>{r ? fmtK(r.sellInTotal + ro) : reorderPending ? <Pending /> : ''}</td>
                     <td className={tdNum}>{isTotal ? (plPending ? <Pending /> : fmtK(plAccSellInK)) : ''}</td>
+                    <td className={`${tdNum} ${prevTd}`}>{fmtK(prev[key]?.sellInTotal)}</td>
                   </tr>
                 );
               })}
@@ -208,6 +222,7 @@ export default function InventoryAccWoiModal({
                 <td className={`${tdNum} ${reorderBg}`} />
                 <td className={tdNum}>{reorderPending ? <Pending /> : fmtK(re['ACC합계']?.closing)}</td>
                 <td className={tdNum}>{plPending ? <Pending /> : fmtK(plClosing)}</td>
+                <td className={`${tdNum} ${prevTd}`}>{fmtK(prev['ACC합계']?.closing)}</td>
               </tr>
               <tr className={footRowCls}>
                 <td className={tdLabel}>리테일</td>
@@ -215,6 +230,7 @@ export default function InventoryAccWoiModal({
                 <td className={`${tdNum} ${reorderBg}`} />
                 <td className={tdNum}>{reorderPending ? <Pending /> : fmtK(re['ACC합계']?.sellOutTotal)}</td>
                 <td className={tdNum}>{fmtK(acc?.sellOutTotal)}</td>
+                <td className={`${tdNum} ${prevTd}`}>{fmtK(prev['ACC합계']?.sellOutTotal)}</td>
               </tr>
             </tbody>
           </table>
@@ -222,6 +238,7 @@ export default function InventoryAccWoiModal({
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
             <div>재고주수 = 기말 ÷ (연간 리테일 ÷ {REORDER_YEAR_DAYS}일 × 7) — 본문·리오더 모달과 같은 공식</div>
             <div>목표+리오더 = 리오더 성장률로 표를 다시 역산한 매입에 리오더 물량을 더한 것 (reorder추가시 모달과 동일)</div>
+            <div>{prevYear}년말 = {prevYear}년 탭 대리상 재고표 실적 그대로 (재고주수 = 기말 ÷ 주간 리테일, {prevYear}년 365일)</div>
             <div>현지 ACC출고계획 = 손익계산서 Tag매출 대리상 ACC 연간. 기말 = 목표 기말 + (출고계획 − 목표 매입), 리테일은 목표와 동일. 아이템별 계획은 없어 ACC합계만</div>
           </div>
         </div>

@@ -5212,6 +5212,7 @@ ORDER BY YYYYMM;
             onClose={() => setAccWoiModalOpen(false)}
             year={year}
             baseDealer={data?.dealer ?? null}
+            prevDealer={perBrandPrevYearTableData['MLB']?.dealer ?? null}
             reorderDealer={reorderDealer}
             reorderByKey={reorderByKey}
             plAccSellInK={plAccMlb?.sellInK ?? null}
