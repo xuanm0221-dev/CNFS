@@ -83,6 +83,23 @@ export default function InventoryAccWoiModal({
     </span>
   );
 
+  /** 재고주수 셀 — "27.1주 (−8.7주)" 꼴. 전년(2025) 재고주수가 없으면 값만 */
+  const WoiCell = ({ woi, prevWoi }: { woi: number | null | undefined; prevWoi: number | null | undefined }) => {
+    if (woi == null || !Number.isFinite(woi)) return null;
+    const hasPrev = prevWoi != null && Number.isFinite(prevWoi) && prevWoi !== 0;
+    const d = hasPrev ? woi - (prevWoi as number) : null;
+    return (
+      <>
+        {formatWoi(woi)}
+        {d != null && (
+          <span className={`ml-1 text-[11px] font-normal not-italic ${d < 0 ? 'text-rose-600' : d > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+            ({d > 0 ? '+' : d < 0 ? '−' : ''}{Math.abs(d).toFixed(1)}주)
+          </span>
+        )}
+      </>
+    );
+  };
+
   const monthLabel = `${baseMonth + 1}~12월 성장율`;
   const th = 'border border-slate-400 bg-slate-600 px-3 py-2 text-center text-xs font-semibold text-white';
   const thSub = 'block text-[11px] font-normal text-slate-200';
@@ -183,10 +200,10 @@ export default function InventoryAccWoiModal({
                 return (
                   <tr key={`woi-${key}`} className={rowCls(key)}>
                     <td className={tdLabel}>{labelOf(key)}</td>
-                    <td className={tdNum}>{b ? formatWoi(b.woi) : ''}</td>
+                    <td className={tdNum}>{b ? <WoiCell woi={b.woi} prevWoi={prev[key]?.woi} /> : ''}</td>
                     <td className={`${tdNum} ${reorderBg}`} />
-                    <td className={tdNum}>{r ? formatWoi(r.woi) : reorderPending ? <Pending /> : ''}</td>
-                    <td className={tdNum}>{isTotal ? (plWoi != null ? formatWoi(plWoi) : plPending ? <Pending /> : '') : ''}</td>
+                    <td className={tdNum}>{r ? <WoiCell woi={r.woi} prevWoi={prev[key]?.woi} /> : reorderPending ? <Pending /> : ''}</td>
+                    <td className={tdNum}>{isTotal ? (plWoi != null ? <WoiCell woi={plWoi} prevWoi={prev[key]?.woi} /> : plPending ? <Pending /> : '') : ''}</td>
                     <td className={`${tdNum} ${prevTd}`}>{prev[key] ? formatWoi(prev[key].woi) : ''}</td>
                   </tr>
                 );
