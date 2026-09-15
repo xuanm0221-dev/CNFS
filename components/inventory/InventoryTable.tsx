@@ -51,6 +51,8 @@ interface Props {
    * 본문은 기존대로(ST YOY) 두고 리오더 모달에서만 켠다.
    */
   accSubtotalShowsWoi?: boolean;
+  /** ACC합계 재고주수 셀 클릭 (대리상 ACC 재고주수 비교 모달). 지정 시 셀이 버튼처럼 보인다 */
+  onAccWoiClick?: () => void;
   /** Sell-in 셀 마우스오버 툴팁 (row.key → 문구). 지정 시 기본 툴팁보다 우선 */
   sellInCellTitles?: Record<string, string>;
   /** Sell-out 셀 마우스오버 툴팁 (row.key → 문구). 지정 시 기본 툴팁보다 우선 */
@@ -222,6 +224,7 @@ export default function InventoryTable({
   sellOutLabel = 'Sell-out',
   reorderByKey,
   accSubtotalShowsWoi,
+  onAccWoiClick,
   sellInCellTitles,
   sellOutCellTitles,
   tableType = 'dealer',
@@ -655,6 +658,23 @@ export default function InventoryTable({
                     return (
                       <td className={`${cellCls(row)} ${getAccWoiBoxClass(tableType, row)} text-right`}>
                         {content}
+                      </td>
+                    );
+                  }
+                  // ACC합계 재고주수 → 비교 모달 (대리상 표, 핸들러 있을 때만)
+                  const isAccWoiButton = !isYoyRow(row) && (row as InventoryRow).key === 'ACC합계' && !!onAccWoiClick;
+                  if (isAccWoiButton) {
+                    return (
+                      <td className={`${cellCls(row)} ${getAccWoiBoxClass(tableType, row)} text-black`}>
+                        <button
+                          type="button"
+                          onClick={onAccWoiClick}
+                          title="목표 · 목표+리오더 · 현지 ACC출고계획 재고주수 비교"
+                          className="inline-flex w-full items-center justify-end gap-1 rounded border border-rose-300 bg-rose-50 px-1.5 py-0.5 font-semibold text-rose-800 hover:bg-rose-100"
+                        >
+                          {formatWoi((row as InventoryRow).woi)}
+                          <span className="text-[10px] text-rose-500">↗</span>
+                        </button>
                       </td>
                     );
                   }

@@ -21,8 +21,12 @@ function sumArr(arr: number[]): number {
   return arr.reduce((s, v) => s + v, 0);
 }
 
-/** 2026 = 윤년 */
-const DEFAULT_YEAR_DAYS = 366;
+/**
+ * 재고주수 연일수. 본문 표시(applyTopTableRetailDisplayOverlay)와 리오더 모달이 366 을 쓰고 있어
+ * ACC 재고주수 비교 모달도 같은 값으로 맞춘다 (2026-09-15 사용자 결정: 366 유지).
+ */
+export const REORDER_YEAR_DAYS = 366;
+const DEFAULT_YEAR_DAYS = REORDER_YEAR_DAYS;
 
 /**
  * ACC 소분류 리오더 → 행 키별 리오더 맵.
